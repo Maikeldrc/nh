@@ -3,16 +3,16 @@ import {
   User, Patient, AuditLog, DocumentRecord, Visit, Consent, Device, BPReading,
   ConditionGroupCatalog, DiagnosisCatalog, CatalogImportHistory
 } from './types';
-import { SEED_USERS } from './data';
 import { 
-  initDB, getPatients, getAuditLogs, getDocuments, getCurrentUser, 
-  setCurrentUser, clearSession, savePatient, saveVisit, saveConsent, 
+  getPatients, getAuditLogs, getDocuments,
+  clearSession, savePatient, saveVisit, saveConsent,
   saveDevice, saveBPReading, saveDocument, addAuditLog, getActiveVisitForPatient,
   getLatestVisitForPatient, getConsentByPatientId, getDeviceByPatientId, getBPReadingsByPatientId,
   getConditionGroups, getDiagnoses, getCatalogImportHistory, saveConditionCatalog,
-  setConditionGroupActive, setDiagnosisActive
+  setConditionGroupActive, setDiagnosisActive, hydrateDB, getUsers
 } from './utils/db';
-import { generateConsentPDF, generateDeviceDeliveryPDF, generateMedicalOrderPDF } from './utils/pdfGenerator';
+import { downloadDocument, generateDocument } from './utils/apiClient';
+import { logout, observeAuthenticatedUser } from './utils/auth';
 import { approveMedicalOrder, createMedicalOrder, generateAutoOrderIfNeeded, isMedicalOrderApproved, patientRequiresDevice, rejectMedicalOrder, resubmitMedicalOrder } from './utils/medicalOrders';
 import { POWERED_BY, PRODUCT_NAME } from './utils/branding';
 import Header from './components/Header';
@@ -40,6 +40,8 @@ export default function App() {
   const [conditionGroups, setConditionGroups] = useState<ConditionGroupCatalog[]>([]);
   const [diagnoses, setDiagnoses] = useState<DiagnosisCatalog[]>([]);
   const [catalogImports, setCatalogImports] = useState<CatalogImportHistory[]>([]);
+  const [authLoading, setAuthLoading] = useState(true);
+  const [authError, setAuthError] = useState('');
   
   // Navigation states
   const [currentView, setCurrentView] = useState<'DASHBOARD' | 'PROFILE' | 'VISIT'>('DASHBOARD');
@@ -62,17 +64,36 @@ export default function App() {
   // INITIALIZATION
   // ----------------------------------------------------
   useEffect(() => {
-    // Start local database
-    initDB();
-    
-    // Load session if exists
-    const user = getCurrentUser();
-    if (user) {
-      setAppUser(user);
-    }
+    return observeAuthenticatedUser(firebaseUser => {
+      if (!firebaseUser) {
+        clearSession();
+        setAppUser(null);
+        setAuthLoading(false);
+        return;
+      }
+      setAuthLoading(true);
+      setAuthError('');
+      void hydrateDB()
+        .then(user => {
+          setAppUser(user);
+          refreshAppState();
+        })
+        .catch(error => {
+          clearSession();
+          setAppUser(null);
+          setAuthError(error instanceof Error ? error.message : 'Unable to load your account.');
+        })
+        .finally(() => setAuthLoading(false));
+    });
+  }, []);
 
-    // Refresh state
-    refreshAppState();
+  useEffect(() => {
+    const handler = (event: Event) => {
+      const message = (event as CustomEvent<string>).detail;
+      showToast(message, 'info');
+    };
+    window.addEventListener('amavita:api-error', handler);
+    return () => window.removeEventListener('amavita:api-error', handler);
   }, []);
 
   const refreshAppState = () => {
@@ -126,30 +147,18 @@ export default function App() {
   // ----------------------------------------------------
   // AUTHENTICATION HANDLERS
   // ----------------------------------------------------
-  const handleLoginSuccess = (user: User) => {
-    setCurrentUser(user);
-    setAppUser(user);
+  const handleLoginSuccess = () => {
     setCurrentView('DASHBOARD');
     setActivePatientId(null);
-    refreshAppState();
-    showToast(`${l('Sesión iniciada como', 'Signed in as')} ${user.name}`);
   };
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    await logout();
     clearSession();
     setAppUser(null);
     setCurrentView('DASHBOARD');
     setActivePatientId(null);
     refreshAppState();
-  };
-
-  const handleUserChange = (newUser: User) => {
-    setCurrentUser(newUser);
-    setAppUser(newUser);
-    setCurrentView('DASHBOARD');
-    setActivePatientId(null);
-    refreshAppState();
-    showToast(`${l('Cambiado al perfil de', 'Switched to profile')}: ${newUser.name}`, 'info');
   };
 
   // ----------------------------------------------------
@@ -238,7 +247,7 @@ export default function App() {
     if (!currentUser) return;
 
     const patient = getPatients().find(p => p.id === patientId);
-    const nurse = SEED_USERS.find(u => u.id === nurseId);
+    const nurse = getUsers().find(u => u.id === nurseId && u.role === 'NURSE');
     
     if (patient && nurse) {
       const oldNurseName = patient.assignedNurseName;
@@ -311,26 +320,10 @@ export default function App() {
       `Orden ${order.id} aprobada por ${currentUser.name}. Medico asignado: ${order.assignedPhysician}. Fecha: ${order.approvedAt}. Version: ${order.orderVersion}.`
     );
 
-    // Generate and save PDF evidence
-    const meta = {
-      documentId: order.id,
-      generatedBy: currentUser.name,
-      dateTime: new Date().toLocaleString()
-    };
-    const pdfDataUrl = generateMedicalOrderPDF(patient, order, meta);
-    const docRecord: import('./types').DocumentRecord = {
-      id: `mo_${order.id}`,
-      patientId: patient.id,
-      patientName: `${patient.firstName} ${patient.lastName}`,
-      visitId: patient.id,
-      type: 'MEDICAL_ORDER',
-      title: 'Physician Medical Order - RPM Authorization',
-      dateTime: new Date().toISOString(),
-      generatedBy: currentUser.name,
-      version: order.orderVersion,
-      pdfDataUrl
-    };
-    saveDocument(docRecord);
+    void generateDocument('MEDICAL_ORDER', patient.id, { order }).then(({ document }) => {
+      saveDocument(document);
+      refreshAppState();
+    });
     addAuditLog(
       currentUser.id,
       currentUser.name,
@@ -375,15 +368,17 @@ export default function App() {
   // PDF GENERATION BINDINGS
   // ----------------------------------------------------
   const handleDownloadPDF = (docRecord: DocumentRecord) => {
-    if (!currentUser || !docRecord.pdfDataUrl) return;
-
-    // Trigger download of base64 document
-    const link = document.createElement('a');
-    link.href = docRecord.pdfDataUrl;
-    link.download = `${docRecord.title.replace(/\s+/g, '_')}_${docRecord.patientName.replace(/\s+/g, '_')}.pdf`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    if (!currentUser) return;
+    void downloadDocument(docRecord.id).then(blob => {
+      const objectUrl = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = objectUrl;
+      link.download = `${docRecord.title.replace(/\s+/g, '_')}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(objectUrl);
+    });
 
     addAuditLog(
       currentUser.id,
@@ -402,36 +397,18 @@ export default function App() {
     const patientObj = patients.find(p => p.id === consent.patientId);
     if (!patientObj) return;
 
-    const meta = {
-      documentId: consent.id,
-      generatedBy: currentUser.name,
-      dateTime: new Date().toLocaleString()
-    };
-
-    const pdfDataUrl = generateConsentPDF(patientObj, consent, meta);
-    callback(pdfDataUrl);
-
-    // Save as Document record
-    const docRecord: DocumentRecord = {
-      id: consent.id,
-      patientId: consent.patientId,
-      patientName: `${patientObj.firstName} ${patientObj.lastName}`,
-      visitId: consent.visitId,
-      type: 'CONSENT',
-      title: 'Patient Care & Consent Agreement',
-      dateTime: new Date().toISOString(),
-      generatedBy: currentUser.name,
-      version: consent.consentVersion,
-      pdfDataUrl
-    };
-
-    saveDocument(docRecord);
+    void generateDocument('CONSENT', patientObj.id, { consent }).then(({ document, blob }) => {
+      const objectUrl = URL.createObjectURL(blob);
+      callback(objectUrl);
+      saveDocument(document);
+      refreshAppState();
+    });
     addAuditLog(
       currentUser.id,
       currentUser.name,
       currentUser.role,
       consent.patientId,
-      docRecord.patientName,
+      `${patientObj.firstName} ${patientObj.lastName}`,
       `${PRODUCT_NAME} - Consentimiento PDF Generado`,
       'CONSENT',
       `Documento generado con identificador único: ${consent.id}`
@@ -444,35 +421,18 @@ export default function App() {
     const patientObj = patients.find(p => p.id === device.patientId);
     if (!patientObj) return;
 
-    const meta = {
-      documentId: device.id,
-      generatedBy: currentUser.name,
-      dateTime: new Date().toLocaleString()
-    };
-
-    const pdfDataUrl = generateDeviceDeliveryPDF(patientObj, device, meta);
-    callback(pdfDataUrl);
-
-    // Save as Document Record
-    const docRecord: DocumentRecord = {
-      id: device.id,
-      patientId: device.patientId,
-      patientName: `${patientObj.firstName} ${patientObj.lastName}`,
-      visitId: device.patientId, // Assumed visit
-      type: 'DEVICE_DELIVERED' as any,
-      title: 'RPM Device Delivery & Activation Confirmation',
-      dateTime: new Date().toISOString(),
-      generatedBy: currentUser.name,
-      pdfDataUrl
-    };
-
-    saveDocument(docRecord);
+    void generateDocument('DEVICE_DELIVERY', patientObj.id, { device }).then(({ document, blob }) => {
+      const objectUrl = URL.createObjectURL(blob);
+      callback(objectUrl);
+      saveDocument(document);
+      refreshAppState();
+    });
     addAuditLog(
       currentUser.id,
       currentUser.name,
       currentUser.role,
       device.patientId,
-      docRecord.patientName,
+      `${patientObj.firstName} ${patientObj.lastName}`,
       `${PRODUCT_NAME} - Entrega Device PDF Generado`,
       'DEVICE',
       `Documento de entrega generado con S/N: ${device.serialNumber}`
@@ -690,17 +650,6 @@ export default function App() {
   };
 
   // ----------------------------------------------------
-  // RESET DATABASE ACTION (FOR TESTING)
-  // ----------------------------------------------------
-  const handleResetDatabase = () => {
-    if (window.confirm(l('¿Está seguro de querer reiniciar la base de datos a los valores de prueba originales? Perderá todas las firmas, lecturas y documentos generados.', 'Are you sure you want to reset the database to its original demo values? All signatures, readings, and generated documents will be lost.'))) {
-      initDB(true);
-      refreshAppState();
-      showToast(l('Base de datos demo reiniciada con éxito', 'Demo database reset successfully'), 'info');
-    }
-  };
-
-  // ----------------------------------------------------
   // RENDER SELECTION
   // ----------------------------------------------------
   const selectedPatient = useMemo(() => {
@@ -724,8 +673,12 @@ export default function App() {
   }, [activePatientId, auditLogs]);
 
   // If user is not logged in, force Login screen
+  if (authLoading) {
+    return <div className="min-h-screen grid place-items-center text-sm font-semibold text-slate-600">Loading secure session...</div>;
+  }
+
   if (!currentUser) {
-    return <Login onLoginSuccess={handleLoginSuccess} />;
+    return <Login onLoginSuccess={handleLoginSuccess} initialError={authError} />;
   }
 
   return (
@@ -733,7 +686,6 @@ export default function App() {
       {/* Top Main navigation header */}
       <Header 
         currentUser={currentUser} 
-        onUserChange={handleUserChange} 
         onLogout={handleLogout} 
       />
 
@@ -763,10 +715,10 @@ export default function App() {
               patients={patients}
               auditLogs={auditLogs}
               documents={documents}
+              users={getUsers()}
               onViewProfile={handleViewProfile}
               onReassignNurse={handleReassignNurse}
               onDownloadPDF={handleDownloadPDF}
-              onResetDatabase={handleResetDatabase}
               onRegisterPatientClick={() => setIsRegisterModalOpen(true)}
               onGenerateMedicalOrder={handleGenerateMedicalOrder}
               onOpenMedicalOrderReview={(p) => setMedicalOrderReviewPatient(p)}
@@ -834,6 +786,7 @@ export default function App() {
         onClose={() => setIsRegisterModalOpen(false)}
         onRegister={handleRegisterPatient}
         currentUser={currentUser}
+        users={getUsers()}
         conditionGroups={conditionGroups}
         diagnoses={diagnoses}
       />

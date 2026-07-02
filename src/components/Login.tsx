@@ -1,20 +1,21 @@
 import React, { useState } from 'react';
-import { User } from '../types';
-import { SEED_USERS } from '../data';
-import { Activity, Mail, Lock, Shield, User as UserIcon, AlertCircle } from 'lucide-react';
+import { Activity, Mail, Lock, AlertCircle } from 'lucide-react';
 import { useLanguage } from '../utils/LanguageContext';
+import { loginWithEmail } from '../utils/auth';
 
 interface LoginProps {
-  onLoginSuccess: (user: User) => void;
+  onLoginSuccess: () => void;
+  initialError?: string;
 }
 
-export default function Login({ onLoginSuccess }: LoginProps) {
+export default function Login({ onLoginSuccess, initialError = '' }: LoginProps) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
+  const [error, setError] = useState(initialError);
+  const [submitting, setSubmitting] = useState(false);
   const { language, setLanguage, t } = useLanguage();
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
 
@@ -23,19 +24,15 @@ export default function Login({ onLoginSuccess }: LoginProps) {
       return;
     }
 
-    // Attempt to match with SEED_USERS
-    const matchedUser = SEED_USERS.find(u => u.email.toLowerCase() === email.trim().toLowerCase());
-    if (matchedUser) {
-      onLoginSuccess(matchedUser);
-    } else {
+    setSubmitting(true);
+    try {
+      await loginWithEmail(email, password);
+      onLoginSuccess();
+    } catch {
       setError(t('invalid_creds'));
+    } finally {
+      setSubmitting(false);
     }
-  };
-
-  const handleQuickLogin = (user: User) => {
-    setEmail(user.email);
-    setPassword('demo123');
-    onLoginSuccess(user);
   };
 
   return (
@@ -139,49 +136,15 @@ export default function Login({ onLoginSuccess }: LoginProps) {
                 type="submit"
                 className="w-full flex justify-center py-2.5 px-4 border border-transparent rounded-xl shadow-md text-sm font-bold text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition cursor-pointer shadow-blue-600/20"
                 id="btn-submit-login"
+                disabled={submitting}
               >
-                {t('login_btn')}
+                {submitting ? 'Signing in...' : t('login_btn')}
               </button>
             </div>
           </form>
 
-          {/* Quick Demo Logins */}
-          <div className="mt-8 border-t border-slate-200 pt-6">
-            <p className="text-center text-xs font-bold text-slate-500 uppercase tracking-wider mb-4">
-              {t('quick_logins')}
-            </p>
-            <div className="space-y-2.5">
-              {SEED_USERS.map((user) => (
-                <button
-                  key={user.id}
-                  onClick={() => handleQuickLogin(user)}
-                  className="w-full flex items-center justify-between p-3 border border-slate-200 rounded-xl hover:border-blue-500 hover:bg-blue-50/20 text-left transition cursor-pointer"
-                  id={`quick-login-${user.id}`}
-                  type="button"
-                >
-                  <div className="flex items-center space-x-3">
-                    <div className={`p-1.5 rounded-full ${user.role === 'ADMIN' ? 'bg-emerald-100 text-emerald-800' : 'bg-blue-100 text-blue-800'}`}>
-                      {user.role === 'ADMIN' ? <Shield size={16} /> : <UserIcon size={16} />}
-                    </div>
-                    <div>
-                      <p className="text-xs font-bold text-slate-800">{user.name}</p>
-                      <p className="text-[10px] text-slate-500">{user.email}</p>
-                    </div>
-                  </div>
-                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded border ${
-                    user.role === 'ADMIN' 
-                      ? 'bg-emerald-50 text-emerald-700 border-emerald-200' 
-                      : 'bg-blue-50 text-blue-700 border-blue-200'
-                  }`}>
-                    {user.role === 'ADMIN' ? t('admin') : t('nurse')}
-                  </span>
-                </button>
-              ))}
-            </div>
-          </div>
         </div>
       </div>
     </div>
   );
 }
-

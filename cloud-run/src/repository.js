@@ -1,0 +1,140 @@
+import { google } from 'googleapis';
+import { config } from './config.js';
+
+const sheets = google.sheets({ version: 'v4', auth: new google.auth.GoogleAuth({
+  scopes: ['https://www.googleapis.com/auth/spreadsheets']
+}) });
+
+export const resources = Object.freeze({
+  patients: { tab: 'Patients', key: 'patient_id' },
+  facilities: { tab: 'Facilities', key: 'facility_id' },
+  programs: { tab: 'Programs', key: 'program_id' },
+  visits: { tab: 'Visits', key: 'visit_id' },
+  consents: { tab: 'Consents', key: 'consent_id' },
+  devices: { tab: 'Devices', key: 'device_id' },
+  readings: { tab: 'Device Readings', key: 'reading_id' },
+  documents: { tab: 'Documents', key: 'document_id' },
+  'condition-groups': { tab: 'Condition Groups', key: 'condition_group_id' },
+  diagnoses: { tab: 'Diagnosis Catalog', key: 'diagnosis_id' },
+  'catalog-imports': { tab: 'Catalog Imports', key: 'import_id' },
+  'medical-orders': { tab: 'Medical Orders', key: 'order_id' },
+  'device-activation': { tab: 'Device Activation', key: 'activation_id' },
+  medications: { tab: 'Medications', key: 'medication_id' },
+  users: { tab: 'Users', key: 'user_id' },
+  'activity-log': { tab: 'Activity Log', key: 'activity_id' }
+});
+
+const backendHeaders = ['record_json', 'patient_id', 'facility_id', 'updated_at'];
+
+function quoteTab(tab) {
+  return `'${tab.replaceAll("'", "''")}'`;
+}
+
+async function ensureSheet(resource) {
+  const metadata = await sheets.spreadsheets.get({
+    spreadsheetId: config.spreadsheetId,
+    fields: 'sheets.properties'
+  });
+  const exists = metadata.data.sheets?.some(
+    sheet => sheet.properties?.title === resource.tab
+  );
+  if (!exists) {
+    await sheets.spreadsheets.batchUpdate({
+      spreadsheetId: config.spreadsheetId,
+      requestBody: { requests: [{ addSheet: { properties: { title: resource.tab } } }] }
+    });
+  }
+
+  const response = await sheets.spreadsheets.values.get({
+    spreadsheetId: config.spreadsheetId,
+    range: `${quoteTab(resource.tab)}!1:1`
+  });
+  const headers = response.data.values?.[0] || [];
+  const requiredHeaders = [resource.key, ...backendHeaders];
+  let changed = false;
+  for (const header of requiredHeaders) {
+    if (!headers.includes(header)) {
+      headers.push(header);
+      changed = true;
+    }
+  }
+  if (changed || !headers.length) {
+    await sheets.spreadsheets.values.update({
+      spreadsheetId: config.spreadsheetId,
+      range: `${quoteTab(resource.tab)}!1:1`,
+      valueInputOption: 'RAW',
+      requestBody: { values: [headers] }
+    });
+  }
+  return headers;
+}
+
+export async function listRecords(resourceName) {
+  const resource = resources[resourceName];
+  if (!resource) throw new Error('Unknown resource.');
+  const headers = await ensureSheet(resource);
+  const response = await sheets.spreadsheets.values.get({
+    spreadsheetId: config.spreadsheetId,
+    range: `${quoteTab(resource.tab)}!A2:ZZ`
+  });
+  return (response.data.values || []).map(values => {
+    const row = Object.fromEntries(headers.map((header, index) => [
+      header,
+      values[index] ?? ''
+    ]));
+    if (row.record_json) {
+      try {
+        return JSON.parse(row.record_json);
+      } catch {
+        return row;
+      }
+    }
+    return row;
+  });
+}
+
+export async function getRecord(resourceName, id) {
+  const resource = resources[resourceName];
+  const records = await listRecords(resourceName);
+  return records.find(record => String(record.id || record[resource.key]) === String(id));
+}
+
+export async function upsertRecord(resourceName, id, record) {
+  const resource = resources[resourceName];
+  if (!resource) throw new Error('Unknown resource.');
+  const headers = await ensureSheet(resource);
+  const response = await sheets.spreadsheets.values.get({
+    spreadsheetId: config.spreadsheetId,
+    range: `${quoteTab(resource.tab)}!A2:ZZ`
+  });
+  const rows = response.data.values || [];
+  const keyIndex = headers.indexOf(resource.key);
+  const rowIndex = rows.findIndex(row => String(row[keyIndex] || '') === String(id));
+  const normalized = {
+    ...record,
+    id,
+    [resource.key]: id,
+    updated_at: new Date().toISOString()
+  };
+  const values = headers.map(header => {
+    if (header === resource.key) return id;
+    if (header === 'record_json') return JSON.stringify(normalized);
+    if (header === 'patient_id') return normalized.patientId || normalized.patient_id || '';
+    if (header === 'facility_id') return normalized.facilityId || normalized.facility_id || '';
+    if (header === 'updated_at') return normalized.updated_at;
+    const value = normalized[header];
+    return typeof value === 'object' ? JSON.stringify(value) : value ?? '';
+  });
+  const targetRow = rowIndex < 0 ? rows.length + 2 : rowIndex + 2;
+  await sheets.spreadsheets.values.update({
+    spreadsheetId: config.spreadsheetId,
+    range: `${quoteTab(resource.tab)}!A${targetRow}`,
+    valueInputOption: 'RAW',
+    requestBody: { values: [values] }
+  });
+  return normalized;
+}
+
+export async function appendActivity(activity) {
+  return upsertRecord('activity-log', activity.activity_id, activity);
+}

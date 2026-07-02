@@ -2,13 +2,18 @@
  * Types and interfaces for AMAVITA CareStart, powered by ITERA.HEALTH.
  */
 
-export type UserRole = 'NURSE' | 'ADMIN';
+export type UserRole = 'NURSE' | 'ADMIN' | 'PHYSICIAN' | 'VIEWER' | 'AUDITOR';
 
 export interface User {
   id: string;
+  identityUid?: string;
   name: string;
   role: UserRole;
   email: string;
+  active?: boolean;
+  mfaRequired?: boolean;
+  facilityIds?: string[];
+  patientId?: string;
   nursingHomeAccess?: string[]; // nursing home names accessible (nurses see their own or specific NH)
 }
 
@@ -292,5 +297,4 @@ export interface DocumentRecord {
   dateTime: string;
   generatedBy: string;
   version?: string;
-  pdfDataUrl?: string; // Base64/data url of generated PDF
 }

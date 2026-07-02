@@ -1,9 +1,9 @@
 import { useState, useMemo } from 'react';
 import { Patient, User, AuditLog, DocumentRecord, PatientStatus } from '../types';
-import { NURSING_HOMES, PROGRAMS, SEED_USERS } from '../data';
+import { NURSING_HOMES, PROGRAMS } from '../data';
 import { 
   Search, Users, Shield, FileText, Smartphone, CheckCircle, 
-  AlertTriangle, Eye, ArrowUpDown, RefreshCw, Calendar, MapPin, Download, History, UserPlus, FileSpreadsheet
+  AlertTriangle, Eye, ArrowUpDown, Calendar, MapPin, Download, History, UserPlus, FileSpreadsheet
 } from 'lucide-react';
 import { useLanguage } from '../utils/LanguageContext';
 import { getMedicalOrderStatus, patientRequiresDevice } from '../utils/medicalOrders';
@@ -14,10 +14,10 @@ interface DashboardAdminProps {
   patients: Patient[];
   auditLogs: AuditLog[];
   documents: DocumentRecord[];
+  users: User[];
   onViewProfile: (patientId: string) => void;
   onReassignNurse: (patientId: string, nurseId: string) => void;
   onDownloadPDF: (docRecord: DocumentRecord) => void;
-  onResetDatabase: () => void;
   onRegisterPatientClick: () => void;
   onGenerateMedicalOrder: (patientId: string) => void;
   onOpenMedicalOrderReview: (patient: Patient) => void;
@@ -29,10 +29,10 @@ export default function DashboardAdmin({
   patients,
   auditLogs,
   documents,
+  users,
   onViewProfile,
   onReassignNurse,
   onDownloadPDF,
-  onResetDatabase,
   onRegisterPatientClick,
   onGenerateMedicalOrder,
   onOpenMedicalOrderReview,
@@ -51,8 +51,8 @@ export default function DashboardAdmin({
 
   // Filter nurses list for dropdown
   const nursesList = useMemo(() => {
-    return SEED_USERS.filter(u => u.role === 'NURSE');
-  }, []);
+    return users.filter(u => u.role === 'NURSE' && u.active !== false);
+  }, [users]);
 
   // Summary Metrics
   const metrics = useMemo(() => {
@@ -171,13 +171,6 @@ export default function DashboardAdmin({
             id="btn-register-patient-admin"
           >
             <UserPlus size={13} className="mr-1.5" /> {l('Registrar Paciente', 'Register Patient')}
-          </button>
-          <button
-            onClick={onResetDatabase}
-            className="inline-flex items-center justify-center px-4 py-2 text-xs font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 hover:text-slate-900 rounded-xl border border-slate-200 transition cursor-pointer"
-            id="btn-reset-db"
-          >
-            <RefreshCw size={12} className="mr-1.5" /> {l('Reiniciar Datos Demo', 'Reset Demo Data')}
           </button>
         </div>
       </div>

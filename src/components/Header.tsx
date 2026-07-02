@@ -1,24 +1,17 @@
 import { useState } from 'react';
-import { User, UserRole } from '../types';
-import { SEED_USERS } from '../data';
-import { Shield, User as UserIcon, LogOut, ChevronDown, Check, Activity, Award, Globe } from 'lucide-react';
+import { User } from '../types';
+import { Shield, User as UserIcon, LogOut, ChevronDown, Activity } from 'lucide-react';
 import { useLanguage } from '../utils/LanguageContext';
 import { PRODUCT_NAME } from '../utils/branding';
 
 interface HeaderProps {
   currentUser: User;
-  onUserChange: (user: User) => void;
   onLogout: () => void;
 }
 
-export default function Header({ currentUser, onUserChange, onLogout }: HeaderProps) {
+export default function Header({ currentUser, onLogout }: HeaderProps) {
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const { language, setLanguage, t } = useLanguage();
-
-  const handleUserSelect = (user: User) => {
-    onUserChange(user);
-    setDropdownOpen(false);
-  };
 
   return (
     <header className="bg-white border-b border-slate-200" id="app-header">
@@ -97,42 +90,9 @@ export default function Header({ currentUser, onUserChange, onLogout }: HeaderPr
                   className="absolute right-0 mt-2 w-72 rounded-lg bg-white shadow-xl ring-1 ring-black/5 z-50 divide-y divide-slate-100 border border-slate-200"
                   id="user-picker-menu"
                 >
-                  {/* Header info */}
                   <div className="px-4 py-3 bg-slate-50 rounded-t-lg">
-                    <p className="text-xs font-medium text-slate-500 uppercase tracking-wider">{t('change_user')}</p>
-                    <p className="text-xs text-slate-400 mt-0.5">{t('ideal_for_testing')}</p>
-                  </div>
-
-                  {/* Users List */}
-                  <div className="py-1">
-                    {SEED_USERS.map((user) => {
-                      const isSelected = user.id === currentUser.id;
-                      return (
-                        <button
-                          key={user.id}
-                          onClick={() => handleUserSelect(user)}
-                          className={`flex items-center justify-between w-full px-4 py-2.5 text-left text-sm hover:bg-slate-50 transition cursor-pointer ${
-                            isSelected ? 'bg-blue-50 text-blue-900 font-semibold' : 'text-slate-700'
-                          }`}
-                          id={`switch-to-user-${user.id}`}
-                        >
-                          <div className="flex items-center space-x-3">
-                            <div className={`flex items-center justify-center w-7 h-7 rounded-full text-xs font-bold ${
-                              user.role === 'ADMIN' ? 'bg-emerald-100 text-emerald-900' : 'bg-blue-100 text-blue-900'
-                            }`}>
-                              {user.role === 'ADMIN' ? 'A' : 'E'}
-                            </div>
-                            <div>
-                              <p className="font-semibold text-xs text-slate-900 leading-tight">{user.name}</p>
-                              <p className="text-[10px] text-slate-500 leading-none">
-                                {user.role === 'ADMIN' ? t('general_access') : t('nurse_visits')}
-                              </p>
-                            </div>
-                          </div>
-                          {isSelected && <Check size={14} className="text-blue-600" />}
-                        </button>
-                      );
-                    })}
+                    <p className="text-xs font-semibold text-slate-800">{currentUser.name}</p>
+                    <p className="text-[10px] text-slate-500 mt-0.5">{currentUser.email}</p>
                   </div>
 
                   {/* Footer and Signout */}

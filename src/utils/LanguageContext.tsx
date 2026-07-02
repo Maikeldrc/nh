@@ -24,7 +24,7 @@ export const translations = {
     email_label: "Correo electrónico institucional",
     pass_label: "Contraseña",
     quick_logins: "Accesos Rápidos de Simulación",
-    invalid_creds: "Credenciales inválidas. Para demostración, use los accesos rápidos de abajo.",
+    invalid_creds: "Credenciales inválidas o acceso no autorizado.",
     enter_email: "Por favor, ingrese un correo electrónico.",
 
     // Dashboard Nurse
@@ -85,7 +85,7 @@ export const translations = {
     of: "de",
     exit_wizard: "Salir del Asistente",
     save_and_continue: "Guardar y Continuar",
-    save_progress: "Guardar Progreso Localmente",
+    save_progress: "Guardar Progreso",
     back: "Atrás",
     finalize_visit: "Finalizar Visita",
     cancel_flow: "Cancelar Flujo (Declinado)",
@@ -129,7 +129,7 @@ export const translations = {
     email_label: "Institutional Email",
     pass_label: "Password",
     quick_logins: "Quick Simulation Logins",
-    invalid_creds: "Invalid credentials. For demonstration, use the quick access options below.",
+    invalid_creds: "Invalid credentials or unauthorized access.",
     enter_email: "Please enter an email address.",
 
     // Dashboard Nurse
@@ -190,7 +190,7 @@ export const translations = {
     of: "of",
     exit_wizard: "Exit Wizard",
     save_and_continue: "Save & Continue",
-    save_progress: "Save Progress Locally",
+    save_progress: "Save Progress",
     back: "Back",
     finalize_visit: "Finalize Visit",
     cancel_flow: "Cancel Flow (Declined)",

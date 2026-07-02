@@ -1,6 +1,6 @@
 import { useState, FormEvent } from 'react';
 import { Patient, User, Medication, ConditionGroupCatalog, DiagnosisCatalog } from '../types';
-import { NURSING_HOMES, PROGRAMS, SEED_USERS } from '../data';
+import { NURSING_HOMES, PROGRAMS } from '../data';
 import { X, UserPlus, Calendar, MapPin, HeartPulse, UserCheck, Stethoscope, CheckCheck, CheckCircle, Loader2 } from 'lucide-react';
 import { useLanguage } from '../utils/LanguageContext';
 import { POWERED_BY, PRACTICE_NAME, PRODUCT_NAME } from '../utils/branding';
@@ -10,6 +10,7 @@ interface RegisterPatientModalProps {
   onClose: () => void;
   onRegister: (patient: Patient) => void;
   currentUser: User;
+  users: User[];
   conditionGroups: ConditionGroupCatalog[];
   diagnoses: DiagnosisCatalog[];
 }
@@ -19,6 +20,7 @@ export default function RegisterPatientModal({
   onClose,
   onRegister,
   currentUser,
+  users,
   conditionGroups,
   diagnoses
 }: RegisterPatientModalProps) {
@@ -399,7 +401,7 @@ export default function RegisterPatientModal({
   const [isLtc, setIsLtc] = useState(false); // Mandatory condition for Long Term Care (LTC)
   
   // Nurses list
-  const nurses = SEED_USERS.filter(u => u.role === 'NURSE');
+  const nurses = users.filter(u => u.role === 'NURSE' && u.active !== false);
   const assignedNurseId = currentUser.role === 'NURSE' ? currentUser.id : (nurses[0]?.id || '');
 
   // RTM and Other are not available during new patient registration.
