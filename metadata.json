@@ -1,0 +1,6 @@
+{
+  "name": "AMAVITA CareStart",
+  "description": "Registro de consentimiento, entrega de dispositivos RPM, primera toma de presión arterial y activación de pacientes en nursing homes para ITERA HEALTH.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
