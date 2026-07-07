@@ -38,8 +38,8 @@ Antes de empezar, abre un documento temporal y guarda estos valores. Los vas a i
 PROJECT_ID=itera-tools
 REGION=us-central1
 SERVICE_NAME=amavita-carestart-api
-SHEET_ID=1JnQwDU2tmqJPMLtIEJC_JI8AsK96VSJtz1HUOlYmK2
-DRIVE_FOLDER_ID=1Ge-YsoXJxA0av-nRmUvSHICdwvjLwT6Y
+SHEET_ID=
+DRIVE_FOLDER_ID=
 CLOUD_RUN_URL=
 VERCEL_URL=https://nhcarestart.vercel.app
 
