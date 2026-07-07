@@ -61,8 +61,9 @@ export async function createPdf(type, patient, source, user) {
   const id = `doc_${crypto.randomUUID()}`;
   const buffer = await renderPdf(type, patient, source);
   const title = titleFor(type);
-  const response = await retryTransientGoogleError(() => drive.files.create({
+  const response = await withPdfStorageError(() => retryTransientGoogleError(() => drive.files.create({
     fields: 'id',
+    supportsAllDrives: true,
     requestBody: {
       name: `${id}.pdf`,
       parents: [config.driveFolderId],
@@ -73,7 +74,7 @@ export async function createPdf(type, patient, source, user) {
       }
     },
     media: { mimeType: 'application/pdf', body: Readable.from([buffer]) }
-  }));
+  })));
   return {
     document: {
       id,
@@ -91,11 +92,26 @@ export async function createPdf(type, patient, source, user) {
 }
 
 export async function getPdfBuffer(driveFileId) {
-  const response = await retryTransientGoogleError(() => drive.files.get(
-    { fileId: driveFileId, alt: 'media' },
+  const response = await withPdfStorageError(() => retryTransientGoogleError(() => drive.files.get(
+    { fileId: driveFileId, alt: 'media', supportsAllDrives: true },
     { responseType: 'arraybuffer' }
-  ));
+  )));
   return Buffer.from(response.data);
+}
+
+async function withPdfStorageError(operation) {
+  try {
+    return await operation();
+  } catch (error) {
+    const status = Number(error?.status || error?.code || error?.response?.status || 0);
+    if ([403, 404].includes(status)) {
+      const storageError = new Error('pdf_storage_unavailable');
+      storageError.status = 503;
+      storageError.expose = true;
+      throw storageError;
+    }
+    throw error;
+  }
 }
 
 async function retryTransientGoogleError(operation) {

@@ -681,9 +681,7 @@ This service is not for emergencies. If you agree, we can continue with your aut
     } catch (error) {
       setConsentPdfGenerated(false);
       setConsentPdfUrl('');
-      setAlertMessage(error instanceof Error
-        ? error.message
-        : l('No se pudo generar el PDF de consentimiento. Intente nuevamente.', 'Unable to generate the consent PDF. Please try again.'));
+      setAlertMessage(formatPdfGenerationError(error, 'consent'));
     } finally {
       setIsGeneratingConsentPdf(false);
     }
@@ -748,10 +746,27 @@ This service is not for emergencies. If you agree, we can continue with your aut
     } catch (error) {
       setDeliveryPdfGenerated(false);
       setDeliveryPdfUrl('');
-      setAlertMessage(error instanceof Error
-        ? error.message
-        : l('No se pudo generar el PDF de entrega. Intente nuevamente.', 'Unable to generate the delivery PDF. Please try again.'));
+      setAlertMessage(formatPdfGenerationError(error, 'delivery'));
     }
+  };
+
+  const formatPdfGenerationError = (error: unknown, documentType: 'consent' | 'delivery') => {
+    const message = error instanceof Error ? error.message : '';
+    if (message.includes('pdf_storage_unavailable')) {
+      return l(
+        'No se pudo guardar el PDF en Google Drive. Verifique que la carpeta de PDFs esté compartida con la cuenta de servicio de Cloud Run.',
+        'Unable to save the PDF to Google Drive. Verify that the PDF folder is shared with the Cloud Run service account.'
+      );
+    }
+    if (message.includes('429')) {
+      return l(
+        'Google Drive está limitando temporalmente la generación de PDFs. Espere unos segundos e intente nuevamente.',
+        'Google Drive is temporarily rate limiting PDF generation. Wait a few seconds and try again.'
+      );
+    }
+    return documentType === 'consent'
+      ? l('No se pudo generar el PDF de consentimiento. Intente nuevamente.', 'Unable to generate the consent PDF. Please try again.')
+      : l('No se pudo generar el PDF de entrega. Intente nuevamente.', 'Unable to generate the delivery PDF. Please try again.');
   };
 
   // ----------------------------------------------------
