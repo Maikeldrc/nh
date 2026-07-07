@@ -69,6 +69,7 @@ export default function DashboardAdmin({
   const [selectedNurse, setSelectedNurse] = useState('');
   const [selectedProgram, setSelectedProgram] = useState('');
   const [selectedStatus, setSelectedStatus] = useState<string>('ALL');
+  const isAdmin = currentUser.role === 'ADMIN';
   
   // Tab control: 'patients' | 'audit_logs' | 'documents' | 'catalog' | 'users'
   const [activeTab, setActiveTab] = useState<'patients' | 'audit_logs' | 'documents' | 'catalog' | 'users'>('patients');
@@ -181,22 +182,24 @@ export default function DashboardAdmin({
             {l('Sesión', 'Session')}: <span className="font-semibold text-slate-800">{currentUser.name}</span> • {metrics.total} {l('pacientes totales', 'total patients')} • {metrics.pendingMedicalOrders} {l('órdenes médicas pendientes', 'pending medical orders')}
           </p>
         </div>
-        <div className="flex space-x-2 shrink-0">
-          <button
-            onClick={onImportConditionCatalog}
-            className="inline-flex items-center justify-center px-4 py-2 text-xs font-bold text-blue-700 bg-blue-50 hover:bg-blue-100 rounded-xl border border-blue-200 transition cursor-pointer"
-          >
-            <FileSpreadsheet size={13} className="mr-1.5" />
-            {l('Importar catálogo ICD-10', 'Import ICD-10 Catalog')}
-          </button>
-          <button
-            onClick={onRegisterPatientClick}
-            className="inline-flex items-center justify-center px-4 py-2 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-xl shadow-lg shadow-blue-600/10 hover:shadow-blue-600/20 transition cursor-pointer"
-            id="btn-register-patient-admin"
-          >
-            <UserPlus size={13} className="mr-1.5" /> {l('Registrar Paciente', 'Register Patient')}
-          </button>
-        </div>
+        {isAdmin && (
+          <div className="flex space-x-2 shrink-0">
+            <button
+              onClick={onImportConditionCatalog}
+              className="inline-flex items-center justify-center px-4 py-2 text-xs font-bold text-blue-700 bg-blue-50 hover:bg-blue-100 rounded-xl border border-blue-200 transition cursor-pointer"
+            >
+              <FileSpreadsheet size={13} className="mr-1.5" />
+              {l('Importar catálogo ICD-10', 'Import ICD-10 Catalog')}
+            </button>
+            <button
+              onClick={onRegisterPatientClick}
+              className="inline-flex items-center justify-center px-4 py-2 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-xl shadow-lg shadow-blue-600/10 hover:shadow-blue-600/20 transition cursor-pointer"
+              id="btn-register-patient-admin"
+            >
+              <UserPlus size={13} className="mr-1.5" /> {l('Registrar Paciente', 'Register Patient')}
+            </button>
+          </div>
+        )}
       </div>
 
       {/* KPI Stats Widgets */}
@@ -287,7 +290,7 @@ export default function DashboardAdmin({
         >
           {l('Registros de Auditoría', 'Audit Logs')} ({auditLogs.length})
         </button>
-        {currentUser.role === 'ADMIN' && (
+        {isAdmin && (
           <button
             onClick={() => setActiveTab('catalog')}
             className={`flex-1 text-center py-2 text-xs font-bold rounded-xl transition cursor-pointer ${
@@ -298,7 +301,7 @@ export default function DashboardAdmin({
             {l('Conditions & Diagnoses', 'Conditions & Diagnoses')} ({conditionGroups.length})
           </button>
         )}
-        {currentUser.role === 'ADMIN' && (
+        {isAdmin && (
           <button
             onClick={() => setActiveTab('users')}
             className={`flex-1 text-center py-2 text-xs font-bold rounded-xl transition cursor-pointer ${
@@ -446,17 +449,21 @@ export default function DashboardAdmin({
                         <div className="font-bold text-slate-700">{patient.nursingHome}</div>
                         <div className="text-[10px] text-slate-500 font-semibold">{l('Hab.', 'Room')}: {patient.room || 'N/A'} • {l('Proveedor', 'Provider')}: {patient.provider}</div>
                         <div className="text-[10px] text-slate-400 font-semibold mt-0.5 flex items-center">
-                          <select
-                            value={patient.assignedNurseId}
-                            onChange={(e) => onReassignNurse(patient.id, e.target.value)}
-                            className="bg-transparent border-none text-[10px] text-slate-500 font-semibold focus:outline-none focus:ring-0 cursor-pointer hover:text-slate-800 transition-colors p-0"
-                            id={`nurse-select-for-${patient.id}`}
-                            title={l('Cambiar enfermera asignada', 'Change assigned nurse')}
-                          >
-                            {nursesList.map(n => (
-                              <option key={n.id} value={n.id}>{n.name}</option>
-                            ))}
-                          </select>
+                          {isAdmin ? (
+                            <select
+                              value={patient.assignedNurseId}
+                              onChange={(e) => onReassignNurse(patient.id, e.target.value)}
+                              className="bg-transparent border-none text-[10px] text-slate-500 font-semibold focus:outline-none focus:ring-0 cursor-pointer hover:text-slate-800 transition-colors p-0"
+                              id={`nurse-select-for-${patient.id}`}
+                              title={l('Cambiar enfermera asignada', 'Change assigned nurse')}
+                            >
+                              {nursesList.map(n => (
+                                <option key={n.id} value={n.id}>{n.name}</option>
+                              ))}
+                            </select>
+                          ) : (
+                            <span>{patient.assignedNurseName || l('No asignada', 'Unassigned')}</span>
+                          )}
                         </div>
                       </td>
 
@@ -466,7 +473,7 @@ export default function DashboardAdmin({
                         <div className="text-[10px] text-slate-500 mt-1.5 font-bold text-slate-600 flex items-center"><Smartphone size={10} className="mr-0.5 text-slate-400" /> {l('Disp.', 'Device')}: {patient.requiredDevice}</div>
                         <div className="mt-1.5 flex flex-wrap gap-1.5">
                           {getMedicalOrderBadge(patient)}
-                          {patientRequiresDevice(patient) && (getMedicalOrderStatus(patient) === 'ORDER_REQUIRED' || getMedicalOrderStatus(patient) === 'ORDER_REJECTED_NEEDS_REVISION') && (
+                          {isAdmin && patientRequiresDevice(patient) && (getMedicalOrderStatus(patient) === 'ORDER_REQUIRED' || getMedicalOrderStatus(patient) === 'ORDER_REJECTED_NEEDS_REVISION') && (
                             <button
                               type="button"
                               onClick={() => onGenerateMedicalOrder(patient.id)}

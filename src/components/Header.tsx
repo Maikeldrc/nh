@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { User } from '../types';
-import { Shield, User as UserIcon, LogOut, ChevronDown, Activity } from 'lucide-react';
+import { Shield, User as UserIcon, LogOut, ChevronDown, Activity, Stethoscope, Eye, ClipboardCheck } from 'lucide-react';
 import { useLanguage } from '../utils/LanguageContext';
 import { PRODUCT_NAME } from '../utils/branding';
 
@@ -12,6 +12,7 @@ interface HeaderProps {
 export default function Header({ currentUser, onLogout }: HeaderProps) {
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const { language, setLanguage, t } = useLanguage();
+  const roleMeta = getRoleMeta(currentUser.role, t);
 
   return (
     <header className="bg-white border-b border-slate-200" id="app-header">
@@ -67,18 +68,14 @@ export default function Header({ currentUser, onLogout }: HeaderProps) {
                 id="user-profile-button"
               >
                 <div className="flex items-center justify-center w-8 h-8 rounded-full bg-blue-100 text-blue-700 font-bold text-sm">
-                  {currentUser.role === 'ADMIN' ? 'A' : 'E'}
+                  {roleMeta.initial}
                 </div>
                 <div className="hidden sm:block">
                   <p className="text-xs font-semibold text-slate-800 leading-none">{currentUser.name}</p>
                   <div className="flex items-center space-x-1 mt-0.5">
-                    {currentUser.role === 'ADMIN' ? (
-                      <Shield size={10} className="text-emerald-600" />
-                    ) : (
-                      <UserIcon size={10} className="text-blue-600" />
-                    )}
+                    {roleMeta.icon}
                     <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">
-                      {currentUser.role === 'ADMIN' ? t('admin') : t('nurse')}
+                      {roleMeta.label}
                     </span>
                   </div>
                 </div>
@@ -114,4 +111,20 @@ export default function Header({ currentUser, onLogout }: HeaderProps) {
       </div>
     </header>
   );
+}
+
+function getRoleMeta(role: User['role'], t: (key: string) => string) {
+  switch (role) {
+    case 'ADMIN':
+      return { initial: 'A', label: t('admin'), icon: <Shield size={10} className="text-emerald-600" /> };
+    case 'PHYSICIAN':
+      return { initial: 'P', label: t('physician'), icon: <Stethoscope size={10} className="text-violet-600" /> };
+    case 'AUDITOR':
+      return { initial: 'A', label: t('auditor'), icon: <ClipboardCheck size={10} className="text-slate-600" /> };
+    case 'VIEWER':
+      return { initial: 'V', label: t('viewer'), icon: <Eye size={10} className="text-slate-600" /> };
+    case 'NURSE':
+    default:
+      return { initial: 'N', label: t('nurse'), icon: <UserIcon size={10} className="text-blue-600" /> };
+  }
 }

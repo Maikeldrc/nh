@@ -741,7 +741,7 @@ export default function App() {
 
         {/* View Router */}
         {currentView === 'DASHBOARD' && (
-          currentUser.role === 'ADMIN' ? (
+          currentUser.role === 'ADMIN' || currentUser.role === 'PHYSICIAN' ? (
             <DashboardAdmin
               currentUser={currentUser}
               patients={patients}

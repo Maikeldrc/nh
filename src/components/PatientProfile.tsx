@@ -244,7 +244,7 @@ export default function PatientProfile({
                       {medicalOrderStatus === 'ORDER_REJECTED_NEEDS_REVISION' ? l('Corregir / re-enviar', 'Revise / Resend') : l('Generar orden medica', 'Generate Medical Order')}
                     </button>
                   )}
-                  {currentUser.role === 'ADMIN' && medicalOrderStatus === 'ORDER_PENDING_PHYSICIAN_APPROVAL' && (
+                  {(currentUser.role === 'ADMIN' || currentUser.role === 'PHYSICIAN') && medicalOrderStatus === 'ORDER_PENDING_PHYSICIAN_APPROVAL' && (
                     <button
                       type="button"
                       onClick={() => onOpenMedicalOrderReview?.(patient)}
