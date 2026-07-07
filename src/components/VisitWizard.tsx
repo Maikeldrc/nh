@@ -206,6 +206,8 @@ export default function VisitWizard({
   const [consentPdfGenerated, setConsentPdfGenerated] = useState(false);
   const [isGeneratingConsentPdf, setIsGeneratingConsentPdf] = useState(false);
   const [autoConsentPdfAttempted, setAutoConsentPdfAttempted] = useState(false);
+  const [consentPdfProgress, setConsentPdfProgress] = useState(0);
+  const [consentPdfProgressLabel, setConsentPdfProgressLabel] = useState('');
   const [showFullConsent, setShowFullConsent] = useState(false);
   const isVerbalConsent = signatureMethod === 'UNABLE' && unableSignMethod === 'VERBAL';
   const needsRepresentativeDetails = consentSignerType === 'REPRESENTATIVE' ||
@@ -516,6 +518,8 @@ This service is not for emergencies. If you agree, we can continue with your aut
     setConsentPdfUrl('');
     setIsGeneratingConsentPdf(false);
     setAutoConsentPdfAttempted(false);
+    setConsentPdfProgress(0);
+    setConsentPdfProgressLabel('');
   }, [signatureMethod]);
 
   useEffect(() => {
@@ -629,6 +633,25 @@ This service is not for emergencies. If you agree, we can continue with your aut
     if (isAutomatic) setAutoConsentPdfAttempted(true);
 
     setIsGeneratingConsentPdf(true);
+    setConsentPdfProgress(8);
+    setConsentPdfProgressLabel(l('Preparando datos del consentimiento...', 'Preparing consent data...'));
+    const progressTimer = window.setInterval(() => {
+      setConsentPdfProgress(previous => {
+        if (previous < 32) {
+          setConsentPdfProgressLabel(l('Generando documento PDF...', 'Rendering PDF document...'));
+          return previous + 8;
+        }
+        if (previous < 68) {
+          setConsentPdfProgressLabel(l('Guardando PDF en Google Drive...', 'Saving PDF to Google Drive...'));
+          return previous + 6;
+        }
+        if (previous < 90) {
+          setConsentPdfProgressLabel(l('Verificando archivo generado...', 'Verifying generated file...'));
+          return previous + 3;
+        }
+        return previous;
+      });
+    }, 550);
 
     const mockConsentObj: Consent = {
       id: `con_${Date.now()}`,
@@ -675,14 +698,21 @@ This service is not for emergencies. If you agree, we can continue with your aut
 
     try {
       await onGenerateConsentPDF(mockConsentObj, (dataUrl) => {
+        window.clearInterval(progressTimer);
+        setConsentPdfProgress(100);
+        setConsentPdfProgressLabel(l('PDF generado correctamente.', 'PDF generated successfully.'));
         setConsentPdfUrl(dataUrl);
         setConsentPdfGenerated(true);
       });
     } catch (error) {
+      window.clearInterval(progressTimer);
       setConsentPdfGenerated(false);
       setConsentPdfUrl('');
+      setConsentPdfProgress(0);
+      setConsentPdfProgressLabel('');
       setAlertMessage(formatPdfGenerationError(error, 'consent'));
     } finally {
+      window.clearInterval(progressTimer);
       setIsGeneratingConsentPdf(false);
     }
   };
@@ -1715,6 +1745,26 @@ This service is not for emergencies. If you agree, we can continue with your aut
                           <button type="button" onClick={() => triggerConsentPDFGeneration()} disabled={!consentRecordComplete || isGeneratingConsentPdf} className="inline-flex min-h-12 items-center justify-center rounded-xl bg-blue-500 px-5 text-sm font-extrabold text-white shadow-lg shadow-blue-500/20 hover:bg-blue-400 disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-400">
                             <FileText size={17} className="mr-2" /> {isGeneratingConsentPdf ? l('Generando PDF...', 'Generating PDF...') : l('Generar Registro PDF de Consentimiento', 'Generate Consent Record PDF')}
                           </button>
+                        )}
+                        {isGeneratingConsentPdf && (
+                          <div className="rounded-xl border border-slate-700 bg-slate-800/80 p-3">
+                            <div className="mb-2 flex items-center justify-between text-[11px] font-bold text-slate-200">
+                              <span>{consentPdfProgressLabel || l('Generando PDF...', 'Generating PDF...')}</span>
+                              <span>{Math.max(8, Math.min(99, consentPdfProgress))}%</span>
+                            </div>
+                            <div className="h-2 overflow-hidden rounded-full bg-slate-700">
+                              <div
+                                className="h-full rounded-full bg-gradient-to-r from-blue-400 via-cyan-300 to-emerald-400 transition-all duration-500"
+                                style={{ width: `${Math.max(8, Math.min(99, consentPdfProgress))}%` }}
+                              />
+                            </div>
+                            <p className="mt-2 text-[10px] leading-relaxed text-slate-400">
+                              {l(
+                                'No cierre esta pantalla. El archivo se está generando y guardando de forma segura.',
+                                'Do not close this screen. The file is being generated and saved securely.'
+                              )}
+                            </p>
+                          </div>
                         )}
                         <button type="button" onClick={handleSaveAndExitLocal} className="min-h-11 rounded-xl border border-slate-600 px-5 text-sm font-bold text-slate-200 hover:bg-slate-800">
                           {l('Guardar Borrador', 'Save Draft')}

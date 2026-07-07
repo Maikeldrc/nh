@@ -9,6 +9,8 @@ const drive = google.drive({ version: 'v3', auth: new google.auth.GoogleAuth({
 }) });
 
 function renderPdf(type, patient, source) {
+  if (type === 'CONSENT') return renderConsentPdf(patient, source.consent || source);
+
   return new Promise((resolve, reject) => {
     const chunks = [];
     const doc = new PDFDocument({ size: 'LETTER', margins: {
@@ -37,6 +39,149 @@ function renderPdf(type, patient, source) {
     }
     doc.fontSize(7).fillColor('#64748B')
       .text('CONFIDENTIAL MEDICAL RECORD', 38, 742, { align: 'center' });
+    doc.end();
+  });
+}
+
+function renderConsentPdf(patient, consent) {
+  return new Promise((resolve, reject) => {
+    const chunks = [];
+    const doc = new PDFDocument({
+      size: 'LETTER',
+      margin: 0,
+      autoFirstPage: true,
+      bufferPages: false
+    });
+    doc.on('data', chunk => chunks.push(chunk));
+    doc.on('end', () => resolve(Buffer.concat(chunks)));
+    doc.on('error', reject);
+
+    const page = { x: 28, y: 24, w: 556, h: 744 };
+    const navy = '#0F1B2D';
+    const blue = '#2563EB';
+    const cyan = '#0EA5E9';
+    const green = '#059669';
+    const line = '#CBD5E1';
+    const muted = '#64748B';
+    const text = '#111827';
+    const soft = '#F8FAFC';
+
+    const generatedAt = consent.dateTime || consent.signedAt || new Date().toISOString();
+    const docId = consent.id || `con_${Date.now()}`;
+    const patientName = `${patient.firstName || ''} ${patient.lastName || ''}`.trim() || consent.signerName || 'Patient';
+    const signerName = consent.signerName || patientName;
+    const nurseName = consent.nurseName || consent.capturedBy || 'AMAVITA Nurse';
+    const facility = consent.facility || patient.nursingHome || '';
+    const program = consent.program || patient.assignedProgram || '';
+    const consentMethod = consent.consentMethod || consent.signatureMethod || 'SIGNATURE';
+    const authorizedPerson = consent.signerType === 'AUTHORIZED_REPRESENTATIVE' || consent.signedBy === 'REPRESENTATIVE'
+      ? `Representative${consent.relationship ? ` - ${consent.relationship}` : ''}`
+      : 'Patient (Self)';
+
+    // Header
+    doc.roundedRect(page.x, page.y, page.w, 54, 8).fill(navy);
+    doc.fillColor('#FFFFFF').font('Helvetica-Bold').fontSize(15).text('AMAVITA CareStart', page.x + 54, page.y + 12);
+    doc.fillColor('#BBD7FF').font('Helvetica-Bold').fontSize(7).text('POWERED BY ITERA.HEALTH', page.x + 54, page.y + 31);
+    doc.circle(page.x + 26, page.y + 27, 14).fill(blue);
+    doc.strokeColor('#FFFFFF').lineWidth(1.6)
+      .moveTo(page.x + 17, page.y + 27)
+      .lineTo(page.x + 22, page.y + 27)
+      .lineTo(page.x + 25, page.y + 18)
+      .lineTo(page.x + 30, page.y + 36)
+      .lineTo(page.x + 34, page.y + 27)
+      .lineTo(page.x + 39, page.y + 27)
+      .stroke();
+    doc.fillColor('#DDEBFF').font('Helvetica-Bold').fontSize(6.8);
+    headerMeta(doc, page.x + 392, page.y + 8, 'DOC ID', docId);
+    headerMeta(doc, page.x + 392, page.y + 24, 'DATE', formatDate(generatedAt));
+    headerMeta(doc, page.x + 392, page.y + 40, 'BY', nurseName);
+
+    doc.fillColor(text).font('Helvetica-Bold').fontSize(12.5)
+      .text('Patient Care & Consent Agreement', page.x, page.y + 66);
+    doc.fillColor(muted).font('Helvetica').fontSize(7.6)
+      .text('Confidential medical record documenting patient authorization, consent terms, signatures, and audit details.', page.x, page.y + 82);
+
+    let y = page.y + 101;
+
+    // Patient demographics
+    sectionHeader(doc, page.x, y, page.w, 'Patient Demographics', blue);
+    y += 18;
+    card(doc, page.x, y, page.w, 61, soft, line);
+    const leftX = page.x + 13;
+    const rightX = page.x + 206;
+    const rowYs = [y + 10, y + 28, y + 46];
+    labelValue(doc, leftX, rowYs[0], 170, 'Name', patientName);
+    labelValue(doc, leftX, rowYs[1], 170, 'DOB', patient.birthDate || patient.dob || '');
+    labelValue(doc, leftX, rowYs[2], 170, 'Medicare ID', patient.medicareId || '');
+    labelValue(doc, rightX, rowYs[0], 340, 'Nursing Home', facility, { valueSize: facility.length > 58 ? 7.1 : 7.8 });
+    labelValue(doc, rightX, rowYs[1], 160, 'Room', patient.room || '');
+    labelValue(doc, rightX + 170, rowYs[1], 160, 'Program', program);
+    labelValue(doc, rightX, rowYs[2], 340, 'Practice', patient.practice || consent.consentPracticeName || '');
+    y += 72;
+
+    // Consent authorization
+    sectionHeader(doc, page.x, y, page.w, 'Consent Authorization', cyan);
+    y += 18;
+    card(doc, page.x, y, page.w, 58, '#FFFFFF', line);
+    labelValue(doc, page.x + 13, y + 10, 255, 'Authorized Care Program', program);
+    labelValue(doc, page.x + 13, y + 29, 255, 'Consent Template Version', consent.consentVersion || 'v2.0 AMAVITA_ITERA');
+    labelValue(doc, page.x + 13, y + 47, 255, 'Authorized Person', authorizedPerson);
+    labelValue(doc, page.x + 292, y + 10, 248, 'Signer Name', signerName);
+    labelValue(doc, page.x + 292, y + 29, 248, 'Consent Method', humanize(consentMethod));
+    labelValue(doc, page.x + 292, y + 47, 248, 'Decision', consent.status || 'GRANTED');
+    y += 69;
+
+    // Terms
+    sectionHeader(doc, page.x, y, page.w, 'Consent Terms & Conditions', green);
+    y += 18;
+    card(doc, page.x, y, page.w, 172, '#FFFFFF', line);
+    const terms = consentTerms();
+    const colW = 255;
+    terms.forEach((term, index) => {
+      const col = index < 4 ? 0 : 1;
+      const row = index % 4;
+      const tx = page.x + 13 + (col * 274);
+      const ty = y + 10 + (row * 39);
+      doc.circle(tx + 3, ty + 5, 2.1).fill(blue);
+      doc.fillColor(text).font('Helvetica-Bold').fontSize(6.9)
+        .text(term.title, tx + 10, ty, { width: colW, height: 8 });
+      doc.fillColor('#334155').font('Helvetica').fontSize(6.35)
+        .text(term.body, tx + 10, ty + 8, { width: colW, height: 30, lineGap: 0.2 });
+    });
+    y += 183;
+
+    // Signatures
+    sectionHeader(doc, page.x, y, page.w, 'Signatures & Confirmation', blue);
+    y += 18;
+    const sigW = (page.w - 10) / 2;
+    signatureCard(doc, page.x, y, sigW, 94, 'Patient / Representative Signature', signerName, generatedAt, consent.patientSignature, consent.typedSignatureName);
+    signatureCard(doc, page.x + sigW + 10, y, sigW, 94, 'Nurse / Witness Signature', nurseName, generatedAt, consent.nurseSignature);
+    y += 105;
+
+    // Audit
+    sectionHeader(doc, page.x, y, page.w, 'Audit Log Details', '#7C3AED');
+    y += 18;
+    card(doc, page.x, y, page.w, 76, '#FFFFFF', line);
+    const c1 = page.x + 13;
+    const c2 = page.x + 196;
+    const c3 = page.x + 358;
+    labelValue(doc, c1, y + 10, 170, 'Consent Document ID', docId, { valueSize: 6.8 });
+    labelValue(doc, c1, y + 31, 170, 'Audit Trail Token', consent.auditId || `audit_${docId.slice(-8)}`, { valueSize: 6.8 });
+    labelValue(doc, c1, y + 52, 170, 'Decision', consent.status || 'GRANTED');
+    labelValue(doc, c2, y + 10, 145, 'Signer', signerName);
+    labelValue(doc, c2, y + 31, 145, 'Captured By', nurseName);
+    labelValue(doc, c2, y + 52, 145, 'Date & Time', formatDateTime(generatedAt), { valueSize: 6.8 });
+    labelValue(doc, c3, y + 10, 210, 'Facility', facility, { valueSize: facility.length > 48 ? 6.7 : 7.2 });
+    labelValue(doc, c3, y + 43, 210, 'Capture Device', consent.captureDevice || 'AMAVITA CareStart');
+
+    // Footer
+    const footerY = 752;
+    doc.moveTo(page.x, footerY - 7).lineTo(page.x + page.w, footerY - 7).strokeColor('#E2E8F0').lineWidth(0.7).stroke();
+    doc.fillColor('#475569').font('Helvetica-Bold').fontSize(6.5)
+      .text('AMAVITA CARESTART - POWERED BY ITERA.HEALTH - CONFIDENTIAL MEDICAL RECORD - HIPAA COMPLIANT', page.x, footerY, { width: page.w, align: 'center' });
+    doc.fillColor('#94A3B8').font('Helvetica').fontSize(5.8)
+      .text(`Document Unique ID: ${docId}`, page.x, footerY + 10, { width: page.w, align: 'center' });
+
     doc.end();
   });
 }
@@ -89,6 +234,81 @@ export async function createPdf(type, patient, source, user) {
     },
     buffer
   };
+}
+
+function headerMeta(doc, x, y, label, value) {
+  doc.font('Helvetica-Bold').fontSize(5.6).fillColor('#93C5FD').text(label, x, y, { width: 44 });
+  doc.font('Helvetica-Bold').fontSize(6.4).fillColor('#FFFFFF').text(String(value || '').slice(0, 42), x + 48, y, { width: 112, ellipsis: true });
+}
+
+function sectionHeader(doc, x, y, width, title, color) {
+  doc.roundedRect(x, y, width, 12, 4).fill(color);
+  doc.fillColor('#FFFFFF').font('Helvetica-Bold').fontSize(7.4)
+    .text(title.toUpperCase(), x + 8, y + 3.1, { width: width - 16 });
+}
+
+function card(doc, x, y, width, height, fill, stroke) {
+  doc.roundedRect(x, y, width, height, 6).fillAndStroke(fill, stroke);
+}
+
+function labelValue(doc, x, y, width, label, value, options = {}) {
+  doc.fillColor('#64748B').font('Helvetica-Bold').fontSize(5.6)
+    .text(String(label).toUpperCase(), x, y, { width });
+  doc.fillColor('#0F172A').font('Helvetica-Bold').fontSize(options.valueSize || 7.4)
+    .text(String(value || 'N/A'), x, y + 7.2, { width, height: options.height || 10, ellipsis: true });
+}
+
+function signatureCard(doc, x, y, width, height, title, signer, date, dataUrl, typedName) {
+  card(doc, x, y, width, height, '#FFFFFF', '#CBD5E1');
+  doc.fillColor('#0F172A').font('Helvetica-Bold').fontSize(7.4).text(title, x + 10, y + 8, { width: width - 20 });
+  doc.roundedRect(x + 10, y + 24, width - 20, 38, 4).fillAndStroke('#F8FAFC', '#E2E8F0');
+  const image = dataUrlToBuffer(dataUrl);
+  if (image) {
+    try {
+      doc.image(image, x + 16, y + 28, { fit: [width - 32, 30], align: 'center', valign: 'center' });
+    } catch {
+      drawTypedSignature(doc, x + 16, y + 35, width - 32, typedName || signer);
+    }
+  } else {
+    drawTypedSignature(doc, x + 16, y + 35, width - 32, typedName || signer);
+  }
+  doc.moveTo(x + 15, y + 68).lineTo(x + width - 15, y + 68).strokeColor('#CBD5E1').lineWidth(0.6).stroke();
+  labelValue(doc, x + 12, y + 72, (width - 30) / 2, 'Signer', signer, { valueSize: 6.8 });
+  labelValue(doc, x + width / 2, y + 72, (width - 30) / 2, 'Date', formatDateTime(date), { valueSize: 6.5 });
+}
+
+function drawTypedSignature(doc, x, y, width, name) {
+  doc.fillColor('#1E3A8A').font('Helvetica-BoldOblique').fontSize(12)
+    .text(String(name || 'Signed'), x, y, { width, align: 'center', ellipsis: true });
+}
+
+function dataUrlToBuffer(value) {
+  if (!value || typeof value !== 'string') return undefined;
+  const match = value.match(/^data:image\/(?:png|jpeg);base64,(.+)$/);
+  return match ? Buffer.from(match[1], 'base64') : undefined;
+}
+
+function consentTerms() {
+  return [
+    ['About these services', 'Care management and remote monitoring support health between visits, including care coordination, regular check-ins, chronic condition support, care plans, and connected-device monitoring when assigned.'],
+    ['Voluntary participation', 'Participation is your choice. You may stop services at any time; monthly services stop at the end of the current month and your other Medicare benefits are not affected.'],
+    ['Costs', 'Your health plan may cover these services. Depending on the plan, copay, coinsurance, or deductible may apply.'],
+    ['Only one provider', 'Only one provider can be paid for the same service in a period. To your knowledge, you are not receiving the same service from another provider or practice.'],
+    ['Health information', 'Your health information is protected under HIPAA and may be used or shared electronically with providers involved in your care as allowed by law.'],
+    ['Devices and monitoring', 'If assigned a device, use it as directed, take readings as instructed, and return it when services end or when requested by the care team.'],
+    ['Emergency care', 'These services are not emergency services and readings/messages may not be reviewed in real time. For a medical emergency, call 911.'],
+    ['Stopping services', 'You may stop by telling the care team. For monthly services, stopping takes effect at the end of the current month.']
+  ].map(([title, body]) => ({ title, body }));
+}
+
+function formatDate(value) {
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? String(value || '') : date.toLocaleDateString('en-US');
+}
+
+function formatDateTime(value) {
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? String(value || '') : date.toLocaleString('en-US');
 }
 
 export async function getPdfBuffer(driveFileId) {
