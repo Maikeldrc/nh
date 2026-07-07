@@ -15,6 +15,10 @@ export interface User {
   facilityIds?: string[];
   patientId?: string;
   nursingHomeAccess?: string[]; // nursing home names accessible (nurses see their own or specific NH)
+  createdAt?: string;
+  createdBy?: string;
+  updatedAt?: string;
+  updatedBy?: string;
 }
 
 export type PatientStatus =
@@ -114,6 +118,12 @@ export interface ConditionGroupCatalog {
   is_active: boolean;
   imported_at: string;
   imported_by: string;
+  created_at?: string;
+  created_by?: string;
+  updated_at?: string;
+  updated_by?: string;
+  source?: string;
+  version?: string;
 }
 
 export interface DiagnosisCatalog {
@@ -126,6 +136,13 @@ export interface DiagnosisCatalog {
   is_active: boolean;
   imported_at: string;
   imported_by: string;
+  created_at?: string;
+  created_by?: string;
+  updated_at?: string;
+  updated_by?: string;
+  source?: string;
+  version?: string;
+  relationship_status?: 'ACTIVE' | 'INACTIVE' | 'UNASSIGNED';
 }
 
 export interface CatalogImportHistory {

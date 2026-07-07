@@ -6,6 +6,7 @@ import {
   setPersistence,
   signInWithEmailAndPassword,
   signOut,
+  type Auth,
   type User as FirebaseUser
 } from 'firebase/auth';
 
@@ -18,31 +19,44 @@ const firebaseConfig = {
 
 const missingFirebaseConfig = Object.values(firebaseConfig).some(value => !value);
 
-if (missingFirebaseConfig) {
-  throw new Error('Identity Platform configuration is incomplete.');
+const configurationError = 'Identity Platform configuration is incomplete.';
+
+const firebaseApp = missingFirebaseConfig ? null : initializeApp(firebaseConfig);
+export const auth: Auth | null = firebaseApp ? getAuth(firebaseApp) : null;
+
+if (auth) {
+  void setPersistence(auth, browserSessionPersistence);
 }
 
-const firebaseApp = initializeApp(firebaseConfig);
-export const auth = getAuth(firebaseApp);
+export function getAuthConfigurationError(): string {
+  return missingFirebaseConfig ? configurationError : '';
+}
 
-void setPersistence(auth, browserSessionPersistence);
+function requireAuth(): Auth {
+  if (!auth) throw new Error(configurationError);
+  return auth;
+}
 
 export function observeAuthenticatedUser(
   callback: (user: FirebaseUser | null) => void
 ): () => void {
+  if (!auth) {
+    window.queueMicrotask(() => callback(null));
+    return () => undefined;
+  }
   return onAuthStateChanged(auth, callback);
 }
 
 export async function loginWithEmail(email: string, password: string): Promise<void> {
-  await signInWithEmailAndPassword(auth, email.trim(), password);
+  await signInWithEmailAndPassword(requireAuth(), email.trim(), password);
 }
 
 export async function logout(): Promise<void> {
-  await signOut(auth);
+  await signOut(requireAuth());
 }
 
 export async function getIdentityToken(forceRefresh = false): Promise<string> {
-  const user = auth.currentUser;
+  const user = requireAuth().currentUser;
   if (!user) throw new Error('Authentication required.');
   return user.getIdToken(forceRefresh);
 }
