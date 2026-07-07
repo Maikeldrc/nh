@@ -34,7 +34,7 @@ export interface CatalogImportPreview {
 }
 
 const HEADER_ALIASES = {
-  groupDisplay: ['condition group display', 'condition_group_display', 'group display', 'group name'],
+  groupDisplay: ['condition group', 'condition group display', 'condition_group_display', 'group display', 'group name'],
   groupCode: ['condition group code', 'condition_group_code', 'group code', 'internal key', 'code'],
   groupDescription: ['group description', 'condition group description', 'group_description'],
   icd10Code: ['icd-10 code', 'icd10 code', 'icd_10_code', 'icd10_code', 'diagnosis code'],
@@ -62,6 +62,27 @@ const findHeaderKey = (header: string): keyof typeof HEADER_ALIASES | undefined 
   (Object.keys(HEADER_ALIASES) as Array<keyof typeof HEADER_ALIASES>)
     .find(key => HEADER_ALIASES[key].includes(header as never));
 
+const findCatalogSheet = (workbook: import('exceljs').Workbook) => {
+  for (const worksheet of workbook.worksheets) {
+    const maxHeaderScanRows = Math.min(10, worksheet.rowCount);
+
+    for (let rowNumber = 1; rowNumber <= maxHeaderScanRows; rowNumber += 1) {
+      const headerMap = new Map<keyof typeof HEADER_ALIASES, number>();
+
+      worksheet.getRow(rowNumber).eachCell((cell, columnNumber) => {
+        const key = findHeaderKey(normalizeHeader(cell.value));
+        if (key && !headerMap.has(key)) headerMap.set(key, columnNumber);
+      });
+
+      if (REQUIRED_HEADERS.every(key => headerMap.has(key))) {
+        return { sheet: worksheet, headerMap, headerRowNumber: rowNumber };
+      }
+    }
+  }
+
+  return undefined;
+};
+
 export async function parseConditionCatalogWorkbook(
   file: File,
   existingGroups: ConditionGroupCatalog[],
@@ -70,24 +91,15 @@ export async function parseConditionCatalogWorkbook(
   const { default: ExcelJS } = await import('exceljs');
   const workbook = new ExcelJS.Workbook();
   await workbook.xlsx.load(await file.arrayBuffer());
-  const sheet = workbook.worksheets[0];
-  if (!sheet) throw new Error('The workbook does not contain a worksheet.');
+  const catalogSheet = findCatalogSheet(workbook);
+  if (!catalogSheet) throw new Error(`Missing required columns: ${REQUIRED_HEADERS.join(', ')}`);
 
-  const headerMap = new Map<keyof typeof HEADER_ALIASES, number>();
-  sheet.getRow(1).eachCell((cell, columnNumber) => {
-    const key = findHeaderKey(normalizeHeader(cell.value));
-    if (key && !headerMap.has(key)) headerMap.set(key, columnNumber);
-  });
-
-  const missingHeaders = REQUIRED_HEADERS.filter(key => !headerMap.has(key));
-  if (missingHeaders.length > 0) {
-    throw new Error(`Missing required columns: ${missingHeaders.join(', ')}`);
-  }
+  const { sheet, headerMap, headerRowNumber } = catalogSheet;
 
   const rows: CatalogImportRow[] = [];
   const errors: CatalogImportError[] = [];
 
-  for (let rowNumber = 2; rowNumber <= sheet.rowCount; rowNumber += 1) {
+  for (let rowNumber = headerRowNumber + 1; rowNumber <= sheet.rowCount; rowNumber += 1) {
     const worksheetRow = sheet.getRow(rowNumber);
     const read = (key: keyof typeof HEADER_ALIASES) => {
       const column = headerMap.get(key);
@@ -130,7 +142,7 @@ export async function parseConditionCatalogWorkbook(
     filename: file.name,
     rows,
     errors,
-    totalRows: Math.max(0, sheet.rowCount - 1),
+    totalRows: Math.max(0, sheet.rowCount - headerRowNumber),
     totalGroups: groupCodes.size,
     totalDiagnoses: diagnosisKeys.size,
     newGroups: [...groupCodes].filter(code => !existingGroupCodes.has(code)).length,
