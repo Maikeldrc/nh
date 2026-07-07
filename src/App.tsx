@@ -435,19 +435,8 @@ export default function App() {
     const patientObj = patients.find(p => p.id === consent.patientId);
     if (!patientObj) throw new Error('Patient record was not found.');
 
-    const { document, blob } = await generateDocument('CONSENT', patientObj.id, { consent });
+    const { blob } = await generateDocument('CONSENT', patientObj.id, { consent });
     callback(blob ? URL.createObjectURL(blob) : '');
-    saveDocument(document);
-    addAuditLog(
-      currentUser.id,
-      currentUser.name,
-      currentUser.role,
-      consent.patientId,
-      `${patientObj.firstName} ${patientObj.lastName}`,
-      `${PRODUCT_NAME} - Consentimiento PDF Generado`,
-      'CONSENT',
-      `Documento generado con identificador único: ${consent.id}`
-    );
     refreshAppState();
   };
 
@@ -456,19 +445,8 @@ export default function App() {
     const patientObj = patients.find(p => p.id === device.patientId);
     if (!patientObj) throw new Error('Patient record was not found.');
 
-    const { document, blob } = await generateDocument('DEVICE_DELIVERY', patientObj.id, { device });
+    const { blob } = await generateDocument('DEVICE_DELIVERY', patientObj.id, { device });
     callback(blob ? URL.createObjectURL(blob) : '');
-    saveDocument(document);
-    addAuditLog(
-      currentUser.id,
-      currentUser.name,
-      currentUser.role,
-      device.patientId,
-      `${patientObj.firstName} ${patientObj.lastName}`,
-      `${PRODUCT_NAME} - Entrega Device PDF Generado`,
-      'DEVICE',
-      `Documento de entrega generado con S/N: ${device.serialNumber}`
-    );
     refreshAppState();
   };
 
