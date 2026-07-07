@@ -25,30 +25,51 @@ export const resources = Object.freeze({
 });
 
 const backendHeaders = ['record_json', 'patient_id', 'facility_id', 'updated_at'];
+const transientGoogleStatuses = new Set([429, 500, 502, 503, 504]);
+
+function sleep(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+async function withSheetsRetry(operation) {
+  const delays = [250, 750, 1500, 3000];
+  for (let attempt = 0; attempt <= delays.length; attempt += 1) {
+    try {
+      return await operation();
+    } catch (error) {
+      const status = Number(error?.code || error?.status || error?.response?.status);
+      if (!transientGoogleStatuses.has(status) || attempt === delays.length) {
+        throw error;
+      }
+      await sleep(delays[attempt]);
+    }
+  }
+  throw new Error('sheets_retry_exhausted');
+}
 
 function quoteTab(tab) {
   return `'${tab.replaceAll("'", "''")}'`;
 }
 
 async function ensureSheet(resource) {
-  const metadata = await sheets.spreadsheets.get({
+  const metadata = await withSheetsRetry(() => sheets.spreadsheets.get({
     spreadsheetId: config.spreadsheetId,
     fields: 'sheets.properties'
-  });
+  }));
   const exists = metadata.data.sheets?.some(
     sheet => sheet.properties?.title === resource.tab
   );
   if (!exists) {
-    await sheets.spreadsheets.batchUpdate({
+    await withSheetsRetry(() => sheets.spreadsheets.batchUpdate({
       spreadsheetId: config.spreadsheetId,
       requestBody: { requests: [{ addSheet: { properties: { title: resource.tab } } }] }
-    });
+    }));
   }
 
-  const response = await sheets.spreadsheets.values.get({
+  const response = await withSheetsRetry(() => sheets.spreadsheets.values.get({
     spreadsheetId: config.spreadsheetId,
     range: `${quoteTab(resource.tab)}!1:1`
-  });
+  }));
   const headers = response.data.values?.[0] || [];
   const requiredHeaders = [resource.key, ...backendHeaders];
   let changed = false;
@@ -59,12 +80,12 @@ async function ensureSheet(resource) {
     }
   }
   if (changed || !headers.length) {
-    await sheets.spreadsheets.values.update({
+    await withSheetsRetry(() => sheets.spreadsheets.values.update({
       spreadsheetId: config.spreadsheetId,
       range: `${quoteTab(resource.tab)}!1:1`,
       valueInputOption: 'RAW',
       requestBody: { values: [headers] }
-    });
+    }));
   }
   return headers;
 }
@@ -73,10 +94,10 @@ export async function listRecords(resourceName) {
   const resource = resources[resourceName];
   if (!resource) throw new Error('Unknown resource.');
   const headers = await ensureSheet(resource);
-  const response = await sheets.spreadsheets.values.get({
+  const response = await withSheetsRetry(() => sheets.spreadsheets.values.get({
     spreadsheetId: config.spreadsheetId,
     range: `${quoteTab(resource.tab)}!A2:ZZ`
-  });
+  }));
   return (response.data.values || []).map(values => {
     const row = Object.fromEntries(headers.map((header, index) => [
       header,
@@ -103,10 +124,10 @@ export async function upsertRecord(resourceName, id, record) {
   const resource = resources[resourceName];
   if (!resource) throw new Error('Unknown resource.');
   const headers = await ensureSheet(resource);
-  const response = await sheets.spreadsheets.values.get({
+  const response = await withSheetsRetry(() => sheets.spreadsheets.values.get({
     spreadsheetId: config.spreadsheetId,
     range: `${quoteTab(resource.tab)}!A2:ZZ`
-  });
+  }));
   const rows = response.data.values || [];
   const keyIndex = headers.indexOf(resource.key);
   const rowIndex = rows.findIndex(row => String(row[keyIndex] || '') === String(id));
@@ -126,12 +147,12 @@ export async function upsertRecord(resourceName, id, record) {
     return typeof value === 'object' ? JSON.stringify(value) : value ?? '';
   });
   const targetRow = rowIndex < 0 ? rows.length + 2 : rowIndex + 2;
-  await sheets.spreadsheets.values.update({
+  await withSheetsRetry(() => sheets.spreadsheets.values.update({
     spreadsheetId: config.spreadsheetId,
     range: `${quoteTab(resource.tab)}!A${targetRow}`,
     valueInputOption: 'RAW',
     requestBody: { values: [values] }
-  });
+  }));
   return normalized;
 }
 

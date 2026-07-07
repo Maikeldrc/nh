@@ -2,6 +2,20 @@ import { getIdentityToken } from './auth';
 
 const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || '').replace(/\/+$/, '');
 
+export class ApiError extends Error {
+  status: number;
+  requestId?: string;
+  code?: string;
+
+  constructor(message: string, status: number, requestId?: string) {
+    super(message);
+    this.name = 'ApiError';
+    this.status = status;
+    this.requestId = requestId;
+    this.code = message;
+  }
+}
+
 export interface BootstrapPayload {
   currentUser: import('../types').User;
   users: import('../types').User[];
@@ -64,13 +78,13 @@ export async function apiRequest<T>(
   }
   if (!response.ok) {
     const payload = await response.json().catch(() => undefined) as { error?: string; request_id?: string } | undefined;
+    const requestId = payload?.request_id || response.headers.get('x-request-id') || undefined;
     if (payload?.error) {
-      throw new Error(payload.error);
+      throw new ApiError(payload.error, response.status, requestId);
     }
-    const requestId = response.headers.get('x-request-id');
-    throw new Error(requestId
+    throw new ApiError(requestId
       ? `The secure service rejected the request. Reference: ${requestId}`
-      : 'The secure service rejected the request.');
+      : 'The secure service rejected the request.', response.status, requestId);
   }
 
   if (response.status === 204) return undefined as T;
@@ -125,7 +139,10 @@ export async function downloadDocument(documentId: string): Promise<Blob> {
       referrerPolicy: 'no-referrer'
     }
   );
-  if (!response.ok) throw new Error('Unable to retrieve the document.');
+  if (!response.ok) {
+    const payload = await response.json().catch(() => undefined) as { error?: string; request_id?: string } | undefined;
+    throw new ApiError(payload?.error || 'Unable to retrieve the document.', response.status, payload?.request_id);
+  }
   return response.blob();
 }
 

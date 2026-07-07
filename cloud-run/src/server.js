@@ -310,7 +310,16 @@ app.get('/v1/documents/:id/content', async (req, res, next) => {
       return res.status(404).json({ error: 'not_found' });
     }
     const buffer = await getPdfBuffer(document.driveFileId);
-    await activity(req, 'downloaded_pdf', 'DOCUMENT', document.id, patient.id);
+    activity(req, 'downloaded_pdf', 'DOCUMENT', document.id, patient.id).catch(error => {
+      console.error(JSON.stringify({
+        severity: 'ERROR',
+        request_id: req.requestId,
+        route: '/v1/documents/:id/content',
+        status: error.status || error.code || 500,
+        error_type: error.name || 'Error',
+        non_blocking: true
+      }));
+    });
     res.set({
       'Content-Type': 'application/pdf',
       'Content-Disposition': `attachment; filename="${document.id}.pdf"`,
@@ -326,6 +335,10 @@ app.use((error, req, res, _next) => {
   if (error.code === 'auth/email-already-exists') {
     error.status = 409;
     error.message = 'email_already_exists';
+    error.expose = true;
+  } else if ([429, 500, 502, 503, 504].includes(Number(error.code || error.status || error.response?.status))) {
+    error.status = Number(error.code || error.status || error.response?.status);
+    error.message = error.status === 429 ? 'service_rate_limited' : 'secure_service_unavailable';
     error.expose = true;
   }
   // Never log request bodies, tokens, patient identifiers, or exception payloads.

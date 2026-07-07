@@ -782,16 +782,28 @@ This service is not for emergencies. If you agree, we can continue with your aut
 
   const formatPdfGenerationError = (error: unknown, documentType: 'consent' | 'delivery') => {
     const message = error instanceof Error ? error.message : '';
+    const status = typeof error === 'object' && error && 'status' in error ? Number((error as { status?: unknown }).status) : undefined;
+    const requestId = typeof error === 'object' && error && 'requestId' in error ? String((error as { requestId?: unknown }).requestId || '') : '';
     if (message.includes('pdf_storage_unavailable')) {
       return l(
         'No se pudo guardar el PDF en Google Drive. Verifique que la carpeta de PDFs esté compartida con la cuenta de servicio de Cloud Run.',
         'Unable to save the PDF to Google Drive. Verify that the PDF folder is shared with the Cloud Run service account.'
       );
     }
-    if (message.includes('429')) {
+    if (message.includes('service_rate_limited') || message.includes('429') || status === 429) {
       return l(
-        'Google Drive está limitando temporalmente la generación de PDFs. Espere unos segundos e intente nuevamente.',
-        'Google Drive is temporarily rate limiting PDF generation. Wait a few seconds and try again.'
+        'El servicio seguro está limitando temporalmente la generación de PDFs. Espere unos segundos e intente nuevamente.',
+        'The secure service is temporarily rate limiting PDF generation. Wait a few seconds and try again.'
+      );
+    }
+    if (message.includes('secure_service_unavailable') || (status && status >= 500)) {
+      return l(
+        requestId
+          ? `El servicio seguro no estuvo disponible temporalmente. Intente nuevamente. Referencia: ${requestId}`
+          : 'El servicio seguro no estuvo disponible temporalmente. Intente nuevamente.',
+        requestId
+          ? `The secure service was temporarily unavailable. Please try again. Reference: ${requestId}`
+          : 'The secure service was temporarily unavailable. Please try again.'
       );
     }
     return documentType === 'consent'
