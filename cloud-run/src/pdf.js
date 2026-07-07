@@ -1,4 +1,5 @@
 import crypto from 'node:crypto';
+import { Readable } from 'node:stream';
 import PDFDocument from 'pdfkit';
 import { google } from 'googleapis';
 import { config } from './config.js';
@@ -60,7 +61,7 @@ export async function createPdf(type, patient, source, user) {
   const id = `doc_${crypto.randomUUID()}`;
   const buffer = await renderPdf(type, patient, source);
   const title = titleFor(type);
-  const response = await drive.files.create({
+  const response = await retryTransientGoogleError(() => drive.files.create({
     fields: 'id',
     requestBody: {
       name: `${id}.pdf`,
@@ -71,8 +72,8 @@ export async function createPdf(type, patient, source, user) {
         document_type: type
       }
     },
-    media: { mimeType: 'application/pdf', body: buffer }
-  });
+    media: { mimeType: 'application/pdf', body: Readable.from([buffer]) }
+  }));
   return {
     document: {
       id,
@@ -90,9 +91,27 @@ export async function createPdf(type, patient, source, user) {
 }
 
 export async function getPdfBuffer(driveFileId) {
-  const response = await drive.files.get(
+  const response = await retryTransientGoogleError(() => drive.files.get(
     { fileId: driveFileId, alt: 'media' },
     { responseType: 'arraybuffer' }
-  );
+  ));
   return Buffer.from(response.data);
+}
+
+async function retryTransientGoogleError(operation) {
+  const delays = [400, 1200, 2400];
+  let lastError;
+
+  for (let attempt = 0; attempt <= delays.length; attempt += 1) {
+    try {
+      return await operation();
+    } catch (error) {
+      lastError = error;
+      const status = Number(error?.status || error?.code || error?.response?.status || 0);
+      if (![429, 500, 502, 503, 504].includes(status) || attempt === delays.length) break;
+      await new Promise(resolve => setTimeout(resolve, delays[attempt]));
+    }
+  }
+
+  throw lastError;
 }

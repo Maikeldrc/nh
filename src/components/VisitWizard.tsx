@@ -205,6 +205,7 @@ export default function VisitWizard({
   const [consentPdfUrl, setConsentPdfUrl] = useState('');
   const [consentPdfGenerated, setConsentPdfGenerated] = useState(false);
   const [isGeneratingConsentPdf, setIsGeneratingConsentPdf] = useState(false);
+  const [autoConsentPdfAttempted, setAutoConsentPdfAttempted] = useState(false);
   const [showFullConsent, setShowFullConsent] = useState(false);
   const isVerbalConsent = signatureMethod === 'UNABLE' && unableSignMethod === 'VERBAL';
   const needsRepresentativeDetails = consentSignerType === 'REPRESENTATIVE' ||
@@ -514,6 +515,7 @@ This service is not for emergencies. If you agree, we can continue with your aut
     setConsentPdfGenerated(false);
     setConsentPdfUrl('');
     setIsGeneratingConsentPdf(false);
+    setAutoConsentPdfAttempted(false);
   }, [signatureMethod]);
 
   useEffect(() => {
@@ -529,10 +531,10 @@ This service is not for emergencies. If you agree, we can continue with your aut
       setIsGeneratingConsentPdf(false);
       return;
     }
-    if (consentDecision === 'ACCEPT' && !consentPdfGenerated && !isGeneratingConsentPdf) {
-      triggerConsentPDFGeneration();
+    if (consentDecision === 'ACCEPT' && !consentPdfGenerated && !isGeneratingConsentPdf && !autoConsentPdfAttempted) {
+      triggerConsentPDFGeneration(true);
     }
-  }, [consentDecision, consentPdfGenerated, consentRecordComplete, isGeneratingConsentPdf]);
+  }, [consentDecision, consentPdfGenerated, consentRecordComplete, isGeneratingConsentPdf, autoConsentPdfAttempted]);
 
   // ----------------------------------------------------
   // BUSINESS VALIDATION ALERTS
@@ -618,12 +620,13 @@ This service is not for emergencies. If you agree, we can continue with your aut
   // ----------------------------------------------------
   // DOCUMENT GENERATION TRIGGERS
   // ----------------------------------------------------
-  const triggerConsentPDFGeneration = async () => {
+  const triggerConsentPDFGeneration = async (isAutomatic = false) => {
     if (!consentRecordComplete) {
       setAlertMessage(l('Complete la identificación del firmante, la evidencia de consentimiento y la atestación de enfermería antes de generar el PDF.', 'Complete signer identification, consent evidence, and the nurse attestation before generating the PDF.'));
       return;
     }
     if (isGeneratingConsentPdf || consentPdfGenerated) return;
+    if (isAutomatic) setAutoConsentPdfAttempted(true);
 
     setIsGeneratingConsentPdf(true);
 
@@ -1694,7 +1697,7 @@ This service is not for emergencies. If you agree, we can continue with your aut
                             <CheckCircle size={17} className="mr-2" /> {l('PDF guardado en Drive', 'PDF saved to Drive')}
                           </div>
                         ) : (
-                          <button type="button" onClick={triggerConsentPDFGeneration} disabled={!consentRecordComplete || isGeneratingConsentPdf} className="inline-flex min-h-12 items-center justify-center rounded-xl bg-blue-500 px-5 text-sm font-extrabold text-white shadow-lg shadow-blue-500/20 hover:bg-blue-400 disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-400">
+                          <button type="button" onClick={() => triggerConsentPDFGeneration()} disabled={!consentRecordComplete || isGeneratingConsentPdf} className="inline-flex min-h-12 items-center justify-center rounded-xl bg-blue-500 px-5 text-sm font-extrabold text-white shadow-lg shadow-blue-500/20 hover:bg-blue-400 disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-400">
                             <FileText size={17} className="mr-2" /> {isGeneratingConsentPdf ? l('Generando PDF...', 'Generating PDF...') : l('Generar Registro PDF de Consentimiento', 'Generate Consent Record PDF')}
                           </button>
                         )}
@@ -1891,7 +1894,7 @@ This service is not for emergencies. If you agree, we can continue with your aut
                   ) : (
                     <button
                       type="button"
-                      onClick={triggerConsentPDFGeneration}
+                      onClick={() => triggerConsentPDFGeneration()}
                       disabled={!patientSignature || !nurseSignature}
                       className="px-4 py-2 text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg shadow-sm disabled:opacity-50 transition cursor-pointer"
                       id="btn-gen-consent-pdf"
