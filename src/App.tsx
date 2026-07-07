@@ -81,7 +81,7 @@ export default function App() {
         .catch(error => {
           clearSession();
           setAppUser(null);
-          setAuthError(error instanceof Error ? error.message : 'Unable to load your account.');
+          setAuthError(formatAuthLoadError(error));
         })
         .finally(() => setAuthLoading(false));
     });
@@ -109,6 +109,26 @@ export default function App() {
     const user = await hydrateDB();
     setAppUser(user);
     refreshAppState();
+  };
+
+  const formatAuthLoadError = (error: unknown) => {
+    const message = error instanceof Error ? error.message : '';
+    const status = typeof error === 'object' && error && 'status' in error
+      ? Number((error as { status?: unknown }).status)
+      : undefined;
+    if (message.includes('service_rate_limited') || status === 429) {
+      return l(
+        'El servicio seguro está ocupado temporalmente. Espere unos segundos e intente iniciar sesión nuevamente.',
+        'The secure service is temporarily busy. Wait a few seconds and try logging in again.'
+      );
+    }
+    if (message.includes('secure_service_unavailable') || (status && status >= 500)) {
+      return l(
+        'El servicio seguro no está disponible temporalmente. Intente nuevamente en unos segundos.',
+        'The secure service is temporarily unavailable. Please try again in a few seconds.'
+      );
+    }
+    return message || l('No se pudo cargar su cuenta.', 'Unable to load your account.');
   };
 
   const handleCatalogImport = (

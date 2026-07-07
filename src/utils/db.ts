@@ -74,7 +74,7 @@ export function initDB(forceReset = false): void {
 }
 
 export async function hydrateDB(): Promise<User> {
-  const payload: BootstrapPayload = await getBootstrap();
+  const payload: BootstrapPayload = await getBootstrapWithRetry();
   db = {
     users: payload.users || [],
     patients: payload.patients || [],
@@ -90,6 +90,24 @@ export async function hydrateDB(): Promise<User> {
     currentUser: payload.currentUser
   };
   return payload.currentUser;
+}
+
+async function getBootstrapWithRetry(): Promise<BootstrapPayload> {
+  const delays = [800, 1600, 3200];
+  for (let attempt = 0; attempt <= delays.length; attempt += 1) {
+    try {
+      return await getBootstrap();
+    } catch (error) {
+      const status = typeof error === 'object' && error && 'status' in error
+        ? Number((error as { status?: unknown }).status)
+        : undefined;
+      const message = error instanceof Error ? error.message : '';
+      const retryable = status === 429 || message.includes('service_rate_limited');
+      if (!retryable || attempt === delays.length) throw error;
+      await new Promise(resolve => setTimeout(resolve, delays[attempt]));
+    }
+  }
+  throw new Error('Unable to load your account.');
 }
 
 export function getConditionGroups(): ConditionGroupCatalog[] {

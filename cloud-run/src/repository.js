@@ -26,6 +26,9 @@ export const resources = Object.freeze({
 
 const backendHeaders = ['record_json', 'patient_id', 'facility_id', 'updated_at'];
 const transientGoogleStatuses = new Set([429, 500, 502, 503, 504]);
+const headerCache = new Map();
+const recordsCache = new Map();
+const CACHE_TTL_MS = 10000;
 
 function sleep(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
@@ -52,6 +55,9 @@ function quoteTab(tab) {
 }
 
 async function ensureSheet(resource) {
+  const cached = headerCache.get(resource.tab);
+  if (cached && cached.expiresAt > Date.now()) return [...cached.headers];
+
   const metadata = await withSheetsRetry(() => sheets.spreadsheets.get({
     spreadsheetId: config.spreadsheetId,
     fields: 'sheets.properties'
@@ -87,12 +93,30 @@ async function ensureSheet(resource) {
       requestBody: { values: [headers] }
     }));
   }
+  headerCache.set(resource.tab, { headers: [...headers], expiresAt: Date.now() + 300000 });
   return headers;
 }
 
 export async function listRecords(resourceName) {
   const resource = resources[resourceName];
   if (!resource) throw new Error('Unknown resource.');
+  const cached = recordsCache.get(resourceName);
+  if (cached && cached.expiresAt > Date.now()) return cached.records.map(cloneRecord);
+  if (cached?.promise) return (await cached.promise).map(cloneRecord);
+
+  const promise = readRecords(resourceName, resource);
+  recordsCache.set(resourceName, { promise, expiresAt: Date.now() + CACHE_TTL_MS });
+  try {
+    const records = await promise;
+    recordsCache.set(resourceName, { records: records.map(cloneRecord), expiresAt: Date.now() + CACHE_TTL_MS });
+    return records.map(cloneRecord);
+  } catch (error) {
+    recordsCache.delete(resourceName);
+    throw error;
+  }
+}
+
+async function readRecords(resourceName, resource) {
   const headers = await ensureSheet(resource);
   const response = await withSheetsRetry(() => sheets.spreadsheets.values.get({
     spreadsheetId: config.spreadsheetId,
@@ -114,6 +138,10 @@ export async function listRecords(resourceName) {
   });
 }
 
+function cloneRecord(record) {
+  return JSON.parse(JSON.stringify(record));
+}
+
 export async function getRecord(resourceName, id) {
   const resource = resources[resourceName];
   const records = await listRecords(resourceName);
@@ -123,6 +151,7 @@ export async function getRecord(resourceName, id) {
 export async function upsertRecord(resourceName, id, record) {
   const resource = resources[resourceName];
   if (!resource) throw new Error('Unknown resource.');
+  recordsCache.delete(resourceName);
   const headers = await ensureSheet(resource);
   const response = await withSheetsRetry(() => sheets.spreadsheets.values.get({
     spreadsheetId: config.spreadsheetId,

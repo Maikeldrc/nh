@@ -88,7 +88,16 @@ app.get('/v1/bootstrap', async (req, res, next) => {
         ? listRecords('users').then(rows => rows.map(normalizeUser))
         : Promise.resolve([req.user])
     ]);
-    await activity(req, 'login_success', 'AUTH', req.user.id, undefined);
+    activity(req, 'login_success', 'AUTH', req.user.id, undefined).catch(error => {
+      console.error(JSON.stringify({
+        severity: 'ERROR',
+        request_id: req.requestId,
+        route: '/v1/bootstrap',
+        status: error.status || error.code || 500,
+        error_type: error.name || 'Error',
+        non_blocking: true
+      }));
+    });
     res.set('Cache-Control', 'no-store');
     return res.json({
       currentUser: req.user,
