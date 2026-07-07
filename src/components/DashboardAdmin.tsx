@@ -1,5 +1,14 @@
 import { useState, useMemo } from 'react';
-import { Patient, User, AuditLog, DocumentRecord, PatientStatus } from '../types';
+import {
+  CatalogImportHistory,
+  ConditionGroupCatalog,
+  DiagnosisCatalog,
+  Patient,
+  User,
+  AuditLog,
+  DocumentRecord,
+  PatientStatus
+} from '../types';
 import { NURSING_HOMES, PROGRAMS } from '../data';
 import { 
   Search, Users, Shield, FileText, Smartphone, CheckCircle, 
@@ -7,7 +16,8 @@ import {
 } from 'lucide-react';
 import { useLanguage } from '../utils/LanguageContext';
 import { getMedicalOrderStatus, patientRequiresDevice } from '../utils/medicalOrders';
-import { POWERED_BY, PRODUCT_NAME } from '../utils/branding';
+import UserManagement from './UserManagement';
+import ClinicalCatalogManagement from './ClinicalCatalogManagement';
 
 interface DashboardAdminProps {
   currentUser: User;
@@ -15,6 +25,9 @@ interface DashboardAdminProps {
   auditLogs: AuditLog[];
   documents: DocumentRecord[];
   users: User[];
+  conditionGroups: ConditionGroupCatalog[];
+  diagnoses: DiagnosisCatalog[];
+  catalogImports: CatalogImportHistory[];
   onViewProfile: (patientId: string) => void;
   onReassignNurse: (patientId: string, nurseId: string) => void;
   onDownloadPDF: (docRecord: DocumentRecord) => void;
@@ -22,6 +35,10 @@ interface DashboardAdminProps {
   onGenerateMedicalOrder: (patientId: string) => void;
   onOpenMedicalOrderReview: (patient: Patient) => void;
   onImportConditionCatalog: () => void;
+  onSaveConditionGroup: (group: ConditionGroupCatalog) => void;
+  onSaveDiagnosis: (diagnosis: DiagnosisCatalog) => void;
+  onUsersChanged: () => Promise<void>;
+  onNotify: (message: string, type?: 'success' | 'info') => void;
 }
 
 export default function DashboardAdmin({
@@ -30,13 +47,20 @@ export default function DashboardAdmin({
   auditLogs,
   documents,
   users,
+  conditionGroups,
+  diagnoses,
+  catalogImports,
   onViewProfile,
   onReassignNurse,
   onDownloadPDF,
   onRegisterPatientClick,
   onGenerateMedicalOrder,
   onOpenMedicalOrderReview,
-  onImportConditionCatalog
+  onImportConditionCatalog,
+  onSaveConditionGroup,
+  onSaveDiagnosis,
+  onUsersChanged,
+  onNotify
 }: DashboardAdminProps) {
   const { language } = useLanguage();
   const l = (es: string, en: string) => language === 'ES' ? es : en;
@@ -46,8 +70,8 @@ export default function DashboardAdmin({
   const [selectedProgram, setSelectedProgram] = useState('');
   const [selectedStatus, setSelectedStatus] = useState<string>('ALL');
   
-  // Tab control: 'patients' | 'audit_logs' | 'documents'
-  const [activeTab, setActiveTab] = useState<'patients' | 'audit_logs' | 'documents'>('patients');
+  // Tab control: 'patients' | 'audit_logs' | 'documents' | 'catalog' | 'users'
+  const [activeTab, setActiveTab] = useState<'patients' | 'audit_logs' | 'documents' | 'catalog' | 'users'>('patients');
 
   // Filter nurses list for dropdown
   const nursesList = useMemo(() => {
@@ -151,10 +175,10 @@ export default function DashboardAdmin({
       {/* Welcome & Reset Action */}
       <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm flex flex-col md:flex-row justify-between items-start md:items-center space-y-4 md:space-y-0">
         <div>
-          <h1 className="text-2xl font-bold text-slate-800 leading-tight">{PRODUCT_NAME}</h1>
-          <p className="text-xs font-bold text-blue-600">{POWERED_BY}</p>
+          <h1 className="text-2xl font-bold text-slate-800 leading-tight">{l('Operaciones de pacientes', 'Patient Operations')}</h1>
+          <p className="text-xs font-bold text-blue-600">{l('Enrolamiento, órdenes médicas, consentimientos y auditoría', 'Enrollment, medical orders, consents, and audit readiness')}</p>
           <p className="text-slate-500 text-sm mt-1 font-medium">
-            {l('Administrador', 'Administrator')}: <span className="font-semibold text-slate-800">{currentUser.name}</span> • {l('Auditoría y gestión global de enrolamientos.', 'Global enrollment management and auditing.')}
+            {l('Sesión', 'Session')}: <span className="font-semibold text-slate-800">{currentUser.name}</span> • {metrics.total} {l('pacientes totales', 'total patients')} • {metrics.pendingMedicalOrders} {l('órdenes médicas pendientes', 'pending medical orders')}
           </p>
         </div>
         <div className="flex space-x-2 shrink-0">
@@ -235,7 +259,7 @@ export default function DashboardAdmin({
       </div>
 
       {/* Tabs navigation */}
-      <div className="flex border-b border-slate-200 bg-white p-1 rounded-xl border max-w-lg" id="admin-tabs">
+      <div className="flex border-b border-slate-200 bg-white p-1 rounded-xl border max-w-4xl" id="admin-tabs">
         <button
           onClick={() => setActiveTab('patients')}
           className={`flex-1 text-center py-2 text-xs font-bold rounded-xl transition cursor-pointer ${
@@ -263,9 +287,50 @@ export default function DashboardAdmin({
         >
           {l('Registros de Auditoría', 'Audit Logs')} ({auditLogs.length})
         </button>
+        {currentUser.role === 'ADMIN' && (
+          <button
+            onClick={() => setActiveTab('catalog')}
+            className={`flex-1 text-center py-2 text-xs font-bold rounded-xl transition cursor-pointer ${
+              activeTab === 'catalog' ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/20' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
+            }`}
+            id="tab-clinical-catalog"
+          >
+            {l('Conditions & Diagnoses', 'Conditions & Diagnoses')} ({conditionGroups.length})
+          </button>
+        )}
+        {currentUser.role === 'ADMIN' && (
+          <button
+            onClick={() => setActiveTab('users')}
+            className={`flex-1 text-center py-2 text-xs font-bold rounded-xl transition cursor-pointer ${
+              activeTab === 'users' ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/20' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
+            }`}
+            id="tab-users"
+          >
+            {l('Usuarios y Roles', 'Users & Roles')} ({users.length})
+          </button>
+        )}
       </div>
 
       {/* Primary Tab View Content */}
+      {activeTab === 'users' ? (
+        <UserManagement
+          currentUser={currentUser}
+          users={users}
+          onUsersChanged={onUsersChanged}
+          onNotify={onNotify}
+        />
+      ) : activeTab === 'catalog' ? (
+        <ClinicalCatalogManagement
+          currentUser={currentUser}
+          groups={conditionGroups}
+          diagnoses={diagnoses}
+          history={catalogImports}
+          onImportExcel={onImportConditionCatalog}
+          onSaveGroup={onSaveConditionGroup}
+          onSaveDiagnosis={onSaveDiagnosis}
+          onNotify={onNotify}
+        />
+      ) : (
       <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
         
         {/* Filters bar always visible (search modifies search context, NH modifies NH context) */}
@@ -538,6 +603,7 @@ export default function DashboardAdmin({
           </div>
         )}
       </div>
+      )}
     </div>
   );
 }

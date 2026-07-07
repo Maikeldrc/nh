@@ -17,6 +17,21 @@ export interface BootstrapPayload {
   catalogImports: import('../types').CatalogImportHistory[];
 }
 
+export interface UserMutationPayload {
+  name?: string;
+  email?: string;
+  role?: import('../types').UserRole;
+  active?: boolean;
+  mfaRequired?: boolean;
+  facilityIds?: string[];
+  nursingHomeAccess?: string[];
+}
+
+export interface CreateUserResponse {
+  user: import('../types').User;
+  setupLink?: string;
+}
+
 function requireApiBaseUrl(): string {
   if (!API_BASE_URL) throw new Error('Cloud Run API URL is not configured.');
   return API_BASE_URL;
@@ -48,6 +63,10 @@ export async function apiRequest<T>(
     throw new Error('You do not have permission to perform this action.');
   }
   if (!response.ok) {
+    const payload = await response.json().catch(() => undefined) as { error?: string; request_id?: string } | undefined;
+    if (payload?.error) {
+      throw new Error(payload.error);
+    }
     const requestId = response.headers.get('x-request-id');
     throw new Error(requestId
       ? `The secure service rejected the request. Reference: ${requestId}`
@@ -76,6 +95,23 @@ export function createActivity(record: Record<string, unknown>): Promise<void> {
   return apiRequest<void>('/v1/activity-log', {
     method: 'POST',
     body: JSON.stringify(record)
+  });
+}
+
+export function createUser(payload: UserMutationPayload): Promise<CreateUserResponse> {
+  return apiRequest<CreateUserResponse>('/v1/users', {
+    method: 'POST',
+    body: JSON.stringify(payload)
+  });
+}
+
+export function updateUser(
+  userId: string,
+  payload: UserMutationPayload
+): Promise<import('../types').User> {
+  return apiRequest<import('../types').User>(`/v1/users/${encodeURIComponent(userId)}`, {
+    method: 'PATCH',
+    body: JSON.stringify(payload)
   });
 }
 

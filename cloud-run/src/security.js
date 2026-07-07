@@ -40,7 +40,11 @@ export function normalizeUser(row) {
     mfaRequired: booleanValue(payload.mfaRequired ?? payload.mfa_required),
     facilityIds,
     patientId: payload.patientId || payload.patient_id || undefined,
-    nursingHomeAccess
+    nursingHomeAccess,
+    createdAt: payload.createdAt || payload.created_at || undefined,
+    createdBy: payload.createdBy || payload.created_by || undefined,
+    updatedAt: payload.updatedAt || payload.updated_at || undefined,
+    updatedBy: payload.updatedBy || payload.updated_by || undefined
   };
 }
 

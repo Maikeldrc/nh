@@ -9,10 +9,10 @@ import {
   saveDevice, saveBPReading, saveDocument, addAuditLog, getActiveVisitForPatient,
   getLatestVisitForPatient, getConsentByPatientId, getDeviceByPatientId, getBPReadingsByPatientId,
   getConditionGroups, getDiagnoses, getCatalogImportHistory, saveConditionCatalog,
-  setConditionGroupActive, setDiagnosisActive, hydrateDB, getUsers
+  setConditionGroupActive, setDiagnosisActive, saveConditionGroup, saveDiagnosis, hydrateDB, getUsers
 } from './utils/db';
 import { downloadDocument, generateDocument } from './utils/apiClient';
-import { logout, observeAuthenticatedUser } from './utils/auth';
+import { getAuthConfigurationError, logout, observeAuthenticatedUser } from './utils/auth';
 import { approveMedicalOrder, createMedicalOrder, generateAutoOrderIfNeeded, isMedicalOrderApproved, patientRequiresDevice, rejectMedicalOrder, resubmitMedicalOrder } from './utils/medicalOrders';
 import { POWERED_BY, PRODUCT_NAME } from './utils/branding';
 import Header from './components/Header';
@@ -41,7 +41,7 @@ export default function App() {
   const [diagnoses, setDiagnoses] = useState<DiagnosisCatalog[]>([]);
   const [catalogImports, setCatalogImports] = useState<CatalogImportHistory[]>([]);
   const [authLoading, setAuthLoading] = useState(true);
-  const [authError, setAuthError] = useState('');
+  const [authError, setAuthError] = useState(getAuthConfigurationError());
   
   // Navigation states
   const [currentView, setCurrentView] = useState<'DASHBOARD' | 'PROFILE' | 'VISIT'>('DASHBOARD');
@@ -105,6 +105,12 @@ export default function App() {
     setCatalogImports(getCatalogImportHistory());
   };
 
+  const reloadAppState = async () => {
+    const user = await hydrateDB();
+    setAppUser(user);
+    refreshAppState();
+  };
+
   const handleCatalogImport = (
     groups: ConditionGroupCatalog[],
     importedDiagnoses: DiagnosisCatalog[],
@@ -133,6 +139,38 @@ export default function App() {
 
   const handleToggleDiagnosis = (id: string, active: boolean) => {
     setDiagnosisActive(id, active);
+    refreshAppState();
+  };
+
+  const handleSaveConditionGroup = (group: ConditionGroupCatalog) => {
+    if (!currentUser || currentUser.role !== 'ADMIN') return;
+    saveConditionGroup(group);
+    addAuditLog(
+      currentUser.id,
+      currentUser.name,
+      currentUser.role,
+      undefined,
+      undefined,
+      group.is_active ? 'condition_group_updated' : 'condition_group_deactivated',
+      'GENERAL',
+      ''
+    );
+    refreshAppState();
+  };
+
+  const handleSaveDiagnosis = (diagnosis: DiagnosisCatalog) => {
+    if (!currentUser || currentUser.role !== 'ADMIN') return;
+    saveDiagnosis(diagnosis);
+    addAuditLog(
+      currentUser.id,
+      currentUser.name,
+      currentUser.role,
+      undefined,
+      undefined,
+      diagnosis.is_active ? 'diagnosis_updated' : 'diagnosis_deactivated',
+      'GENERAL',
+      ''
+    );
     refreshAppState();
   };
 
@@ -716,6 +754,9 @@ export default function App() {
               auditLogs={auditLogs}
               documents={documents}
               users={getUsers()}
+              conditionGroups={conditionGroups}
+              diagnoses={diagnoses}
+              catalogImports={catalogImports}
               onViewProfile={handleViewProfile}
               onReassignNurse={handleReassignNurse}
               onDownloadPDF={handleDownloadPDF}
@@ -723,6 +764,10 @@ export default function App() {
               onGenerateMedicalOrder={handleGenerateMedicalOrder}
               onOpenMedicalOrderReview={(p) => setMedicalOrderReviewPatient(p)}
               onImportConditionCatalog={() => setIsCatalogImportOpen(true)}
+              onSaveConditionGroup={handleSaveConditionGroup}
+              onSaveDiagnosis={handleSaveDiagnosis}
+              onUsersChanged={reloadAppState}
+              onNotify={showToast}
             />
           ) : (
             <DashboardNurse
