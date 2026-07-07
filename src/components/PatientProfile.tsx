@@ -113,13 +113,15 @@ export default function PatientProfile({
           >
             <ArrowLeft size={14} className="mr-1.5" /> {l('Volver al Panel', 'Back to Dashboard')}
           </button>
-          <button
-            onClick={() => setIsEditModalOpen(true)}
-            className="inline-flex items-center text-xs font-bold text-blue-600 hover:text-blue-700 bg-blue-50 border border-blue-200 px-4 py-2 rounded-xl hover:bg-blue-100 transition cursor-pointer shadow-sm"
-            id="btn-edit-patient-profile"
-          >
-            <Edit3 size={14} className="mr-1.5 text-blue-500" /> {l('Editar Paciente', 'Edit Patient')}
-          </button>
+          {currentUser.role === 'ADMIN' && (
+            <button
+              onClick={() => setIsEditModalOpen(true)}
+              className="inline-flex items-center text-xs font-bold text-blue-600 hover:text-blue-700 bg-blue-50 border border-blue-200 px-4 py-2 rounded-xl hover:bg-blue-100 transition cursor-pointer shadow-sm"
+              id="btn-edit-patient-profile"
+            >
+              <Edit3 size={14} className="mr-1.5 text-blue-500" /> {l('Editar Paciente', 'Edit Patient')}
+            </button>
+          )}
         </div>
 
         {/* Start/Resume Visit button only for Nurses & Non-Active patients */}

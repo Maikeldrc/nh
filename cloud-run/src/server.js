@@ -147,6 +147,15 @@ app.put('/v1/:resource/:id', async (req, res, next) => {
     if (patient && !canWritePatient(req.user, patient)) {
       return res.status(403).json({ error: 'forbidden' });
     }
+    if (req.user.role === 'PHYSICIAN') {
+      if (resource !== 'patients') {
+        return res.status(403).json({ error: 'forbidden' });
+      }
+      const existingPatient = await getRecord('patients', id);
+      if (!existingPatient || !isMedicalOrderOnlyUpdate(existingPatient, record)) {
+        return res.status(403).json({ error: 'forbidden' });
+      }
+    }
     if (resource === 'patients') {
       validatePatient(record, await listRecords('patients'), await listRecords('devices'));
       if (String(record.assignedProgram || '').toUpperCase().includes('RPM')
@@ -360,6 +369,27 @@ function httpError(status, message) {
   error.status = status;
   error.expose = true;
   return error;
+}
+
+function isMedicalOrderOnlyUpdate(existing, next) {
+  const normalize = (record) => {
+    const copy = { ...record };
+    delete copy.medicalOrder;
+    delete copy.medical_order;
+    delete copy.patient_id;
+    delete copy.updated_at;
+    delete copy.updatedAt;
+    return stableStringify(copy);
+  };
+  return normalize(existing) === normalize(next);
+}
+
+function stableStringify(value) {
+  if (Array.isArray(value)) return `[${value.map(stableStringify).join(',')}]`;
+  if (value && typeof value === 'object') {
+    return `{${Object.keys(value).sort().map(key => `${JSON.stringify(key)}:${stableStringify(value[key])}`).join(',')}}`;
+  }
+  return JSON.stringify(value);
 }
 
 function normalizeUserInput(input, requireRequiredFields) {
