@@ -3,6 +3,9 @@ import { POWERED_BY, PRODUCT_NAME } from './branding';
 
 export type Language = 'ES' | 'EN';
 
+const DEFAULT_LANGUAGE = 'EN';
+const DEFAULT_LANGUAGE_VERSION = '2026-07-default-en';
+
 export const translations = {
   ES: {
     // Header
@@ -226,8 +229,15 @@ const LanguageContext = createContext<LanguageContextType | undefined>(undefined
 
 export function LanguageProvider({ children }: { children: React.ReactNode }) {
   const [language, setLanguageState] = useState<Language>(() => {
+    const migratedDefault = localStorage.getItem('app_language_default_version');
+    if (migratedDefault !== DEFAULT_LANGUAGE_VERSION) {
+      localStorage.setItem('app_language_default_version', DEFAULT_LANGUAGE_VERSION);
+      localStorage.setItem('app_language', DEFAULT_LANGUAGE);
+      return DEFAULT_LANGUAGE;
+    }
+
     const saved = localStorage.getItem('app_language');
-    return (saved === 'EN' || saved === 'ES') ? saved : 'ES';
+    return (saved === 'EN' || saved === 'ES') ? saved : DEFAULT_LANGUAGE;
   });
 
   const setLanguage = (lang: Language) => {

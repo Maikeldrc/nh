@@ -24,6 +24,7 @@ import { validateConsent, validateDevice, validatePatient } from './validation.j
 import { createPdf, getPdfBuffer } from './pdf.js';
 
 const app = express();
+const USER_ROLES = new Set(['ADMIN', 'NURSE', 'PHYSICIAN', 'VIEWER', 'AUDITOR']);
 app.disable('x-powered-by');
 app.use(helmet({ contentSecurityPolicy: false }));
 app.use(requestContext);
@@ -137,6 +138,9 @@ app.put('/v1/:resource/:id', async (req, res, next) => {
       return res.status(405).json({ error: 'method_not_allowed' });
     }
     const record = { ...req.body, id };
+    if (['condition-groups', 'diagnoses', 'catalog-imports'].includes(resource) && req.user.role !== 'ADMIN') {
+      return res.status(403).json({ error: 'forbidden' });
+    }
     const patient = resource === 'patients'
       ? record
       : await getRecord('patients', record.patientId);
@@ -154,8 +158,17 @@ app.put('/v1/:resource/:id', async (req, res, next) => {
     if (resource === 'devices') {
       validateDevice(record, patient, await listRecords('devices'));
     }
+    if (resource === 'condition-groups') {
+      validateConditionGroup(record, await listRecords('condition-groups'), id);
+    }
+    if (resource === 'diagnoses') {
+      validateDiagnosis(record, await listRecords('diagnoses'), await listRecords('condition-groups'), id);
+    }
+    const existing = ['condition-groups', 'diagnoses'].includes(resource)
+      ? await getRecord(resource, id)
+      : undefined;
     const saved = await upsertRecord(resource, id, record);
-    await activity(req, actionFor(resource, record), resource, id, record.patientId || patient?.id);
+    await activity(req, actionFor(resource, record, existing), resource, id, record.patientId || patient?.id);
     return res.json(saved);
   } catch (error) {
     return next(error);
@@ -182,28 +195,38 @@ app.post('/v1/activity-log', async (req, res, next) => {
 
 app.post('/v1/users', requireRoles('ADMIN'), async (req, res, next) => {
   try {
-    const input = req.body;
+    const input = normalizeUserInput(req.body, true);
+    const existingUsers = (await listRecords('users')).map(normalizeUser);
+    if (existingUsers.some(user => user.email === input.email)) {
+      throw httpError(409, 'email_already_exists');
+    }
+
     const identity = await getAuth().createUser({
       email: input.email,
       displayName: input.name,
       disabled: input.active === false
     });
+    const setupLink = await getAuth().generatePasswordResetLink(input.email);
     const record = {
       id: `usr_${crypto.randomUUID()}`,
+      user_id: undefined,
       identityUid: identity.uid,
-      email: input.email.toLowerCase(),
+      email: input.email,
       name: input.name,
-      role: String(input.role || 'VIEWER').toUpperCase(),
-      active: input.active !== false,
-      mfaRequired: input.mfaRequired !== false,
-      facilityIds: input.facilityIds || [],
-      nursingHomeAccess: input.nursingHomeAccess || [],
+      role: input.role,
+      active: input.active,
+      mfaRequired: input.mfaRequired,
+      facilityIds: input.facilityIds,
+      nursingHomeAccess: input.nursingHomeAccess,
       createdAt: new Date().toISOString(),
       createdBy: req.user.id
     };
     await upsertRecord('users', record.id, record);
     await activity(req, 'created_user', 'USER', record.id);
-    return res.status(201).json(record);
+    return res.status(201).json({
+      user: normalizeUser(record),
+      setupLink
+    });
   } catch (error) {
     return next(error);
   }
@@ -211,15 +234,50 @@ app.post('/v1/users', requireRoles('ADMIN'), async (req, res, next) => {
 
 app.patch('/v1/users/:id', requireRoles('ADMIN'), async (req, res, next) => {
   try {
-    const existing = await getRecord('users', req.params.id);
+    const existingRows = await listRecords('users');
+    const existing = existingRows.find(row => normalizeUser(row).id === req.params.id);
     if (!existing) return res.status(404).json({ error: 'not_found' });
-    const updated = { ...existing, ...req.body, id: req.params.id };
-    if (updated.identityUid && req.body.active !== undefined) {
-      await getAuth().updateUser(updated.identityUid, { disabled: !req.body.active });
+    const existingUser = normalizeUser(existing);
+    const input = normalizeUserInput(req.body, false);
+    const nextActive = input.active ?? existingUser.active;
+    const nextRole = input.role ?? existingUser.role;
+
+    if (existingUser.role === 'ADMIN' && (nextActive === false || nextRole !== 'ADMIN')) {
+      const otherActiveAdmins = existingRows
+        .map(normalizeUser)
+        .filter(user => user.id !== existingUser.id && user.role === 'ADMIN' && user.active);
+      if (!otherActiveAdmins.length) throw httpError(422, 'cannot_disable_last_admin');
     }
+
+    const updated = {
+      ...existing,
+      name: input.name ?? existingUser.name,
+      email: existingUser.email,
+      role: nextRole,
+      active: nextActive,
+      mfaRequired: input.mfaRequired ?? existingUser.mfaRequired,
+      facilityIds: input.facilityIds ?? existingUser.facilityIds,
+      nursingHomeAccess: input.nursingHomeAccess ?? existingUser.nursingHomeAccess,
+      identityUid: existingUser.identityUid,
+      createdAt: existingUser.createdAt,
+      createdBy: existingUser.createdBy,
+      updatedAt: new Date().toISOString(),
+      updatedBy: req.user.id,
+      id: req.params.id
+    };
+
+    if (updated.identityUid && input.active !== undefined) {
+      await getAuth().updateUser(updated.identityUid, {
+        disabled: !input.active,
+        displayName: updated.name
+      });
+    } else if (updated.identityUid && input.name !== undefined) {
+      await getAuth().updateUser(updated.identityUid, { displayName: updated.name });
+    }
+
     await upsertRecord('users', updated.id, updated);
-    await activity(req, updated.active ? 'updated_user' : 'disabled_user', 'USER', updated.id);
-    return res.json(updated);
+    await auditUserChanges(req, existingUser, normalizeUser(updated));
+    return res.json(normalizeUser(updated));
   } catch (error) {
     return next(error);
   }
@@ -265,6 +323,11 @@ app.get('/v1/documents/:id/content', async (req, res, next) => {
 });
 
 app.use((error, req, res, _next) => {
+  if (error.code === 'auth/email-already-exists') {
+    error.status = 409;
+    error.message = 'email_already_exists';
+    error.expose = true;
+  }
   // Never log request bodies, tokens, patient identifiers, or exception payloads.
   console.error(JSON.stringify({
     severity: 'ERROR',
@@ -274,14 +337,81 @@ app.use((error, req, res, _next) => {
     error_type: error.name || 'Error'
   }));
   return res.status(error.status || 500).json({
-    error: error.status === 422 ? error.message : 'secure_service_error',
+    error: error.status && error.expose ? error.message : 'secure_service_error',
     request_id: req.requestId
   });
 });
 
-function actionFor(resource, record) {
+function httpError(status, message) {
+  const error = new Error(message);
+  error.status = status;
+  error.expose = true;
+  return error;
+}
+
+function normalizeUserInput(input, requireRequiredFields) {
+  const email = input.email === undefined ? undefined : String(input.email || '').trim().toLowerCase();
+  const name = input.name === undefined ? undefined : String(input.name || '').trim();
+  const role = input.role === undefined ? undefined : String(input.role || '').trim().toUpperCase();
+  if (requireRequiredFields && !email) throw httpError(422, 'missing_email');
+  if (requireRequiredFields && !name) throw httpError(422, 'missing_name');
+  if (requireRequiredFields && !role) throw httpError(422, 'missing_role');
+  if (email !== undefined && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    throw httpError(422, 'invalid_email');
+  }
+  if (role !== undefined && !USER_ROLES.has(role)) throw httpError(422, 'invalid_role');
+  return {
+    email,
+    name,
+    role,
+    active: input.active === undefined ? (requireRequiredFields ? true : undefined) : input.active !== false,
+    mfaRequired: input.mfaRequired === undefined ? (requireRequiredFields ? true : undefined) : input.mfaRequired === true,
+    facilityIds: input.facilityIds === undefined ? undefined : arrayValue(input.facilityIds),
+    nursingHomeAccess: input.nursingHomeAccess === undefined ? undefined : arrayValue(input.nursingHomeAccess)
+  };
+}
+
+function arrayValue(value) {
+  if (Array.isArray(value)) {
+    return [...new Set(value.map(item => String(item).trim()).filter(Boolean))];
+  }
+  if (!value) return [];
+  return [...new Set(String(value).split(/[\n,]+/).map(item => item.trim()).filter(Boolean))];
+}
+
+async function auditUserChanges(req, before, after) {
+  const tasks = [];
+  if (before.active !== after.active) {
+    tasks.push(activity(req, after.active ? 'enabled_user' : 'disabled_user', 'USER', after.id));
+  }
+  if (before.role !== after.role) {
+    tasks.push(activity(req, 'changed_user_role', 'USER', after.id));
+  }
+  if (JSON.stringify(before.facilityIds) !== JSON.stringify(after.facilityIds)
+    || JSON.stringify(before.nursingHomeAccess) !== JSON.stringify(after.nursingHomeAccess)) {
+    tasks.push(activity(req, 'changed_user_access', 'USER', after.id));
+  }
+  tasks.push(activity(req, 'updated_user', 'USER', after.id));
+  await Promise.all(tasks);
+}
+
+function actionFor(resource, record, existing) {
   if (resource === 'patients') return 'updated_patient';
-  if (resource === 'diagnoses') return 'added_diagnosis';
+  if (resource === 'condition-groups') {
+    if (!existing) return 'condition_group_created';
+    if (existing.is_active !== record.is_active) {
+      return record.is_active ? 'condition_group_activated' : 'condition_group_deactivated';
+    }
+    return 'condition_group_updated';
+  }
+  if (resource === 'diagnoses') {
+    if (!existing) return 'diagnosis_created';
+    if (existing.condition_group_id !== record.condition_group_id) return 'diagnosis_moved_to_group';
+    if (existing.is_active !== record.is_active) {
+      return record.is_active ? 'diagnosis_activated' : 'diagnosis_deactivated';
+    }
+    return 'diagnosis_updated';
+  }
   if (resource === 'medications') return 'added_medication';
   if (resource === 'medical-orders') return 'created_medical_order';
   if (resource === 'devices') return 'assigned_device';
@@ -289,6 +419,39 @@ function actionFor(resource, record) {
   if (resource === 'consents') return 'created_consent';
   if (resource === 'catalog-imports') return 'imported_icd10_catalog';
   return `updated_${resource.replaceAll('-', '_')}`;
+}
+
+function validateConditionGroup(group, allGroups, id) {
+  const display = String(group.display || '').trim();
+  const code = String(group.code || '').trim();
+  if (!display) throw httpError(422, 'condition_group_display_required');
+  if (!code) throw httpError(422, 'condition_group_code_required');
+  const duplicate = allGroups.find(item =>
+    String(item.id) !== String(id)
+    && String(item.code || '').trim().toLowerCase() === code.toLowerCase()
+  );
+  if (duplicate) throw httpError(422, 'duplicate_condition_group_code');
+}
+
+function validateDiagnosis(diagnosis, allDiagnoses, allGroups, id) {
+  const code = String(diagnosis.icd10_code || '').trim().toUpperCase();
+  const display = String(diagnosis.icd10_display || '').trim();
+  if (!code) throw httpError(422, 'icd10_code_required');
+  if (!display) throw httpError(422, 'icd10_display_required');
+  if (!/^[A-TV-Z][0-9][0-9A-Z](?:\.[0-9A-Z]{1,4})?$/i.test(code)) {
+    throw httpError(422, 'invalid_icd10_code');
+  }
+  if (diagnosis.condition_group_id) {
+    const group = allGroups.find(item => String(item.id) === String(diagnosis.condition_group_id));
+    if (!group) throw httpError(422, 'condition_group_not_found');
+  }
+  const groupCode = String(diagnosis.condition_group_code || '').trim().toLowerCase();
+  const duplicate = allDiagnoses.find(item =>
+    String(item.id) !== String(id)
+    && String(item.condition_group_code || '').trim().toLowerCase() === groupCode
+    && String(item.icd10_code || '').trim().toUpperCase() === code
+  );
+  if (duplicate) throw httpError(422, 'duplicate_icd10_in_condition_group');
 }
 
 function pendingMedicalOrder(patient, user) {

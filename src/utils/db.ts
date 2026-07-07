@@ -119,18 +119,40 @@ export function saveConditionCatalog(
   }));
 }
 
+export function saveConditionGroup(group: ConditionGroupCatalog): void {
+  db.conditionGroups = replaceById(db.conditionGroups, group);
+  db.conditionGroups = db.conditionGroups.map(item => ({
+    ...item,
+    icd10_count: db.diagnoses.filter(diagnosis =>
+      diagnosis.condition_group_id === item.id && diagnosis.is_active
+    ).length
+  }));
+  remote(saveResource('condition-groups', group));
+}
+
+export function saveDiagnosis(diagnosis: DiagnosisCatalog): void {
+  db.diagnoses = replaceById(db.diagnoses, diagnosis);
+  db.conditionGroups = db.conditionGroups.map(group => ({
+    ...group,
+    icd10_count: db.diagnoses.filter(item =>
+      item.condition_group_id === group.id && item.is_active
+    ).length
+  }));
+  remote(saveResource('diagnoses', diagnosis));
+}
+
 export function setConditionGroupActive(id: string, isActive: boolean): void {
   const record = db.conditionGroups.find(item => item.id === id);
   if (!record) return;
   record.is_active = isActive;
-  remote(saveResource('condition-groups', record));
+  saveConditionGroup(record);
 }
 
 export function setDiagnosisActive(id: string, isActive: boolean): void {
   const record = db.diagnoses.find(item => item.id === id);
   if (!record) return;
   record.is_active = isActive;
-  remote(saveResource('diagnoses', record));
+  saveDiagnosis(record);
 }
 
 export function getPatients(): Patient[] {

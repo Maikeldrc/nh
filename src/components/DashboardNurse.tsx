@@ -7,7 +7,6 @@ import {
 } from 'lucide-react';
 import { useLanguage } from '../utils/LanguageContext';
 import { getMedicalOrderStatus, patientRequiresDevice } from '../utils/medicalOrders';
-import { POWERED_BY, PRODUCT_NAME } from '../utils/branding';
 
 interface DashboardNurseProps {
   currentUser: User;
@@ -125,10 +124,10 @@ export default function DashboardNurse({
       {/* Intro / Welcome Banner */}
       <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm flex flex-col sm:flex-row justify-between items-start sm:items-center space-y-4 sm:space-y-0">
         <div>
-          <h1 className="text-2xl font-bold text-slate-800 leading-tight">{PRODUCT_NAME}</h1>
-          <p className="text-xs font-bold text-blue-600">{POWERED_BY}</p>
+          <h1 className="text-2xl font-bold text-slate-800 leading-tight">{l('Lista de pacientes asignados', 'Assigned Patient Worklist')}</h1>
+          <p className="text-xs font-bold text-blue-600">{l('Visitas en sitio, consentimientos, equipos y primeras lecturas', 'On-site visits, consents, devices, and first readings')}</p>
           <p className="text-slate-500 text-sm mt-1">
-            {l('Enfermera', 'Nurse')}: <span className="font-semibold text-slate-800">{currentUser.name}</span> • {l('Gestione el enrolamiento presencial hoy.', 'Manage today’s on-site enrollment.')}
+            {l('Enfermera', 'Nurse')}: <span className="font-semibold text-slate-800">{currentUser.name}</span> • {stats.total} {l('pacientes asignados', 'assigned patients')} • {stats.pendingConsent} {l('consentimientos pendientes', 'pending consents')}
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-3 shrink-0">
