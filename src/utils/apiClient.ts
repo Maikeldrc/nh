@@ -133,11 +133,11 @@ export async function generateDocument(
   type: import('../types').DocumentRecord['type'],
   patientId: string,
   source: Record<string, unknown>
-): Promise<{ document: import('../types').DocumentRecord; blob: Blob }> {
+): Promise<{ document: import('../types').DocumentRecord; blob?: Blob }> {
   const document = await apiRequest<import('../types').DocumentRecord>('/v1/pdfs', {
     method: 'POST',
     body: JSON.stringify({ type, patientId, source })
   });
-  const blob = await downloadDocument(document.id);
+  const blob = await downloadDocument(document.id).catch(() => undefined);
   return { document, blob };
 }

@@ -23,8 +23,8 @@ interface VisitWizardProps {
     triggerActivation?: boolean
   ) => void;
   onCancel: () => void;
-  onGenerateConsentPDF: (consent: Consent, callback: (pdfDataUrl: string) => void) => void;
-  onGenerateDeliveryPDF: (device: Device, callback: (pdfDataUrl: string) => void) => void;
+  onGenerateConsentPDF: (consent: Consent, callback: (pdfDataUrl: string) => void) => Promise<void>;
+  onGenerateDeliveryPDF: (device: Device, callback: (pdfDataUrl: string) => void) => Promise<void>;
   onUpdatePatient?: (updatedPatient: Patient) => void;
   onGenerateMedicalOrder: (patientId: string, deviceType?: string) => void;
 }
@@ -618,7 +618,7 @@ This service is not for emergencies. If you agree, we can continue with your aut
   // ----------------------------------------------------
   // DOCUMENT GENERATION TRIGGERS
   // ----------------------------------------------------
-  const triggerConsentPDFGeneration = () => {
+  const triggerConsentPDFGeneration = async () => {
     if (!consentRecordComplete) {
       setAlertMessage(l('Complete la identificación del firmante, la evidencia de consentimiento y la atestación de enfermería antes de generar el PDF.', 'Complete signer identification, consent evidence, and the nurse attestation before generating the PDF.'));
       return;
@@ -670,14 +670,23 @@ This service is not for emergencies. If you agree, we can continue with your aut
       auditId: `con_audit_${Math.random().toString(36).substring(2, 9).toUpperCase()}`
     };
 
-    onGenerateConsentPDF(mockConsentObj, (dataUrl) => {
-      setConsentPdfUrl(dataUrl);
-      setConsentPdfGenerated(true);
+    try {
+      await onGenerateConsentPDF(mockConsentObj, (dataUrl) => {
+        setConsentPdfUrl(dataUrl);
+        setConsentPdfGenerated(true);
+      });
+    } catch (error) {
+      setConsentPdfGenerated(false);
+      setConsentPdfUrl('');
+      setAlertMessage(error instanceof Error
+        ? error.message
+        : l('No se pudo generar el PDF de consentimiento. Intente nuevamente.', 'Unable to generate the consent PDF. Please try again.'));
+    } finally {
       setIsGeneratingConsentPdf(false);
-    });
+    }
   };
 
-  const triggerDeliveryPDFGeneration = () => {
+  const triggerDeliveryPDFGeneration = async () => {
     if (deviceActionsBlocked) {
       setAlertMessage(l(
         'No se puede entregar, activar ni generar el PDF del dispositivo hasta que la orden médica esté aprobada.',
@@ -728,10 +737,18 @@ This service is not for emergencies. If you agree, we can continue with your aut
         : undefined
     };
 
-    onGenerateDeliveryPDF(mockDeviceObj, (dataUrl) => {
-      setDeliveryPdfUrl(dataUrl);
-      setDeliveryPdfGenerated(true);
-    });
+    try {
+      await onGenerateDeliveryPDF(mockDeviceObj, (dataUrl) => {
+        setDeliveryPdfUrl(dataUrl);
+        setDeliveryPdfGenerated(true);
+      });
+    } catch (error) {
+      setDeliveryPdfGenerated(false);
+      setDeliveryPdfUrl('');
+      setAlertMessage(error instanceof Error
+        ? error.message
+        : l('No se pudo generar el PDF de entrega. Intente nuevamente.', 'Unable to generate the delivery PDF. Please try again.'));
+    }
   };
 
   // ----------------------------------------------------
@@ -1668,10 +1685,14 @@ This service is not for emergencies. If you agree, we can continue with your aut
                         </details>
                       </div>
                       <div className="flex flex-col gap-3">
-                        {consentPdfGenerated ? (
+                        {consentPdfGenerated && consentPdfUrl ? (
                           <a href={consentPdfUrl} download={`Consent_${patient.lastName}_${patient.firstName}.pdf`} className="inline-flex min-h-12 items-center justify-center rounded-xl bg-emerald-500 px-5 text-sm font-extrabold text-white hover:bg-emerald-400">
                             <CheckCircle size={17} className="mr-2" /> {l('Descargar PDF Generado', 'Download Generated PDF')}
                           </a>
+                        ) : consentPdfGenerated ? (
+                          <div className="inline-flex min-h-12 items-center justify-center rounded-xl bg-emerald-500 px-5 text-sm font-extrabold text-white">
+                            <CheckCircle size={17} className="mr-2" /> {l('PDF guardado en Drive', 'PDF saved to Drive')}
+                          </div>
                         ) : (
                           <button type="button" onClick={triggerConsentPDFGeneration} disabled={!consentRecordComplete || isGeneratingConsentPdf} className="inline-flex min-h-12 items-center justify-center rounded-xl bg-blue-500 px-5 text-sm font-extrabold text-white shadow-lg shadow-blue-500/20 hover:bg-blue-400 disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-400">
                             <FileText size={17} className="mr-2" /> {isGeneratingConsentPdf ? l('Generando PDF...', 'Generating PDF...') : l('Generar Registro PDF de Consentimiento', 'Generate Consent Record PDF')}
@@ -2246,14 +2267,20 @@ This service is not for emergencies. If you agree, we can continue with your aut
                   <span className="inline-flex items-center text-xs font-bold text-emerald-600 bg-emerald-50 px-2.5 py-1 border border-emerald-200 rounded">
                     <CheckCircle size={14} className="mr-1.5" /> {l('PDF de Entrega Generado', 'Delivery PDF Generated')}
                   </span>
-                  <a 
-                    href={deliveryPdfUrl} 
-                    download={`Entrega_Equipo_${patient.lastName}_${patient.firstName}.pdf`}
-                    className="text-[11px] font-bold text-indigo-600 hover:underline"
-                    id="download-generated-delivery"
-                  >
-                    {l('Descargar PDF generado', 'Download generated PDF')}
-                  </a>
+                  {deliveryPdfUrl ? (
+                    <a
+                      href={deliveryPdfUrl}
+                      download={`Entrega_Equipo_${patient.lastName}_${patient.firstName}.pdf`}
+                      className="text-[11px] font-bold text-indigo-600 hover:underline"
+                      id="download-generated-delivery"
+                    >
+                      {l('Descargar PDF generado', 'Download generated PDF')}
+                    </a>
+                  ) : (
+                    <span className="text-[11px] font-bold text-emerald-700">
+                      {l('Guardado en Drive', 'Saved to Drive')}
+                    </span>
+                  )}
                 </div>
               ) : (
                 <button

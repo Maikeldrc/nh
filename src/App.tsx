@@ -430,17 +430,14 @@ export default function App() {
     );
   };
 
-  const handleGenerateConsentPDF = (consent: Consent, callback: (pdfDataUrl: string) => void) => {
-    if (!currentUser) return;
+  const handleGenerateConsentPDF = async (consent: Consent, callback: (pdfDataUrl: string) => void): Promise<void> => {
+    if (!currentUser) throw new Error('Authentication required.');
     const patientObj = patients.find(p => p.id === consent.patientId);
-    if (!patientObj) return;
+    if (!patientObj) throw new Error('Patient record was not found.');
 
-    void generateDocument('CONSENT', patientObj.id, { consent }).then(({ document, blob }) => {
-      const objectUrl = URL.createObjectURL(blob);
-      callback(objectUrl);
-      saveDocument(document);
-      refreshAppState();
-    });
+    const { document, blob } = await generateDocument('CONSENT', patientObj.id, { consent });
+    callback(blob ? URL.createObjectURL(blob) : '');
+    saveDocument(document);
     addAuditLog(
       currentUser.id,
       currentUser.name,
@@ -454,17 +451,14 @@ export default function App() {
     refreshAppState();
   };
 
-  const handleGenerateDeliveryPDF = (device: Device, callback: (pdfDataUrl: string) => void) => {
-    if (!currentUser) return;
+  const handleGenerateDeliveryPDF = async (device: Device, callback: (pdfDataUrl: string) => void): Promise<void> => {
+    if (!currentUser) throw new Error('Authentication required.');
     const patientObj = patients.find(p => p.id === device.patientId);
-    if (!patientObj) return;
+    if (!patientObj) throw new Error('Patient record was not found.');
 
-    void generateDocument('DEVICE_DELIVERY', patientObj.id, { device }).then(({ document, blob }) => {
-      const objectUrl = URL.createObjectURL(blob);
-      callback(objectUrl);
-      saveDocument(document);
-      refreshAppState();
-    });
+    const { document, blob } = await generateDocument('DEVICE_DELIVERY', patientObj.id, { device });
+    callback(blob ? URL.createObjectURL(blob) : '');
+    saveDocument(document);
     addAuditLog(
       currentUser.id,
       currentUser.name,

@@ -4,7 +4,7 @@ import { google } from 'googleapis';
 import { config } from './config.js';
 
 const drive = google.drive({ version: 'v3', auth: new google.auth.GoogleAuth({
-  scopes: ['https://www.googleapis.com/auth/drive.file']
+  scopes: ['https://www.googleapis.com/auth/drive']
 }) });
 
 function renderPdf(type, patient, source) {
