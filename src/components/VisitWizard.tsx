@@ -134,6 +134,10 @@ export default function VisitWizard({
   const { language, t } = useLanguage();
   const l = (es: string, en: string) => language === 'ES' ? es : en;
   const STEP2_GUIDE_SCRIPT_VERSION = 'amavita_step2_guide_v2026_06_30';
+  const savedForm = (existingVisit?.formState || {}) as Record<string, unknown>;
+  const savedBool = (key: string, fallback = false) => typeof savedForm[key] === 'boolean' ? Boolean(savedForm[key]) : fallback;
+  const savedString = (key: string, fallback = '') => typeof savedForm[key] === 'string' ? String(savedForm[key]) : fallback;
+  const savedChoice = <T extends string>(key: string, fallback: T): T => typeof savedForm[key] === 'string' ? savedForm[key] as T : fallback;
 
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [alertMessage, setAlertMessage] = useState<string | null>(null);
@@ -147,61 +151,61 @@ export default function VisitWizard({
 
 
   // STEP 1: IDENTITY CONFIRMATION
-  const [idConfirmed, setIdConfirmed] = useState(false);
-  const [patientAvailable, setPatientAvailable] = useState(false);
-  const [patientCanDecide, setPatientCanDecide] = useState(false);
-  const [repPresent, setRepPresent] = useState(false);
-  const [representativeAvailability, setRepresentativeAvailability] = useState<'NONE' | 'FAMILY' | 'LEGAL' | 'REMOTE'>('NONE');
-  const [readinessRepName, setReadinessRepName] = useState('');
-  const [readinessRepRelationship, setReadinessRepRelationship] = useState('');
-  const [readinessRepAuthority, setReadinessRepAuthority] = useState<'HEALTH_CARE_PROXY' | 'POWER_OF_ATTORNEY' | 'GUARDIAN' | 'OTHER' | ''>('');
-  const [readinessRepPhone, setReadinessRepPhone] = useState('');
-  const [readinessRepEmail, setReadinessRepEmail] = useState('');
-  const [representativeContactMode, setRepresentativeContactMode] = useState<'IN_PERSON' | 'PHONE' | 'VIDEO'>('IN_PERSON');
-  const [preferredExplanationLanguage, setPreferredExplanationLanguage] = useState<'English' | 'Spanish' | 'Other'>(language === 'ES' ? 'Spanish' : 'English');
+  const [idConfirmed, setIdConfirmed] = useState(savedBool('idConfirmed'));
+  const [patientAvailable, setPatientAvailable] = useState(savedBool('patientAvailable'));
+  const [patientCanDecide, setPatientCanDecide] = useState(savedBool('patientCanDecide'));
+  const [repPresent, setRepPresent] = useState(savedBool('repPresent'));
+  const [representativeAvailability, setRepresentativeAvailability] = useState<'NONE' | 'FAMILY' | 'LEGAL' | 'REMOTE'>(savedChoice('representativeAvailability', 'NONE'));
+  const [readinessRepName, setReadinessRepName] = useState(savedString('readinessRepName'));
+  const [readinessRepRelationship, setReadinessRepRelationship] = useState(savedString('readinessRepRelationship'));
+  const [readinessRepAuthority, setReadinessRepAuthority] = useState<'HEALTH_CARE_PROXY' | 'POWER_OF_ATTORNEY' | 'GUARDIAN' | 'OTHER' | ''>(savedChoice('readinessRepAuthority', ''));
+  const [readinessRepPhone, setReadinessRepPhone] = useState(savedString('readinessRepPhone'));
+  const [readinessRepEmail, setReadinessRepEmail] = useState(savedString('readinessRepEmail'));
+  const [representativeContactMode, setRepresentativeContactMode] = useState<'IN_PERSON' | 'PHONE' | 'VIDEO'>(savedChoice('representativeContactMode', 'IN_PERSON'));
+  const [preferredExplanationLanguage, setPreferredExplanationLanguage] = useState<'English' | 'Spanish' | 'Other'>(savedChoice('preferredExplanationLanguage', language === 'ES' ? 'Spanish' : 'English'));
 
   // STEP 2: SERVICE EXPLANATION
-  const [explainedService, setExplainedService] = useState(false);
-  const [explainedVoluntary, setExplainedVoluntary] = useState(false);
-  const [explainedStopAnytime, setExplainedStopAnytime] = useState(false);
-  const [explainedCostSharing, setExplainedCostSharing] = useState(false);
-  const [explainedSingleProvider, setExplainedSingleProvider] = useState(false);
-  const [explainedContact, setExplainedContact] = useState(false);
-  const [explainedDeviceUsage, setExplainedDeviceUsage] = useState(false);
-  const [explainedQuestionsTime, setExplainedQuestionsTime] = useState(false);
-  const [patientUnderstood, setPatientUnderstood] = useState(false);
-  const [serviceExplanationConfirmed, setServiceExplanationConfirmed] = useState(false);
-  const [explanationLanguage, setExplanationLanguage] = useState<'English' | 'Spanish' | 'Other'>(language === 'ES' ? 'Spanish' : 'English');
-  const [interpreterUsed, setInterpreterUsed] = useState(false);
-  const [interpreterName, setInterpreterName] = useState('');
+  const [explainedService, setExplainedService] = useState(savedBool('explainedService'));
+  const [explainedVoluntary, setExplainedVoluntary] = useState(savedBool('explainedVoluntary'));
+  const [explainedStopAnytime, setExplainedStopAnytime] = useState(savedBool('explainedStopAnytime'));
+  const [explainedCostSharing, setExplainedCostSharing] = useState(savedBool('explainedCostSharing'));
+  const [explainedSingleProvider, setExplainedSingleProvider] = useState(savedBool('explainedSingleProvider'));
+  const [explainedContact, setExplainedContact] = useState(savedBool('explainedContact'));
+  const [explainedDeviceUsage, setExplainedDeviceUsage] = useState(savedBool('explainedDeviceUsage'));
+  const [explainedQuestionsTime, setExplainedQuestionsTime] = useState(savedBool('explainedQuestionsTime'));
+  const [patientUnderstood, setPatientUnderstood] = useState(savedBool('patientUnderstood'));
+  const [serviceExplanationConfirmed, setServiceExplanationConfirmed] = useState(savedBool('serviceExplanationConfirmed'));
+  const [explanationLanguage, setExplanationLanguage] = useState<'English' | 'Spanish' | 'Other'>(savedChoice('explanationLanguage', language === 'ES' ? 'Spanish' : 'English'));
+  const [interpreterUsed, setInterpreterUsed] = useState(savedBool('interpreterUsed'));
+  const [interpreterName, setInterpreterName] = useState(savedString('interpreterName'));
 
   // STEP 3: PATIENT CONSENT
-  const [consentDecision, setConsentDecision] = useState<'ACCEPT' | 'DECLINE' | null>(null);
+  const [consentDecision, setConsentDecision] = useState<'ACCEPT' | 'DECLINE' | null>(savedChoice<'ACCEPT' | 'DECLINE' | ''>('consentDecision', '') || null);
   const consentDeclined = consentDecision === 'DECLINE';
-  const [consentSignerType, setConsentSignerType] = useState<'PATIENT' | 'REPRESENTATIVE' | 'UNABLE'>('PATIENT');
-  const [signerName, setSignerName] = useState(`${patient.firstName} ${patient.lastName}`);
-  const [repRelationship, setRepRelationship] = useState('');
-  const [authorityType, setAuthorityType] = useState<'HEALTH_CARE_PROXY' | 'POWER_OF_ATTORNEY' | 'GUARDIAN' | 'OTHER' | ''>('');
-  const [representativePhone, setRepresentativePhone] = useState('');
-  const [representativeEmail, setRepresentativeEmail] = useState('');
-  const [representativeSignatureMethod, setRepresentativeSignatureMethod] = useState<'IN_PERSON' | 'REMOTE_LINK' | 'PHONE_VIDEO_VERBAL'>('IN_PERSON');
-  const [signatureMethod, setSignatureMethod] = useState<'DRAW' | 'TYPE' | 'UNABLE'>('DRAW');
-  const [typedSignatureName, setTypedSignatureName] = useState('');
-  const [typedSignatureAgreed, setTypedSignatureAgreed] = useState(false);
-  const [typedSignatureConfirmed, setTypedSignatureConfirmed] = useState(false);
-  const [unableSignMethod, setUnableSignMethod] = useState<'VERBAL' | 'MARK_X' | 'REPRESENTATIVE_SIGNATURE' | ''>('');
-  const [unableToSignReason, setUnableToSignReason] = useState('');
-  const [unableConsentConfirmed, setUnableConsentConfirmed] = useState(false);
-  const [declineReason, setDeclineReason] = useState('');
-  const [declineNotes, setDeclineNotes] = useState('');
-  const [verbalConsentNurseNote, setVerbalConsentNurseNote] = useState('');
-  const [patientSignature, setPatientSignature] = useState('');
-  const [nurseSignature, setNurseSignature] = useState('');
-  const [attestationExplained, setAttestationExplained] = useState(false);
-  const [attestationQuestions, setAttestationQuestions] = useState(false);
-  const [attestationVoluntary, setAttestationVoluntary] = useState(false);
-  const [attestationCosts, setAttestationCosts] = useState(false);
-  const [attestationWitnessed, setAttestationWitnessed] = useState(false);
+  const [consentSignerType, setConsentSignerType] = useState<'PATIENT' | 'REPRESENTATIVE' | 'UNABLE'>(savedChoice('consentSignerType', 'PATIENT'));
+  const [signerName, setSignerName] = useState(savedString('signerName', `${patient.firstName} ${patient.lastName}`));
+  const [repRelationship, setRepRelationship] = useState(savedString('repRelationship'));
+  const [authorityType, setAuthorityType] = useState<'HEALTH_CARE_PROXY' | 'POWER_OF_ATTORNEY' | 'GUARDIAN' | 'OTHER' | ''>(savedChoice('authorityType', ''));
+  const [representativePhone, setRepresentativePhone] = useState(savedString('representativePhone'));
+  const [representativeEmail, setRepresentativeEmail] = useState(savedString('representativeEmail'));
+  const [representativeSignatureMethod, setRepresentativeSignatureMethod] = useState<'IN_PERSON' | 'REMOTE_LINK' | 'PHONE_VIDEO_VERBAL'>(savedChoice('representativeSignatureMethod', 'IN_PERSON'));
+  const [signatureMethod, setSignatureMethod] = useState<'DRAW' | 'TYPE' | 'UNABLE'>(savedChoice('signatureMethod', 'DRAW'));
+  const [typedSignatureName, setTypedSignatureName] = useState(savedString('typedSignatureName'));
+  const [typedSignatureAgreed, setTypedSignatureAgreed] = useState(savedBool('typedSignatureAgreed'));
+  const [typedSignatureConfirmed, setTypedSignatureConfirmed] = useState(savedBool('typedSignatureConfirmed'));
+  const [unableSignMethod, setUnableSignMethod] = useState<'VERBAL' | 'MARK_X' | 'REPRESENTATIVE_SIGNATURE' | ''>(savedChoice('unableSignMethod', ''));
+  const [unableToSignReason, setUnableToSignReason] = useState(savedString('unableToSignReason'));
+  const [unableConsentConfirmed, setUnableConsentConfirmed] = useState(savedBool('unableConsentConfirmed'));
+  const [declineReason, setDeclineReason] = useState(savedString('declineReason'));
+  const [declineNotes, setDeclineNotes] = useState(savedString('declineNotes'));
+  const [verbalConsentNurseNote, setVerbalConsentNurseNote] = useState(savedString('verbalConsentNurseNote'));
+  const [patientSignature, setPatientSignature] = useState(savedString('patientSignature'));
+  const [nurseSignature, setNurseSignature] = useState(savedString('nurseSignature'));
+  const [attestationExplained, setAttestationExplained] = useState(savedBool('attestationExplained'));
+  const [attestationQuestions, setAttestationQuestions] = useState(savedBool('attestationQuestions'));
+  const [attestationVoluntary, setAttestationVoluntary] = useState(savedBool('attestationVoluntary'));
+  const [attestationCosts, setAttestationCosts] = useState(savedBool('attestationCosts'));
+  const [attestationWitnessed, setAttestationWitnessed] = useState(savedBool('attestationWitnessed'));
   const [consentPdfUrl, setConsentPdfUrl] = useState('');
   const [consentPdfGenerated, setConsentPdfGenerated] = useState(false);
   const [isGeneratingConsentPdf, setIsGeneratingConsentPdf] = useState(false);
@@ -232,20 +236,20 @@ export default function VisitWizard({
     nurseAttestationComplete;
 
   // STEP 4: DEVICE DELIVERY
-  const [deviceType, setDeviceType] = useState<'BP Monitor' | 'Scale' | 'Pulse Oximeter' | 'Glucometer' | 'Other'>('BP Monitor');
-  const [brand, setBrand] = useState('ITERA Health Monitor');
-  const [model, setModel] = useState('IT-RPM-500');
-  const [serialNumber, setSerialNumber] = useState('');
-  const [kitId, setKitId] = useState('');
-  const [deviceId, setDeviceId] = useState('');
-  const [devDeliveredToPatient, setDevDeliveredToPatient] = useState(false);
-  const [devAssignedToPatient, setDevAssignedToPatient] = useState(true);
-  const [devInstructionsGiven, setDevInstructionsGiven] = useState(false);
-  const [devUnderstandingDemonstrated, setDevUnderstandingDemonstrated] = useState(false);
-  const [deviceActivatedCheck, setDeviceActivatedCheck] = useState(false);
-  const [deliveryNotes, setDeliveryNotes] = useState('');
-  const [recipientSignature, setRecipientSignature] = useState('');
-  const [deliveryNurseSignature, setDeliveryNurseSignature] = useState('');
+  const [deviceType, setDeviceType] = useState<'BP Monitor' | 'Scale' | 'Pulse Oximeter' | 'Glucometer' | 'Other'>(savedChoice('deviceType', 'BP Monitor'));
+  const [brand, setBrand] = useState(savedString('brand', 'ITERA Health Monitor'));
+  const [model, setModel] = useState(savedString('model', 'IT-RPM-500'));
+  const [serialNumber, setSerialNumber] = useState(savedString('serialNumber'));
+  const [kitId, setKitId] = useState(savedString('kitId'));
+  const [deviceId, setDeviceId] = useState(savedString('deviceId'));
+  const [devDeliveredToPatient, setDevDeliveredToPatient] = useState(savedBool('devDeliveredToPatient'));
+  const [devAssignedToPatient, setDevAssignedToPatient] = useState(savedBool('devAssignedToPatient', true));
+  const [devInstructionsGiven, setDevInstructionsGiven] = useState(savedBool('devInstructionsGiven'));
+  const [devUnderstandingDemonstrated, setDevUnderstandingDemonstrated] = useState(savedBool('devUnderstandingDemonstrated'));
+  const [deviceActivatedCheck, setDeviceActivatedCheck] = useState(savedBool('deviceActivatedCheck'));
+  const [deliveryNotes, setDeliveryNotes] = useState(savedString('deliveryNotes'));
+  const [recipientSignature, setRecipientSignature] = useState(savedString('recipientSignature'));
+  const [deliveryNurseSignature, setDeliveryNurseSignature] = useState(savedString('deliveryNurseSignature'));
   const [deliveryPdfUrl, setDeliveryPdfUrl] = useState('');
   const [deliveryPdfGenerated, setDeliveryPdfGenerated] = useState(false);
   const [isGeneratingDeliveryPdf, setIsGeneratingDeliveryPdf] = useState(false);
@@ -253,42 +257,42 @@ export default function VisitWizard({
   const [deliveryPdfProgressLabel, setDeliveryPdfProgressLabel] = useState('');
 
   // Additional Device States
-  const [hasAdditionalDevice, setHasAdditionalDevice] = useState(false);
-  const [additionalDeviceType, setAdditionalDeviceType] = useState<'BP Monitor' | 'Scale' | 'Pulse Oximeter' | 'Glucometer' | 'Other'>('Scale');
-  const [additionalSerialNumber, setAdditionalSerialNumber] = useState('');
-  const [additionalDeviceId, setAdditionalDeviceId] = useState('');
+  const [hasAdditionalDevice, setHasAdditionalDevice] = useState(savedBool('hasAdditionalDevice'));
+  const [additionalDeviceType, setAdditionalDeviceType] = useState<'BP Monitor' | 'Scale' | 'Pulse Oximeter' | 'Glucometer' | 'Other'>(savedChoice('additionalDeviceType', 'Scale'));
+  const [additionalSerialNumber, setAdditionalSerialNumber] = useState(savedString('additionalSerialNumber'));
+  const [additionalDeviceId, setAdditionalDeviceId] = useState(savedString('additionalDeviceId'));
 
   // STEP 5: DEVICE ACTIVATION STATUS
-  const [deviceAssignedPlatform, setDeviceAssignedPlatform] = useState(false);
-  const [serialLinkedToPatient, setSerialLinkedToPatient] = useState(false);
-  const [connectivityConfirmed, setConnectivityConfirmed] = useState(false);
-  const [firstReadingTransmitted, setFirstReadingTransmitted] = useState(false);
-  const [patientInstructed, setPatientInstructed] = useState(false);
-  const [nhStaffInstructed, setNhStaffInstructed] = useState(false);
-  const [activationStatus, setActivationStatus] = useState<TechnicalActivationStatus>('NOT_STARTED');
-  const [activationNotes, setActivationNotes] = useState('');
-  const [providerOrderStatus, setProviderOrderStatus] = useState<'YES' | 'NO' | 'PENDING'>('PENDING');
-  const [providerName, setProviderName] = useState(patient.provider || '');
-  const [providerOrderDate, setProviderOrderDate] = useState('');
-  const [providerOrderReference, setProviderOrderReference] = useState('');
-  const [providerOrderNotes, setProviderOrderNotes] = useState('');
-  const [transmissionFailureReason, setTransmissionFailureReason] = useState('');
-  const [activationAttested, setActivationAttested] = useState(false);
+  const [deviceAssignedPlatform, setDeviceAssignedPlatform] = useState(savedBool('deviceAssignedPlatform'));
+  const [serialLinkedToPatient, setSerialLinkedToPatient] = useState(savedBool('serialLinkedToPatient'));
+  const [connectivityConfirmed, setConnectivityConfirmed] = useState(savedBool('connectivityConfirmed'));
+  const [firstReadingTransmitted, setFirstReadingTransmitted] = useState(savedBool('firstReadingTransmitted'));
+  const [patientInstructed, setPatientInstructed] = useState(savedBool('patientInstructed'));
+  const [nhStaffInstructed, setNhStaffInstructed] = useState(savedBool('nhStaffInstructed'));
+  const [activationStatus, setActivationStatus] = useState<TechnicalActivationStatus>(savedChoice('activationStatus', 'NOT_STARTED'));
+  const [activationNotes, setActivationNotes] = useState(savedString('activationNotes'));
+  const [providerOrderStatus, setProviderOrderStatus] = useState<'YES' | 'NO' | 'PENDING'>(savedChoice('providerOrderStatus', 'PENDING'));
+  const [providerName, setProviderName] = useState(savedString('providerName', patient.provider || ''));
+  const [providerOrderDate, setProviderOrderDate] = useState(savedString('providerOrderDate'));
+  const [providerOrderReference, setProviderOrderReference] = useState(savedString('providerOrderReference'));
+  const [providerOrderNotes, setProviderOrderNotes] = useState(savedString('providerOrderNotes'));
+  const [transmissionFailureReason, setTransmissionFailureReason] = useState(savedString('transmissionFailureReason'));
+  const [activationAttested, setActivationAttested] = useState(savedBool('activationAttested'));
   const [showExitDialog, setShowExitDialog] = useState(false);
 
   // STEP 6: BLOOD PRESSURE READING
-  const [systolic, setSystolic] = useState('');
-  const [diastolic, setDiastolic] = useState('');
-  const [pulse, setPulse] = useState('');
-  const [scaleWeight, setScaleWeight] = useState('');
-  const [bpArm, setBpArm] = useState<'LEFT' | 'RIGHT'>('LEFT');
-  const [bpPosition, setBpPosition] = useState<'SITTING' | 'LYING' | 'STANDING'>('SITTING');
-  const [bpSource, setBpSource] = useState<'DEVICE' | 'MANUAL'>('DEVICE');
-  const [bpRested, setBpRested] = useState(false);
-  const [bpCuffCorrect, setBpCuffCorrect] = useState(false);
-  const [bpReviewedWithPatient, setBpReviewedWithPatient] = useState(false);
-  const [bpNotes, setBpNotes] = useState('');
-  const [bpSavedLocal, setBpSavedLocal] = useState(false);
+  const [systolic, setSystolic] = useState(savedString('systolic'));
+  const [diastolic, setDiastolic] = useState(savedString('diastolic'));
+  const [pulse, setPulse] = useState(savedString('pulse'));
+  const [scaleWeight, setScaleWeight] = useState(savedString('scaleWeight'));
+  const [bpArm, setBpArm] = useState<'LEFT' | 'RIGHT'>(savedChoice('bpArm', 'LEFT'));
+  const [bpPosition, setBpPosition] = useState<'SITTING' | 'LYING' | 'STANDING'>(savedChoice('bpPosition', 'SITTING'));
+  const [bpSource, setBpSource] = useState<'DEVICE' | 'MANUAL'>(savedChoice('bpSource', 'DEVICE'));
+  const [bpRested, setBpRested] = useState(savedBool('bpRested'));
+  const [bpCuffCorrect, setBpCuffCorrect] = useState(savedBool('bpCuffCorrect'));
+  const [bpReviewedWithPatient, setBpReviewedWithPatient] = useState(savedBool('bpReviewedWithPatient'));
+  const [bpNotes, setBpNotes] = useState(savedString('bpNotes'));
+  const [bpSavedLocal, setBpSavedLocal] = useState(savedBool('bpSavedLocal'));
 
   const isRpmApplicable = patient.assignedProgram.includes('RPM');
   const requiresMedicalOrder = patientRequiresDevice(patient);
@@ -860,6 +864,105 @@ This service is not for emergencies. If you agree, we can continue with your aut
   // ----------------------------------------------------
   const createStateBundles = (isFinalActivation = false) => {
     const visitId = existingVisit?.id || `vis_${Date.now()}`;
+    const formState = {
+      idConfirmed,
+      patientAvailable,
+      patientCanDecide,
+      repPresent,
+      representativeAvailability,
+      readinessRepName,
+      readinessRepRelationship,
+      readinessRepAuthority,
+      readinessRepPhone,
+      readinessRepEmail,
+      representativeContactMode,
+      preferredExplanationLanguage,
+      explainedService,
+      explainedVoluntary,
+      explainedStopAnytime,
+      explainedCostSharing,
+      explainedSingleProvider,
+      explainedContact,
+      explainedDeviceUsage,
+      explainedQuestionsTime,
+      patientUnderstood,
+      serviceExplanationConfirmed,
+      explanationLanguage,
+      interpreterUsed,
+      interpreterName,
+      consentDecision: consentDecision || '',
+      consentSignerType,
+      signerName,
+      repRelationship,
+      authorityType,
+      representativePhone,
+      representativeEmail,
+      representativeSignatureMethod,
+      signatureMethod,
+      typedSignatureName,
+      typedSignatureAgreed,
+      typedSignatureConfirmed,
+      unableSignMethod,
+      unableToSignReason,
+      unableConsentConfirmed,
+      declineReason,
+      declineNotes,
+      verbalConsentNurseNote,
+      patientSignature,
+      nurseSignature,
+      attestationExplained,
+      attestationQuestions,
+      attestationVoluntary,
+      attestationCosts,
+      attestationWitnessed,
+      consentPdfGenerated,
+      deviceType,
+      brand,
+      model,
+      serialNumber,
+      kitId,
+      deviceId,
+      devDeliveredToPatient,
+      devAssignedToPatient,
+      devInstructionsGiven,
+      devUnderstandingDemonstrated,
+      deviceActivatedCheck,
+      deliveryNotes,
+      recipientSignature,
+      deliveryNurseSignature,
+      deliveryPdfGenerated,
+      hasAdditionalDevice,
+      additionalDeviceType,
+      additionalSerialNumber,
+      additionalDeviceId,
+      deviceAssignedPlatform,
+      serialLinkedToPatient,
+      connectivityConfirmed,
+      firstReadingTransmitted,
+      patientInstructed,
+      nhStaffInstructed,
+      activationStatus,
+      activationNotes,
+      providerOrderStatus,
+      providerName,
+      providerOrderDate,
+      providerOrderReference,
+      providerOrderNotes,
+      transmissionFailureReason,
+      activationAttested,
+      systolic,
+      diastolic,
+      pulse,
+      scaleWeight,
+      bpArm,
+      bpPosition,
+      bpSource,
+      bpRested,
+      bpCuffCorrect,
+      bpReviewedWithPatient,
+      bpNotes,
+      bpSavedLocal
+    };
     
     // Visit Object
     const visitObj: Visit = {
@@ -892,7 +995,8 @@ This service is not for emergencies. If you agree, we can continue with your aut
       representativeName: representativeAvailability !== 'NONE' ? readinessRepName : undefined,
       representativeRelationship: representativeAvailability !== 'NONE' ? readinessRepRelationship : undefined,
       representativeAuthority: representativeAvailability !== 'NONE' ? readinessRepAuthority : undefined,
-      representativeContact: representativeAvailability !== 'NONE' ? `${representativeContactMode}: ${readinessRepPhone}` : undefined
+      representativeContact: representativeAvailability !== 'NONE' ? `${representativeContactMode}: ${readinessRepPhone}` : undefined,
+      formState
     };
 
     // Consent Object (if signed)

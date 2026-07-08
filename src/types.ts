@@ -188,6 +188,7 @@ export interface Visit {
   representativeRelationship?: string;
   representativeAuthority?: string;
   representativeContact?: string;
+  formState?: Record<string, unknown>;
 }
 
 export interface Consent {
