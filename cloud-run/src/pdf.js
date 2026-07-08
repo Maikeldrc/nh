@@ -10,6 +10,7 @@ const drive = google.drive({ version: 'v3', auth: new google.auth.GoogleAuth({
 
 function renderPdf(type, patient, source) {
   if (type === 'CONSENT') return renderConsentPdf(patient, source.consent || source);
+  if (type === 'DEVICE_DELIVERY') return renderDeviceDeliveryPdf(patient, source.device || source);
 
   return new Promise((resolve, reject) => {
     const chunks = [];
@@ -57,7 +58,7 @@ function renderConsentPdf(patient, consent) {
     doc.on('error', reject);
 
     const page = { x: 28, y: 24, w: 556, h: 744 };
-    const navy = '#0F1B2D';
+    const navy = '#1D4E89';
     const blue = '#2563EB';
     const cyan = '#0EA5E9';
     const green = '#059669';
@@ -78,23 +79,14 @@ function renderConsentPdf(patient, consent) {
       ? `Representative${consent.relationship ? ` - ${consent.relationship}` : ''}`
       : 'Patient (Self)';
 
-    // Header
-    doc.roundedRect(page.x, page.y, page.w, 54, 8).fill(navy);
-    doc.fillColor('#FFFFFF').font('Helvetica-Bold').fontSize(15).text('AMAVITA CareStart', page.x + 54, page.y + 12);
-    doc.fillColor('#BBD7FF').font('Helvetica-Bold').fontSize(7).text('POWERED BY ITERA.HEALTH', page.x + 54, page.y + 31);
-    doc.circle(page.x + 26, page.y + 27, 14).fill(blue);
-    doc.strokeColor('#FFFFFF').lineWidth(1.6)
-      .moveTo(page.x + 17, page.y + 27)
-      .lineTo(page.x + 22, page.y + 27)
-      .lineTo(page.x + 25, page.y + 18)
-      .lineTo(page.x + 30, page.y + 36)
-      .lineTo(page.x + 34, page.y + 27)
-      .lineTo(page.x + 39, page.y + 27)
-      .stroke();
-    doc.fillColor('#DDEBFF').font('Helvetica-Bold').fontSize(6.8);
-    headerMeta(doc, page.x + 392, page.y + 8, 'DOC ID', docId);
-    headerMeta(doc, page.x + 392, page.y + 24, 'DATE', formatDate(generatedAt));
-    headerMeta(doc, page.x + 392, page.y + 40, 'BY', nurseName);
+    premiumHeader(doc, page, {
+      color: navy,
+      title: 'AMAVITA CareStart',
+      subtitle: 'POWERED BY ITERA.HEALTH',
+      docId,
+      date: generatedAt,
+      by: nurseName
+    });
 
     doc.fillColor(text).font('Helvetica-Bold').fontSize(12.5)
       .text('Patient Care & Consent Agreement', page.x, page.y + 66);
@@ -123,12 +115,15 @@ function renderConsentPdf(patient, consent) {
     sectionHeader(doc, page.x, y, page.w, 'Consent Authorization', cyan);
     y += 18;
     card(doc, page.x, y, page.w, 58, '#FFFFFF', line);
-    labelValue(doc, page.x + 13, y + 10, 255, 'Authorized Care Program', program);
-    labelValue(doc, page.x + 13, y + 29, 255, 'Consent Template Version', consent.consentVersion || 'v2.0 AMAVITA_ITERA');
-    labelValue(doc, page.x + 13, y + 47, 255, 'Authorized Person', authorizedPerson);
-    labelValue(doc, page.x + 292, y + 10, 248, 'Signer Name', signerName);
-    labelValue(doc, page.x + 292, y + 29, 248, 'Consent Method', humanize(consentMethod));
-    labelValue(doc, page.x + 292, y + 47, 248, 'Decision', consent.status || 'GRANTED');
+    const authC1 = page.x + 13;
+    const authC2 = page.x + 202;
+    const authC3 = page.x + 390;
+    labelValue(doc, authC1, y + 10, 168, 'Authorized Care Program', program);
+    labelValue(doc, authC1, y + 33, 168, 'Consent Template Version', consent.consentVersion || 'v2.0 AMAVITA_ITERA');
+    labelValue(doc, authC2, y + 10, 168, 'Signer Name', signerName);
+    labelValue(doc, authC2, y + 33, 168, 'Authorized Person', authorizedPerson);
+    labelValue(doc, authC3, y + 10, 150, 'Consent Method', humanize(consentMethod));
+    labelValue(doc, authC3, y + 33, 150, 'Decision', consent.status || 'GRANTED');
     y += 69;
 
     // Terms
@@ -174,14 +169,131 @@ function renderConsentPdf(patient, consent) {
     labelValue(doc, c3, y + 10, 210, 'Facility', facility, { valueSize: facility.length > 48 ? 6.7 : 7.2 });
     labelValue(doc, c3, y + 43, 210, 'Capture Device', consent.captureDevice || 'AMAVITA CareStart');
 
-    // Footer
-    const footerY = 752;
-    doc.moveTo(page.x, footerY - 7).lineTo(page.x + page.w, footerY - 7).strokeColor('#E2E8F0').lineWidth(0.7).stroke();
-    doc.fillColor('#475569').font('Helvetica-Bold').fontSize(6.5)
-      .text('AMAVITA CARESTART - POWERED BY ITERA.HEALTH - CONFIDENTIAL MEDICAL RECORD - HIPAA COMPLIANT', page.x, footerY, { width: page.w, align: 'center' });
-    doc.fillColor('#94A3B8').font('Helvetica').fontSize(5.8)
-      .text(`Document Unique ID: ${docId}`, page.x, footerY + 10, { width: page.w, align: 'center' });
+    pdfFooter(doc, page, docId);
 
+    doc.end();
+  });
+}
+
+function renderDeviceDeliveryPdf(patient, device) {
+  return new Promise((resolve, reject) => {
+    const chunks = [];
+    const doc = new PDFDocument({
+      size: 'LETTER',
+      margin: 0,
+      autoFirstPage: true,
+      bufferPages: false
+    });
+    doc.on('data', chunk => chunks.push(chunk));
+    doc.on('end', () => resolve(Buffer.concat(chunks)));
+    doc.on('error', reject);
+
+    const page = { x: 28, y: 24, w: 556, h: 744 };
+    const blue = '#1D4E89';
+    const cyan = '#0EA5E9';
+    const green = '#059669';
+    const purple = '#7C3AED';
+    const line = '#CBD5E1';
+    const muted = '#64748B';
+    const text = '#111827';
+    const soft = '#F8FAFC';
+
+    const generatedAt = device.deliveryDate || device.activationDate || new Date().toISOString();
+    const docId = device.id || `dev_${Date.now()}`;
+    const patientName = `${patient.firstName || ''} ${patient.lastName || ''}`.trim() || 'Patient';
+    const nurseName = device.deliveredBy || 'AMAVITA Nurse';
+    const facility = patient.nursingHome || '';
+    const program = patient.assignedProgram || '';
+    const deviceLabel = device.deviceType || patient.requiredDevice || 'RPM Device';
+    const serial = device.serialNumber || device.deviceId || 'N/A';
+
+    premiumHeader(doc, page, {
+      color: blue,
+      title: 'AMAVITA CareStart',
+      subtitle: 'POWERED BY ITERA.HEALTH',
+      docId,
+      date: generatedAt,
+      by: nurseName
+    });
+
+    doc.fillColor(text).font('Helvetica-Bold').fontSize(12.5)
+      .text('Device Delivery & Activation Confirmation', page.x, page.y + 66);
+    doc.fillColor(muted).font('Helvetica').fontSize(7.6)
+      .text('Confidential record documenting RPM device assignment, education, first reading, signatures, and activation audit details.', page.x, page.y + 82);
+
+    let y = page.y + 101;
+
+    sectionHeader(doc, page.x, y, page.w, 'Patient & Program', blue);
+    y += 18;
+    card(doc, page.x, y, page.w, 61, soft, line);
+    const leftX = page.x + 13;
+    const rightX = page.x + 206;
+    const rowYs = [y + 10, y + 28, y + 46];
+    labelValue(doc, leftX, rowYs[0], 170, 'Name', patientName);
+    labelValue(doc, leftX, rowYs[1], 170, 'DOB', patient.birthDate || patient.dob || '');
+    labelValue(doc, leftX, rowYs[2], 170, 'Medicare ID', patient.medicareId || '');
+    labelValue(doc, rightX, rowYs[0], 340, 'Nursing Home', facility, { valueSize: facility.length > 58 ? 7.1 : 7.8 });
+    labelValue(doc, rightX, rowYs[1], 160, 'Room', patient.room || '');
+    labelValue(doc, rightX + 170, rowYs[1], 160, 'Program', program);
+    labelValue(doc, rightX, rowYs[2], 340, 'Provider', device.providerName || patient.provider || '');
+    y += 72;
+
+    sectionHeader(doc, page.x, y, page.w, 'Device Assignment', cyan);
+    y += 18;
+    card(doc, page.x, y, page.w, 76, '#FFFFFF', line);
+    const c1 = page.x + 13;
+    const c2 = page.x + 202;
+    const c3 = page.x + 390;
+    labelValue(doc, c1, y + 10, 168, 'Device Type', deviceLabel);
+    labelValue(doc, c1, y + 33, 168, 'Serial Number / ID', serial, { valueSize: serial.length > 24 ? 6.6 : 7.4 });
+    labelValue(doc, c1, y + 56, 168, 'Kit ID', device.kitId || 'N/A');
+    labelValue(doc, c2, y + 10, 168, 'Brand / Model', [device.brand, device.model].filter(Boolean).join(' - ') || 'N/A', { valueSize: 6.8 });
+    labelValue(doc, c2, y + 33, 168, 'Medical Order', device.providerOrderStatus || 'PENDING');
+    labelValue(doc, c2, y + 56, 168, 'Order Reference', device.providerOrderReference || 'N/A', { valueSize: 6.7 });
+    labelValue(doc, c3, y + 10, 150, 'Delivered By', nurseName);
+    labelValue(doc, c3, y + 33, 150, 'Delivery Date', formatDateTime(generatedAt), { valueSize: 6.6 });
+    labelValue(doc, c3, y + 56, 150, 'Status', humanize(device.status || 'DELIVERED_ASSIGNED'), { valueSize: 6.6 });
+    y += 87;
+
+    sectionHeader(doc, page.x, y, page.w, 'Delivery, Education & First Reading', green);
+    y += 18;
+    card(doc, page.x, y, page.w, 124, '#FFFFFF', line);
+    checklistItem(doc, page.x + 13, y + 12, 'Device delivered to patient or responsible staff', device.deliveredToPatient);
+    checklistItem(doc, page.x + 13, y + 33, 'Device assigned and linked to the patient', device.assignedToPatient);
+    checklistItem(doc, page.x + 13, y + 54, 'Measurement technique and device use explained', device.instructionsGiven);
+    checklistItem(doc, page.x + 13, y + 75, 'Patient or staff demonstrated understanding', device.understandingDemonstrated);
+    checklistItem(doc, page.x + 13, y + 96, 'Device activation confirmed or pending workflow documented', device.deviceActivated);
+
+    const readingX = page.x + 310;
+    doc.fillColor('#0F172A').font('Helvetica-Bold').fontSize(7.4).text('First Reading Snapshot', readingX, y + 12, { width: 230 });
+    labelValue(doc, readingX, y + 29, 70, 'Systolic', device.systolic || device.firstReading?.systolic || 'N/A');
+    labelValue(doc, readingX + 78, y + 29, 70, 'Diastolic', device.diastolic || device.firstReading?.diastolic || 'N/A');
+    labelValue(doc, readingX + 156, y + 29, 70, 'Pulse', device.pulse || device.firstReading?.pulse || 'N/A');
+    labelValue(doc, readingX, y + 58, 92, 'Weight', device.weightLbs || device.firstReading?.weightLbs || 'N/A');
+    labelValue(doc, readingX + 104, y + 58, 120, 'Reading Source', device.readingSource || 'DEVICE');
+    labelValue(doc, readingX, y + 87, 224, 'Notes', device.notes || 'No delivery exceptions documented.', { valueSize: 6.6, height: 18 });
+    y += 135;
+
+    sectionHeader(doc, page.x, y, page.w, 'Signatures & Confirmation', blue);
+    y += 18;
+    const sigW = (page.w - 10) / 2;
+    signatureCard(doc, page.x, y, sigW, 94, 'Recipient / Staff Signature', patientName, generatedAt, device.recipientSignature);
+    signatureCard(doc, page.x + sigW + 10, y, sigW, 94, 'Nurse / Delivery Signature', nurseName, generatedAt, device.nurseSignature);
+    y += 105;
+
+    sectionHeader(doc, page.x, y, page.w, 'Audit Log Details', purple);
+    y += 18;
+    card(doc, page.x, y, page.w, 74, '#FFFFFF', line);
+    labelValue(doc, c1, y + 10, 168, 'Device Document ID', docId, { valueSize: 6.8 });
+    labelValue(doc, c1, y + 33, 168, 'Device Record ID', device.id || 'N/A', { valueSize: 6.8 });
+    labelValue(doc, c1, y + 56, 168, 'Decision', 'DELIVERY DOCUMENTED');
+    labelValue(doc, c2, y + 10, 168, 'Captured By', nurseName);
+    labelValue(doc, c2, y + 33, 168, 'Date & Time', formatDateTime(generatedAt), { valueSize: 6.8 });
+    labelValue(doc, c2, y + 56, 168, 'Capture Device', 'AMAVITA CareStart');
+    labelValue(doc, c3, y + 10, 150, 'Facility', facility, { valueSize: facility.length > 34 ? 6.4 : 7.1, height: 18 });
+    labelValue(doc, c3, y + 43, 150, 'Program', program);
+
+    pdfFooter(doc, page, docId);
     doc.end();
   });
 }
@@ -234,6 +346,39 @@ export async function createPdf(type, patient, source, user) {
     },
     buffer
   };
+}
+
+function premiumHeader(doc, page, meta) {
+  doc.roundedRect(page.x, page.y, page.w, 54, 8).fill(meta.color);
+  doc.fillColor('#FFFFFF').font('Helvetica-Bold').fontSize(15)
+    .text(meta.title, page.x + 18, page.y + 12, { width: 250 });
+  doc.fillColor('#DDEBFF').font('Helvetica-Bold').fontSize(7)
+    .text(meta.subtitle, page.x + 18, page.y + 31, { width: 250 });
+  doc.fillColor('#EAF3FF').font('Helvetica-Bold').fontSize(6.8);
+  headerMeta(doc, page.x + 392, page.y + 8, 'DOC ID', meta.docId);
+  headerMeta(doc, page.x + 392, page.y + 24, 'DATE', formatDate(meta.date));
+  headerMeta(doc, page.x + 392, page.y + 40, 'BY', meta.by);
+}
+
+function pdfFooter(doc, page, docId) {
+  const footerY = 752;
+  doc.moveTo(page.x, footerY - 7).lineTo(page.x + page.w, footerY - 7).strokeColor('#E2E8F0').lineWidth(0.7).stroke();
+  doc.fillColor('#475569').font('Helvetica-Bold').fontSize(6.5)
+    .text('AMAVITA CARESTART - POWERED BY ITERA.HEALTH - CONFIDENTIAL MEDICAL RECORD - HIPAA COMPLIANT', page.x, footerY, { width: page.w, align: 'center' });
+  doc.fillColor('#94A3B8').font('Helvetica').fontSize(5.8)
+    .text(`Document Unique ID: ${docId}`, page.x, footerY + 10, { width: page.w, align: 'center' });
+}
+
+function checklistItem(doc, x, y, label, checked) {
+  doc.circle(x + 5, y + 5, 4.3).fillAndStroke(checked ? '#DCFCE7' : '#F8FAFC', checked ? '#16A34A' : '#CBD5E1');
+  if (checked) {
+    doc.strokeColor('#16A34A').lineWidth(1.1)
+      .moveTo(x + 2.5, y + 5)
+      .lineTo(x + 4.7, y + 7.2)
+      .lineTo(x + 8.2, y + 2.7)
+      .stroke();
+  }
+  doc.fillColor('#334155').font('Helvetica-Bold').fontSize(6.9).text(label, x + 15, y + 1, { width: 260 });
 }
 
 function headerMeta(doc, x, y, label, value) {

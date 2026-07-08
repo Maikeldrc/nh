@@ -248,6 +248,9 @@ export default function VisitWizard({
   const [deliveryNurseSignature, setDeliveryNurseSignature] = useState('');
   const [deliveryPdfUrl, setDeliveryPdfUrl] = useState('');
   const [deliveryPdfGenerated, setDeliveryPdfGenerated] = useState(false);
+  const [isGeneratingDeliveryPdf, setIsGeneratingDeliveryPdf] = useState(false);
+  const [deliveryPdfProgress, setDeliveryPdfProgress] = useState(0);
+  const [deliveryPdfProgressLabel, setDeliveryPdfProgressLabel] = useState('');
 
   // Additional Device States
   const [hasAdditionalDevice, setHasAdditionalDevice] = useState(false);
@@ -718,6 +721,7 @@ This service is not for emergencies. If you agree, we can continue with your aut
   };
 
   const triggerDeliveryPDFGeneration = async () => {
+    if (isGeneratingDeliveryPdf) return;
     if (deviceActionsBlocked) {
       setAlertMessage(l(
         'No se puede entregar, activar ni generar el PDF del dispositivo hasta que la orden médica esté aprobada.',
@@ -739,7 +743,10 @@ This service is not for emergencies. If you agree, we can continue with your aut
       return;
     }
 
-    const mockDeviceObj: Device = {
+    const mockDeviceObj: Device & {
+      firstReading?: { systolic?: string; diastolic?: string; pulse?: string; weightLbs?: string };
+      readingSource?: string;
+    } = {
       id: `dev_${Date.now()}`,
       patientId: patient.id,
       deviceType,
@@ -765,18 +772,55 @@ This service is not for emergencies. If you agree, we can continue with your aut
       providerOrderReference: patient.medicalOrder?.id,
       providerOrderNotes: patient.medicalOrder
         ? `Medical order status: ${patient.medicalOrder.status}; version: ${patient.medicalOrder.orderVersion}`
-        : undefined
+        : undefined,
+      firstReading: {
+        systolic: systolic || undefined,
+        diastolic: diastolic || undefined,
+        pulse: pulse || undefined,
+        weightLbs: scaleWeight || undefined
+      },
+      readingSource: bpSource
     };
+
+    setIsGeneratingDeliveryPdf(true);
+    setDeliveryPdfProgress(8);
+    setDeliveryPdfProgressLabel(l('Preparando datos de entrega...', 'Preparing delivery data...'));
+    const progressTimer = window.setInterval(() => {
+      setDeliveryPdfProgress(previous => {
+        if (previous < 32) {
+          setDeliveryPdfProgressLabel(l('Generando documento PDF...', 'Rendering PDF document...'));
+          return previous + 8;
+        }
+        if (previous < 68) {
+          setDeliveryPdfProgressLabel(l('Guardando PDF en Google Drive...', 'Saving PDF to Google Drive...'));
+          return previous + 6;
+        }
+        if (previous < 90) {
+          setDeliveryPdfProgressLabel(l('Verificando archivo generado...', 'Verifying generated file...'));
+          return previous + 3;
+        }
+        return previous;
+      });
+    }, 550);
 
     try {
       await onGenerateDeliveryPDF(mockDeviceObj, (dataUrl) => {
+        window.clearInterval(progressTimer);
+        setDeliveryPdfProgress(100);
+        setDeliveryPdfProgressLabel(l('PDF generado correctamente.', 'PDF generated successfully.'));
         setDeliveryPdfUrl(dataUrl);
         setDeliveryPdfGenerated(true);
       });
     } catch (error) {
+      window.clearInterval(progressTimer);
       setDeliveryPdfGenerated(false);
       setDeliveryPdfUrl('');
+      setDeliveryPdfProgress(0);
+      setDeliveryPdfProgressLabel('');
       setAlertMessage(formatPdfGenerationError(error, 'delivery'));
+    } finally {
+      window.clearInterval(progressTimer);
+      setIsGeneratingDeliveryPdf(false);
     }
   };
 
@@ -2366,14 +2410,34 @@ This service is not for emergencies. If you agree, we can continue with your aut
                 <button
                   type="button"
                   onClick={triggerDeliveryPDFGeneration}
-                  disabled={deviceActionsBlocked || !deviceRequirementsReadyForPdf || !nurseSignature}
+                  disabled={deviceActionsBlocked || !deviceRequirementsReadyForPdf || !nurseSignature || isGeneratingDeliveryPdf}
                   className="px-4 py-2 text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg shadow-sm disabled:opacity-50 transition cursor-pointer"
                   id="btn-gen-delivery-pdf"
                 >
-                  <Smartphone size={14} className="inline-block mr-1.5" /> {l('Generar PDF de Confirmación de Entrega', 'Generate Delivery Confirmation PDF')}
+                  <Smartphone size={14} className="inline-block mr-1.5" /> {isGeneratingDeliveryPdf ? l('Generando PDF...', 'Generating PDF...') : l('Generar PDF de Confirmación de Entrega', 'Generate Delivery Confirmation PDF')}
                 </button>
               )}
             </div>
+            {isGeneratingDeliveryPdf && (
+              <div className="rounded-xl border border-blue-100 bg-blue-50 p-3">
+                <div className="mb-2 flex items-center justify-between text-[11px] font-bold text-blue-900">
+                  <span>{deliveryPdfProgressLabel || l('Generando PDF...', 'Generating PDF...')}</span>
+                  <span>{Math.max(8, Math.min(99, deliveryPdfProgress))}%</span>
+                </div>
+                <div className="h-2 overflow-hidden rounded-full bg-blue-100">
+                  <div
+                    className="h-full rounded-full bg-gradient-to-r from-blue-500 via-cyan-400 to-emerald-400 transition-all duration-500"
+                    style={{ width: `${Math.max(8, Math.min(99, deliveryPdfProgress))}%` }}
+                  />
+                </div>
+                <p className="mt-2 text-[10px] leading-relaxed text-blue-800">
+                  {l(
+                    'No cierre esta pantalla. El PDF de entrega se está generando y guardando de forma segura.',
+                    'Do not close this screen. The delivery PDF is being generated and saved securely.'
+                  )}
+                </p>
+              </div>
+            )}
           </div>
         )}
 
