@@ -3,7 +3,7 @@ import { Patient, Visit, Consent, Device, BPReading, User, DocumentRecord, Techn
 import SignaturePad from './SignaturePad';
 import { 
   Check, ArrowRight, ArrowLeft, Save, AlertTriangle, ShieldAlert,
-  Smartphone, UserCheck, FileText, CheckCircle, Activity, Play, Info, Edit3, AlertCircle
+  Smartphone, UserCheck, FileText, CheckCircle, Activity, Play, Info, Edit3, AlertCircle, RefreshCw
 } from 'lucide-react';
 import { DEFAULT_EXPLANATION_SCRIPT, DEFAULT_EXPLANATION_SCRIPT_ES, DEFAULT_CONSENT_TEXT, DEFAULT_CONSENT_TEXT_ES } from '../data';
 import { useLanguage } from '../utils/LanguageContext';
@@ -726,6 +726,8 @@ This service is not for emergencies. If you agree, we can continue with your aut
 
   const triggerDeliveryPDFGeneration = async () => {
     if (isGeneratingDeliveryPdf) return;
+    const previousDeliveryPdfGenerated = deliveryPdfGenerated;
+    const previousDeliveryPdfUrl = deliveryPdfUrl;
     if (deviceActionsBlocked) {
       setAlertMessage(l(
         'No se puede entregar, activar ni generar el PDF del dispositivo hasta que la orden médica esté aprobada.',
@@ -817,8 +819,8 @@ This service is not for emergencies. If you agree, we can continue with your aut
       });
     } catch (error) {
       window.clearInterval(progressTimer);
-      setDeliveryPdfGenerated(false);
-      setDeliveryPdfUrl('');
+      setDeliveryPdfGenerated(previousDeliveryPdfGenerated);
+      setDeliveryPdfUrl(previousDeliveryPdfUrl);
       setDeliveryPdfProgress(0);
       setDeliveryPdfProgressLabel('');
       setAlertMessage(formatPdfGenerationError(error, 'delivery'));
@@ -2488,10 +2490,18 @@ This service is not for emergencies. If you agree, we can continue with your aut
               <div className="space-y-1">
                 <p className="text-xs font-bold text-slate-800">{l('Generar PDF de Entrega y Activación RPM', 'Generate RPM Device Delivery & Activation PDF')}</p>
                 <p className="text-[10px] text-slate-400">{l('Título legal', 'Legal title')}: "RPM Device Delivery & Activation Confirmation".</p>
+                {deliveryPdfGenerated && (
+                  <p className="max-w-xl text-[10px] font-semibold text-slate-500">
+                    {l(
+                      'Puede cambiar las opciones del dispositivo y regenerar el PDF. El nuevo PDF sustituirá al anterior en esta pantalla.',
+                      'You can change the device options and regenerate the PDF. The new PDF will replace the previous one on this screen.'
+                    )}
+                  </p>
+                )}
               </div>
               
               {deliveryPdfGenerated ? (
-                <div className="flex flex-col items-end space-y-1">
+                <div className="flex flex-col items-end gap-2">
                   <span className="inline-flex items-center text-xs font-bold text-emerald-600 bg-emerald-50 px-2.5 py-1 border border-emerald-200 rounded">
                     <CheckCircle size={14} className="mr-1.5" /> {l('PDF de Entrega Generado', 'Delivery PDF Generated')}
                   </span>
@@ -2509,6 +2519,16 @@ This service is not for emergencies. If you agree, we can continue with your aut
                       {l('Guardado en Drive', 'Saved to Drive')}
                     </span>
                   )}
+                  <button
+                    type="button"
+                    onClick={triggerDeliveryPDFGeneration}
+                    disabled={deviceActionsBlocked || !deviceRequirementsReadyForPdf || !nurseSignature || isGeneratingDeliveryPdf}
+                    className="inline-flex items-center rounded-lg border border-indigo-200 bg-white px-3 py-1.5 text-[11px] font-bold text-indigo-700 shadow-sm transition hover:border-indigo-300 hover:bg-indigo-50 disabled:opacity-50"
+                    id="btn-regenerate-delivery-pdf"
+                  >
+                    <RefreshCw size={13} className={`mr-1.5 ${isGeneratingDeliveryPdf ? 'animate-spin' : ''}`} />
+                    {isGeneratingDeliveryPdf ? l('Regenerando PDF...', 'Regenerating PDF...') : l('Regenerar PDF', 'Regenerate PDF')}
+                  </button>
                 </div>
               ) : (
                 <button
