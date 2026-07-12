@@ -10,8 +10,9 @@ Date: 2026-07-12
 | QA-DEF-004 | CSP blocks Firebase Google API script/connect on mobile | Auth/Security Headers | High | High | Production | Closed | Mobile Playwright console errors for `https://apis.google.com/js/api.js` and `https://apis.google.com/js/gen_204` | CSP `script-src` and `connect-src` did not allow the exact Firebase Google API bridge origin | Added exact `https://apis.google.com` to script and connect sources in `vercel.json` | Passed in three serial production smoke runs |
 | QA-DEF-005 | Direct Cloud Run `/healthz` returns Google 404 from QA machine | API/Deployment | Medium | High | Production | Open | `Invoke-WebRequest` to both Cloud Run URLs returned 404 HTML | Unknown; Cloud Run reports service Ready and frontend authenticated API flow works | Not fixed in this cycle | Needs Cloud Run/domain routing investigation |
 | QA-DEF-006 | Rapid repeated production logins can produce transient bootstrap 429 | API/Rate Limit | Low | Medium | Production | Open | Full Playwright rerun observed one recovered `429 /v1/bootstrap` for physician after multiple serial logins | Production rate limit or upstream quota under concentrated QA login load | No product fix applied; test treats recovered bootstrap 429 as non-blocking | Final full suite passed |
+| QA-DEF-007 | Consent PDF generation fails and blocks nurse visit wizard progression | Documents/PDF | High | High | Production | Open | `tests/qa/full-ui-journey.spec.ts` reaches Step 3, saves typed patient signature and nurse attestation, then shows `Unable to generate the consent PDF. Please try again.`; `Next` remains disabled | Unknown; frontend receives generic `secure_service_error` from `/v1/pdfs`. Cloud Run log access is blocked until `gcloud auth login` is completed interactively. | Not fixed yet | Reproduce with `QA_FULL_UI=1 npx playwright test tests/qa/full-ui-journey.spec.ts --config=playwright.production.config.ts --project=chromium-desktop` |
 
 Open Critical: 0
-Open High: 0
+Open High: 1 (`QA-DEF-007`)
 Open Medium: 1 (`QA-DEF-005`)
 Open Low: 1 (`QA-DEF-006`)
