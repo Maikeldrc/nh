@@ -9,7 +9,9 @@ Date: 2026-07-12
 | QA-DEF-003 | Dashboard select controls lack accessible names | Accessibility | High | High | Production | Closed | Axe `select-name` critical and `label-title-only` serious findings | Filter and reassignment `<select>` elements had no explicit accessible name | Added `aria-label` to dashboard filters and nurse reassignment selects | Passed in production axe smoke |
 | QA-DEF-004 | CSP blocks Firebase Google API script/connect on mobile | Auth/Security Headers | High | High | Production | Closed | Mobile Playwright console errors for `https://apis.google.com/js/api.js` and `https://apis.google.com/js/gen_204` | CSP `script-src` and `connect-src` did not allow the exact Firebase Google API bridge origin | Added exact `https://apis.google.com` to script and connect sources in `vercel.json` | Passed in three serial production smoke runs |
 | QA-DEF-005 | Direct Cloud Run `/healthz` returns Google 404 from QA machine | API/Deployment | Medium | High | Production | Open | `Invoke-WebRequest` to both Cloud Run URLs returned 404 HTML | Unknown; Cloud Run reports service Ready and frontend authenticated API flow works | Not fixed in this cycle | Needs Cloud Run/domain routing investigation |
+| QA-DEF-006 | Rapid repeated production logins can produce transient bootstrap 429 | API/Rate Limit | Low | Medium | Production | Open | Full Playwright rerun observed one recovered `429 /v1/bootstrap` for physician after multiple serial logins | Production rate limit or upstream quota under concentrated QA login load | No product fix applied; test treats recovered bootstrap 429 as non-blocking | Final full suite passed |
 
 Open Critical: 0
 Open High: 0
 Open Medium: 1 (`QA-DEF-005`)
+Open Low: 1 (`QA-DEF-006`)

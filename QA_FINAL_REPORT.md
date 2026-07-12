@@ -2,11 +2,11 @@
 
 Date: 2026-07-12
 URL Validated: https://nhcarestart.vercel.app/
-Commit: 4994577 plus local QA harness update pending commit
+Commit: local QA role/API harness update pending commit
 
 ## Executive Summary
 
-QA execution completed one controlled cycle. The repository was inspected, initial architecture and functional inventory were created, production smoke automation was added, three production defects were corrected and deployed, and the smoke suite passed three consecutive serial production runs. The application is not fully approved because the prompt's full functional, role, API, document, visual, accessibility, privacy, and business-rule matrix has not been exhaustively completed.
+QA execution completed an expanded production cycle. The repository was inspected, production smoke automation was added, production defects were corrected and deployed earlier in the cycle, and role/API coverage was added for admin, nurse, and physician users. The final production Playwright suite passed with controlled skips for duplicate mobile write tests.
 
 ## Scope
 
@@ -14,15 +14,16 @@ Modules in scope: authentication, admin dashboard, nurse dashboard, patient regi
 
 ## Test Results
 
-- Total tests in matrix: 10 initial
-- Passed: 7
-- Failed: 1
-- Blocked: 0
-- Not run: 2
+- Production Playwright: 12 passed, 2 skipped intentionally
+- Frontend TypeScript: passed
+- Frontend production build: passed
+- Backend syntax check: passed
+- Backend unit tests: 7 passed
+- Security audit: no high/critical findings
 
 ## Defects
 
-- Defects found: 5
+- Defects found: 6
 - Defects fixed and production validated: 4
 - Critical open: 0 known
 - High open: 0 known
@@ -35,21 +36,24 @@ Modules in scope: authentication, admin dashboard, nurse dashboard, patient regi
 - Backend: Cloud Run reports revision `amavita-carestart-api-00017-x7b`, 100% traffic, Ready=True.
 - Health endpoint: direct `/healthz` checks to both Cloud Run URLs returned Google 404 HTML from this QA machine; recorded as QA-DEF-005.
 - Authentication: invalid login and valid login smoke passed on desktop/mobile.
+- Roles: admin, nurse, and physician authenticated and showed role-appropriate dashboards on desktop/mobile.
+- Authorization/API: unauthenticated API access rejected; nurse/physician user-creation attempts rejected; invalid patient payload rejected; synthetic admin patient creation succeeded.
 - Accessibility: authenticated dashboard axe smoke passed after select labeling fix.
 - Console/network: no critical console/network errors in final three serial smoke runs.
 
 ## Security
 
-Security review is partial. CSP defects on tested auth flows were corrected, and dependency audit has no high/critical findings. Full authorization and IDOR matrix remains pending.
+Security review covered CSP/auth smoke, dependency audit, unauthenticated API rejection, role boundary checks for user creation, and backend validation rejection. Full IDOR and destructive-action matrix remains pending.
 
 ## Residual Risks
 
-- Direct Cloud Run `/healthz` returns 404 from QA machine despite service Ready and frontend authenticated flow working.
-- Synthetic patient create/edit/delete and PDF generation flows were not completed in this cycle.
-- Full role matrix for NURSE, PHYSICIAN, AUDITOR, VIEWER was not completed.
-- Full API negative matrix was not completed.
+- Direct Cloud Run `/healthz` returns 404 from QA machine despite service Ready and frontend authenticated `/v1/*` flow working.
+- Synthetic production records were retained as evidence and should be cleaned up after audit sign-off.
+- Full AUDITOR/VIEWER matrix remains pending because credentials were not supplied.
+- Full PDF visual/content verification remains pending.
 - Moderate `exceljs -> uuid` dependency advisory remains.
+- Rapid repeated production logins produced one transient 429 that recovered; consider quota/backoff review for sustained QA load.
 
 ## Final Decision
 
-NOT APPROVED
+CONDITIONALLY APPROVED FOR TESTED FLOWS. Do not call the whole application 100% operational until `/healthz`, AUDITOR/VIEWER, PDF content verification, and cleanup policy are closed.
