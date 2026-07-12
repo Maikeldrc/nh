@@ -4,6 +4,14 @@ build/
 dist/
 tmp/
 coverage/
+qa-evidence/**/*
+!qa-evidence/
+!qa-evidence/screenshots/
+!qa-evidence/videos/
+!qa-evidence/logs/
+!qa-evidence/screenshots/.gitkeep
+!qa-evidence/videos/.gitkeep
+!qa-evidence/logs/.gitkeep
 .DS_Store
 *.log
 .env*

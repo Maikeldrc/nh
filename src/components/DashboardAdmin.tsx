@@ -352,6 +352,7 @@ export default function DashboardAdmin({
           <select
             value={selectedNH}
             onChange={(e) => setSelectedNH(e.target.value)}
+            aria-label={l('Filtrar por residencia', 'Filter by nursing home')}
             className="px-2.5 py-1.5 border border-slate-300 rounded-xl text-xs bg-white font-semibold text-slate-700 focus:ring-2 focus:ring-blue-500 focus:outline-none"
           >
             <option value="">{l('Residencia: Todas', 'Nursing Home: All')}</option>
@@ -363,6 +364,7 @@ export default function DashboardAdmin({
           <select
             value={selectedNurse}
             onChange={(e) => setSelectedNurse(e.target.value)}
+            aria-label={l('Filtrar por enfermera', 'Filter by nurse')}
             className="px-2.5 py-1.5 border border-slate-300 rounded-xl text-xs bg-white font-semibold text-slate-700 focus:ring-2 focus:ring-blue-500 focus:outline-none"
           >
             <option value="">{l('Enfermera: Todas', 'Nurse: All')}</option>
@@ -374,6 +376,7 @@ export default function DashboardAdmin({
           <select
             value={selectedProgram}
             onChange={(e) => setSelectedProgram(e.target.value)}
+            aria-label={l('Filtrar por programa', 'Filter by program')}
             className="px-2.5 py-1.5 border border-slate-300 rounded-xl text-xs bg-white font-semibold text-slate-700 focus:ring-2 focus:ring-blue-500 focus:outline-none"
           >
             <option value="">{l('Programa: Todos', 'Program: All')}</option>
@@ -386,6 +389,7 @@ export default function DashboardAdmin({
             <select
               value={selectedStatus}
               onChange={(e) => setSelectedStatus(e.target.value)}
+              aria-label={l('Filtrar por estado', 'Filter by status')}
               className="px-2.5 py-1.5 border border-slate-300 rounded-xl text-xs bg-white font-semibold text-slate-700 focus:ring-2 focus:ring-blue-500 focus:outline-none"
             >
               <option value="ALL">{l('Estado: Todos', 'Status: All')}</option>
@@ -456,6 +460,10 @@ export default function DashboardAdmin({
                               className="bg-transparent border-none text-[10px] text-slate-500 font-semibold focus:outline-none focus:ring-0 cursor-pointer hover:text-slate-800 transition-colors p-0"
                               id={`nurse-select-for-${patient.id}`}
                               title={l('Cambiar enfermera asignada', 'Change assigned nurse')}
+                              aria-label={l(
+                                `Cambiar enfermera asignada para ${patient.firstName} ${patient.lastName}`,
+                                `Change assigned nurse for ${patient.firstName} ${patient.lastName}`
+                              )}
                             >
                               {nursesList.map(n => (
                                 <option key={n.id} value={n.id}>{n.name}</option>
