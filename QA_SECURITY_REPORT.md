@@ -16,10 +16,10 @@ Environment: Production and local static review
 
 - `npm audit` currently reports 2 moderate vulnerabilities. No high/critical finding has been confirmed yet.
 - Production console reported CSP blocking a Google Fonts stylesheet. This is not a data exposure issue, but it is a policy/configuration defect and causes console errors. Local fix removes the remote font import instead of broadening CSP.
-- Mobile production smoke reported CSP blocking `https://apis.google.com/js/api.js` and a `gen_204` connection, used by Firebase/Identity Platform. Local fix permits only `https://apis.google.com` in `script-src` and `connect-src`.
+- Mobile production smoke reported CSP blocking `https://apis.google.com/js/api.js` and a `gen_204` connection, used by Firebase/Identity Platform. The deployed fix permits only `https://apis.google.com` in `script-src` and `connect-src`.
 - Full production authorization matrix is pending authenticated API tests.
 - Secrets scan is pending.
 
 ## Status
 
-Not approved yet. Security validation is in progress.
+Production smoke security checks passed for invalid login error disclosure, CSP console errors on tested flows, and no high/critical dependency audit findings. Full authorization matrix remains pending; security validation is not complete.

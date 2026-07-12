@@ -22,4 +22,4 @@ Local fix:
 - Added explicit `aria-label` values to dashboard filter selects.
 - Added per-patient `aria-label` to nurse reassignment selects.
 
-Status: fixed locally, pending deployment and production rerun.
+Status: closed after production rerun. Three serial production smoke runs passed with no serious/critical axe violations in the authenticated dashboard path.
