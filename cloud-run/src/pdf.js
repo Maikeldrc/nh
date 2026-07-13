@@ -469,10 +469,11 @@ async function withPdfStorageError(operation) {
     return await operation();
   } catch (error) {
     const status = Number(error?.status || error?.code || error?.response?.status || 0);
-    if ([403, 404].includes(status)) {
+    if (status >= 400 && status < 500) {
       const storageError = new Error('pdf_storage_unavailable');
       storageError.status = 503;
       storageError.expose = true;
+      storageError.cause = error;
       throw storageError;
     }
     throw error;

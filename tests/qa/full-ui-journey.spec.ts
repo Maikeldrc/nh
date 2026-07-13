@@ -1,4 +1,5 @@
 import { expect, Locator, Page, test } from '@playwright/test';
+import fs from 'node:fs/promises';
 import { credentialsFromEnv, loginAndCaptureSession } from './helpers';
 
 test.describe.serial('Production full UI journey QA', () => {
@@ -27,6 +28,7 @@ test.describe.serial('Production full UI journey QA', () => {
 
     const nurseContext = await browser.newContext({ baseURL: process.env.QA_BASE_URL || 'https://nhcarestart.vercel.app' });
     const nursePage = await nurseContext.newPage();
+    await capturePdfFailures(nursePage, testInfo.project.name);
     await loginAndCaptureSession(nursePage, nurseCredentials!);
     await filterDashboard(nursePage, firstName);
     await runNurseVisitThroughUi(nursePage, fullName, stamp);
@@ -69,6 +71,22 @@ test.describe.serial('Production full UI journey QA', () => {
     await physicianContext.close();
   });
 });
+
+async function capturePdfFailures(page: Page, projectName: string): Promise<void> {
+  page.on('response', async response => {
+    if (!response.url().includes('/v1/pdfs') || response.ok()) return;
+    const payload = await response.json().catch(() => undefined) as { error?: string; request_id?: string } | undefined;
+    const record = {
+      projectName,
+      status: response.status(),
+      error: payload?.error || 'unknown_pdf_error',
+      requestId: payload?.request_id || '',
+      capturedAt: new Date().toISOString()
+    };
+    await fs.mkdir('qa-evidence/logs', { recursive: true });
+    await fs.writeFile('qa-evidence/logs/full-ui-pdf-errors.json', `${JSON.stringify(record, null, 2)}\n`);
+  });
+}
 
 async function registerPatientThroughUi(page: Page, firstName: string, lastName: string, stamp: string): Promise<void> {
   await page.locator('#btn-register-patient-admin').click();

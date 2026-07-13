@@ -313,7 +313,16 @@ app.post('/v1/pdfs', async (req, res, next) => {
     }
     const { document } = await createPdf(req.body.type, patient, req.body.source || {}, req.user);
     await upsertRecord('documents', document.id, document);
-    await activity(req, 'generated_pdf', 'DOCUMENT', document.id, patient.id);
+    activity(req, 'generated_pdf', 'DOCUMENT', document.id, patient.id).catch(error => {
+      console.error(JSON.stringify({
+        severity: 'ERROR',
+        request_id: req.requestId,
+        route: '/v1/pdfs',
+        status: error.status || error.code || 500,
+        error_type: error.name || 'Error',
+        non_blocking: true
+      }));
+    });
     return res.status(201).json(document);
   } catch (error) {
     return next(error);
@@ -360,12 +369,15 @@ app.use((error, req, res, _next) => {
     error.expose = true;
   }
   // Never log request bodies, tokens, patient identifiers, or exception payloads.
+  const upstreamStatus = Number(error.cause?.status || error.cause?.code || error.cause?.response?.status || 0) || undefined;
   console.error(JSON.stringify({
     severity: 'ERROR',
     request_id: req.requestId,
     route: req.route?.path || 'unknown',
     status: error.status || 500,
-    error_type: error.name || 'Error'
+    error_type: error.name || 'Error',
+    upstream_status: upstreamStatus,
+    upstream_error_type: error.cause?.name
   }));
   return res.status(error.status || 500).json({
     error: error.status && error.expose ? error.message : 'secure_service_error',
