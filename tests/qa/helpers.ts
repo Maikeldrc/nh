@@ -83,8 +83,8 @@ export async function loginAndCaptureSession(page: Page, credentials: QaCredenti
   const appFrame = page.locator('#main-application-frame');
   const loginError = page.locator('#login-error-alert');
   await Promise.race([
-    appFrame.waitFor({ state: 'visible', timeout: 30_000 }),
-    loginError.waitFor({ state: 'visible', timeout: 30_000 })
+    appFrame.waitFor({ state: 'visible', timeout: 90_000 }),
+    loginError.waitFor({ state: 'visible', timeout: 90_000 })
   ]);
   if (await loginError.isVisible().catch(() => false)) {
     await page.locator('#password').fill('');

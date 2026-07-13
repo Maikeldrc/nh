@@ -32,7 +32,7 @@ test.describe.serial('Production full UI journey QA', () => {
     await loginAndCaptureSession(nursePage, nurseCredentials!);
     await filterDashboard(nursePage, firstName);
     await runNurseVisitThroughUi(nursePage, fullName, stamp);
-    await expect(nursePage.getByText(fullName)).toBeVisible({ timeout: 30_000 });
+    await expect(nursePage.getByRole('heading', { name: fullName })).toBeVisible({ timeout: 30_000 });
     await nursePage.screenshot({ path: `qa-evidence/screenshots/${testInfo.project.name}-full-ui-nurse-completed.png`, fullPage: true });
     await nurseContext.close();
   });

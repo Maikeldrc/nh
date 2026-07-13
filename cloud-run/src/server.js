@@ -376,6 +376,8 @@ app.use((error, req, res, _next) => {
     route: req.route?.path || 'unknown',
     status: error.status || 500,
     error_type: error.name || 'Error',
+    error_message: sanitizeLogValue(error.message),
+    stack_top: sanitizeLogValue(String(error.stack || '').split('\n')[1] || ''),
     upstream_status: upstreamStatus,
     upstream_error_type: error.cause?.name
   }));
@@ -390,6 +392,14 @@ function httpError(status, message) {
   error.status = status;
   error.expose = true;
   return error;
+}
+
+function sanitizeLogValue(value) {
+  return String(value || '')
+    .replace(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi, '[email]')
+    .replace(/\bpat_[A-Za-z0-9_-]+\b/g, '[patient_id]')
+    .replace(/\bdoc_[A-Za-z0-9_-]+\b/g, '[document_id]')
+    .slice(0, 240);
 }
 
 function isMedicalOrderOnlyUpdate(existing, next) {

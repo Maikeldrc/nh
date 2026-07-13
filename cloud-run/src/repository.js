@@ -28,14 +28,14 @@ const backendHeaders = ['record_json', 'patient_id', 'facility_id', 'updated_at'
 const transientGoogleStatuses = new Set([429, 500, 502, 503, 504]);
 const headerCache = new Map();
 const recordsCache = new Map();
-const CACHE_TTL_MS = 10000;
+const CACHE_TTL_MS = 1000;
 
 function sleep(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
 
 async function withSheetsRetry(operation) {
-  const delays = [250, 750, 1500, 3000];
+  const delays = [500, 1000, 2000, 4000, 8000, 16000, 32000];
   for (let attempt = 0; attempt <= delays.length; attempt += 1) {
     try {
       return await operation();
@@ -44,7 +44,7 @@ async function withSheetsRetry(operation) {
       if (!transientGoogleStatuses.has(status) || attempt === delays.length) {
         throw error;
       }
-      await sleep(delays[attempt]);
+      await sleep(delays[attempt] + Math.floor(Math.random() * 250));
     }
   }
   throw new Error('sheets_retry_exhausted');
@@ -101,8 +101,8 @@ export async function listRecords(resourceName) {
   const resource = resources[resourceName];
   if (!resource) throw new Error('Unknown resource.');
   const cached = recordsCache.get(resourceName);
-  if (cached && cached.expiresAt > Date.now()) return cached.records.map(cloneRecord);
   if (cached?.promise) return (await cached.promise).map(cloneRecord);
+  if (cached?.records && cached.expiresAt > Date.now()) return cached.records.map(cloneRecord);
 
   const promise = readRecords(resourceName, resource);
   recordsCache.set(resourceName, { promise, expiresAt: Date.now() + CACHE_TTL_MS });

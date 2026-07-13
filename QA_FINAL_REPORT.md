@@ -1,12 +1,12 @@
 # QA Final Report
 
-Date: 2026-07-12
+Date: 2026-07-13
 URL Validated: https://nhcarestart.vercel.app/
-Commit: local full UI QA harness update pending commit
+Commit: production PDF/cache hardening committed to `main`
 
 ## Executive Summary
 
-QA execution completed an expanded production cycle plus an attempted full UI journey. Role/API smoke coverage passed for admin, nurse, and physician users, and admin-only/physician restriction UI passed. The full nurse enrollment journey is blocked in production by consent PDF generation failure.
+QA execution completed an expanded production cycle plus full UI validation. Role/API smoke coverage passed for admin, nurse, and physician users, admin-only/physician restriction UI passed, and the full nurse enrollment journey completed through consent PDF, RPM delivery PDF regeneration, and activation.
 
 ## Scope
 
@@ -15,7 +15,7 @@ Modules in scope: authentication, admin dashboard, nurse dashboard, patient regi
 ## Test Results
 
 - Production Playwright: 12 passed, 6 skipped intentionally
-- Full UI journey: blocked at nurse Step 3 consent PDF generation
+- Full UI journey: passed on desktop with `QA_FULL_UI=1`
 - Admin-only/physician restriction UI: passed
 - Frontend TypeScript: passed
 - Frontend production build: passed
@@ -26,22 +26,22 @@ Modules in scope: authentication, admin dashboard, nurse dashboard, patient regi
 ## Defects
 
 - Defects found: 7
-- Defects fixed and production validated: 4
+- Defects fixed and production validated: 5
 - Critical open: 0 known
-- High open: 1
+- High open: 0
 - Medium open: 1
 - Low open: 1
 
 ## Production Validation
 
 - Frontend: accessible at `https://nhcarestart.vercel.app/`.
-- Backend: Cloud Run reports revision `amavita-carestart-api-00017-x7b`, 100% traffic, Ready=True.
+- Backend: Cloud Run reports revision `amavita-carestart-api-00023-mf9`, 100% traffic, Ready=True.
 - Health endpoint: direct `/healthz` checks to both Cloud Run URLs returned Google 404 HTML from this QA machine; recorded as QA-DEF-005.
 - Authentication: invalid login and valid login smoke passed on desktop/mobile.
 - Roles: admin, nurse, and physician authenticated and showed role-appropriate dashboards on desktop/mobile.
 - Authorization/API: unauthenticated API access rejected; nurse/physician user-creation attempts rejected; invalid patient payload rejected; synthetic admin patient creation succeeded.
-- Full UI journey: admin patient registration, admin medical order review/approval, nurse Step 1 identity, Step 2 explanation, typed patient signature, and nurse attestation were exercised.
-- Blocking failure: consent PDF generation fails with generic secure service error, preventing nurse from advancing to RPM device and activation.
+- Full UI journey: admin patient registration, admin medical order review/approval, nurse Step 1 identity, Step 2 explanation, typed patient signature, nurse attestation, consent PDF, RPM delivery PDF generation, RPM PDF regeneration, and activation passed.
+- Rate-limit hardening: backend retry/backoff, cache coherence, and non-blocking PDF audit handling were deployed and validated.
 - Accessibility: authenticated dashboard axe smoke passed after select labeling fix.
 - Console/network: no critical console/network errors in final three serial smoke runs.
 
@@ -52,7 +52,7 @@ Security review covered CSP/auth smoke, dependency audit, unauthenticated API re
 ## Residual Risks
 
 - Direct Cloud Run `/healthz` returns 404 from QA machine despite service Ready and frontend authenticated `/v1/*` flow working.
-- Consent PDF generation blocks the visit wizard; cannot certify consent, RPM PDF, activation, or final patient active state until fixed.
+- Under concentrated QA load, some bootstrap calls can take up to roughly 55 seconds while backend retries Google Sheets quota responses; the app recovers, but performance should be monitored.
 - Synthetic production records were retained as evidence and should be cleaned up after audit sign-off.
 - Full AUDITOR/VIEWER matrix remains pending because credentials were not supplied.
 - Full PDF visual/content verification remains pending.
@@ -61,4 +61,4 @@ Security review covered CSP/auth smoke, dependency audit, unauthenticated API re
 
 ## Final Decision
 
-NOT APPROVED FOR FULL OPERATION. Tested smoke/role/admin-only flows pass, but the full nurse enrollment flow is blocked by `QA-DEF-007`.
+CONDITIONALLY APPROVED FOR TESTED FLOWS. The full admin/nurse/physician UI and API flows tested are operational in production. Do not call the entire application 100% certified until `/healthz`, AUDITOR/VIEWER credentials, full PDF visual/content review, cleanup policy, and sustained-load performance are closed.

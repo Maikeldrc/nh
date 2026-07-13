@@ -1,6 +1,6 @@
 # QA Defects
 
-Date: 2026-07-12
+Date: 2026-07-13
 
 | Defect ID | Title | Module | Severity | Priority | Environment | Status | Evidence | Root Cause | Fix | Regression |
 |---|---|---|---|---|---|---|---|---|---|---|
@@ -10,9 +10,9 @@ Date: 2026-07-12
 | QA-DEF-004 | CSP blocks Firebase Google API script/connect on mobile | Auth/Security Headers | High | High | Production | Closed | Mobile Playwright console errors for `https://apis.google.com/js/api.js` and `https://apis.google.com/js/gen_204` | CSP `script-src` and `connect-src` did not allow the exact Firebase Google API bridge origin | Added exact `https://apis.google.com` to script and connect sources in `vercel.json` | Passed in three serial production smoke runs |
 | QA-DEF-005 | Direct Cloud Run `/healthz` returns Google 404 from QA machine | API/Deployment | Medium | High | Production | Open | `Invoke-WebRequest` to both Cloud Run URLs returned 404 HTML | Unknown; Cloud Run reports service Ready and frontend authenticated API flow works | Not fixed in this cycle | Needs Cloud Run/domain routing investigation |
 | QA-DEF-006 | Rapid repeated production logins can produce transient bootstrap 429 | API/Rate Limit | Low | Medium | Production | Open | Full Playwright rerun observed one recovered `429 /v1/bootstrap` for physician after multiple serial logins | Production rate limit or upstream quota under concentrated QA login load | No product fix applied; test treats recovered bootstrap 429 as non-blocking | Final full suite passed |
-| QA-DEF-007 | Consent PDF generation fails and blocks nurse visit wizard progression | Documents/PDF | High | High | Production | Open | `tests/qa/full-ui-journey.spec.ts` reaches Step 3, saves typed patient signature and nurse attestation, then fails on `/v1/pdfs`; latest captured response was `429 service_rate_limited` with request id `ed536489-d459-4237-b803-600a28a8f2be`; `Next` remains disabled | Likely transient Google upstream quota/rate limiting while generating or recording the PDF. A backend hardening change makes PDF audit logging non-blocking and records sanitized upstream status for future correlation. Cloud Run log access is still blocked until `gcloud auth login` refresh works in non-interactive commands. | Fix prepared locally; pending Cloud Run deployment and revalidation | Reproduce with `QA_FULL_UI=1 npx playwright test tests/qa/full-ui-journey.spec.ts --config=playwright.production.config.ts --project=chromium-desktop` |
+| QA-DEF-007 | Consent PDF generation fails and blocks nurse visit wizard progression | Documents/PDF | High | High | Production | Closed | Full UI journey originally failed on `/v1/pdfs`; latest validated run completed consent PDF, RPM delivery PDF generation, RPM PDF regeneration, and patient activation | Google Sheets/Drive transient rate limiting plus backend cache race. `listRecords` could read a pending cache entry as completed, and PDF audit logging could block the PDF response. | Made PDF audit logging non-blocking, added sanitized diagnostics, fixed pending-cache handling, reduced record cache TTL, and extended Google Sheets retry backoff with jitter. Deployed Cloud Run revision `amavita-carestart-api-00023-mf9`. | `QA_FULL_UI=1 npx playwright test tests/qa/full-ui-journey.spec.ts --config=playwright.production.config.ts --project=chromium-desktop --grep "admin and nurse"` passed |
 
 Open Critical: 0
-Open High: 1 (`QA-DEF-007`)
+Open High: 0
 Open Medium: 1 (`QA-DEF-005`)
 Open Low: 1 (`QA-DEF-006`)

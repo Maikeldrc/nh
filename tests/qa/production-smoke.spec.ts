@@ -40,7 +40,7 @@ test.describe('Production smoke QA', () => {
     await page.locator('#email').fill(qaEmail!);
     await page.locator('#password').fill(qaPassword!);
     await page.locator('#btn-submit-login').click();
-    await expect(page.locator('#main-application-frame')).toBeVisible({ timeout: 30_000 });
+    await expect(page.locator('#main-application-frame')).toBeVisible({ timeout: 90_000 });
     await expect(page.locator('header, #dashboard-admin, #dashboard-nurse').first()).toBeVisible();
     await page.screenshot({ path: `qa-evidence/screenshots/${testInfo.project.name}-dashboard-authenticated.png`, fullPage: true });
 
