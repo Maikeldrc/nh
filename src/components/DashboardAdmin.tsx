@@ -84,6 +84,7 @@ export default function DashboardAdmin({
   const [isCleanupConfirmOpen, setIsCleanupConfirmOpen] = useState(false);
   const [cleanupConfirmText, setCleanupConfirmText] = useState('');
   const [isCleaningPatientData, setIsCleaningPatientData] = useState(false);
+  const [cleanupProgress, setCleanupProgress] = useState(0);
   const isAdmin = currentUser.role === 'ADMIN';
   
   // Tab control: 'patients' | 'audit_logs' | 'documents' | 'catalog' | 'users' | 'backups'
@@ -207,12 +208,24 @@ export default function DashboardAdmin({
   const handleConfirmCleanup = async () => {
     if (cleanupConfirmText !== 'CLEAR OPERATIONAL DATA') return;
     setIsCleaningPatientData(true);
+    setCleanupProgress(8);
+    const progressTimer = window.setInterval(() => {
+      setCleanupProgress(previous => {
+        if (previous >= 92) return previous;
+        return previous + (previous < 55 ? 7 : 3);
+      });
+    }, 450);
     try {
       await onCleanupPatientData();
+      window.clearInterval(progressTimer);
+      setCleanupProgress(100);
+      await new Promise(resolve => window.setTimeout(resolve, 450));
       setIsCleanupConfirmOpen(false);
       setCleanupConfirmText('');
     } finally {
+      window.clearInterval(progressTimer);
       setIsCleaningPatientData(false);
+      setCleanupProgress(0);
     }
   };
 
@@ -735,6 +748,7 @@ export default function DashboardAdmin({
                   if (isCleaningPatientData) return;
                   setIsCleanupConfirmOpen(false);
                   setCleanupConfirmText('');
+                  setCleanupProgress(0);
                 }}
                 className="rounded-xl p-2 text-slate-400 transition hover:bg-slate-100 hover:text-slate-700"
                 aria-label={l('Cerrar confirmación', 'Close confirmation')}
@@ -766,7 +780,25 @@ export default function DashboardAdmin({
                 onChange={(event) => setCleanupConfirmText(event.target.value)}
                 className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm font-bold text-slate-800 focus:border-rose-500 focus:outline-none focus:ring-2 focus:ring-rose-500/20"
                 autoComplete="off"
+                disabled={isCleaningPatientData}
               />
+              {isCleaningPatientData && (
+                <div className="rounded-2xl border border-rose-100 bg-white p-4" role="status" aria-live="polite">
+                  <div className="mb-2 flex items-center justify-between text-[11px] font-extrabold uppercase tracking-wider text-rose-700">
+                    <span>{l('Eliminando datos operativos', 'Deleting operational data')}</span>
+                    <span>{Math.round(cleanupProgress)}%</span>
+                  </div>
+                  <div className="h-3 overflow-hidden rounded-full bg-rose-100">
+                    <div
+                      className="h-full rounded-full bg-rose-600 transition-all duration-500 ease-out"
+                      style={{ width: `${cleanupProgress}%` }}
+                    />
+                  </div>
+                  <p className="mt-2 text-xs font-semibold text-slate-500">
+                    {l('Mantenga esta ventana abierta hasta que finalice la limpieza.', 'Keep this window open until cleanup finishes.')}
+                  </p>
+                </div>
+              )}
             </div>
             <div className="flex items-center justify-end gap-2 border-t border-slate-200 p-5">
               <button
@@ -774,6 +806,7 @@ export default function DashboardAdmin({
                 onClick={() => {
                   setIsCleanupConfirmOpen(false);
                   setCleanupConfirmText('');
+                  setCleanupProgress(0);
                 }}
                 disabled={isCleaningPatientData}
                 className="rounded-xl border border-slate-300 bg-white px-4 py-2 text-xs font-bold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
