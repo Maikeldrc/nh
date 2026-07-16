@@ -33,6 +33,16 @@ export default function EditPatientModal({
     display: string;
     diagnoses: { name: string; code: string }[];
   };
+  type ManualDiagnosis = {
+    id: string;
+    icd10Code: string;
+    icd10Display: string;
+  };
+  const createManualDiagnosis = (): ManualDiagnosis => ({
+    id: `manual_diag_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+    icd10Code: '',
+    icd10Display: ''
+  });
   const conditionGroupOptions: ConditionGroupOption[] = conditionGroups
     .filter(group => group.is_active)
     .map(group => ({
@@ -62,6 +72,7 @@ export default function EditPatientModal({
   const [isCategoryDropdownOpen, setIsCategoryDropdownOpen] = useState(false);
   const [diagnosisSearch, setDiagnosisSearch] = useState('');
   const [selectedConditions, setSelectedConditions] = useState<string[]>([]);
+  const [manualDiagnoses, setManualDiagnoses] = useState<ManualDiagnosis[]>([createManualDiagnosis()]);
   const [isDiagnosisDropdownOpen, setIsDiagnosisDropdownOpen] = useState(false);
   const [medicationsInput, setMedicationsInput] = useState('');
   const [requiredDevice, setRequiredDevice] = useState('BP Monitor');
@@ -71,8 +82,18 @@ export default function EditPatientModal({
   const assignedProgramIncludesCcm = assignedProgram
     .split('+')
     .some(programPart => programPart.trim().toUpperCase() === 'CCM');
+  const completedManualDiagnoses = manualDiagnoses
+    .map(diagnosis => ({
+      ...diagnosis,
+      icd10Code: diagnosis.icd10Code.trim().toUpperCase(),
+      icd10Display: diagnosis.icd10Display.trim()
+    }))
+    .filter(diagnosis => diagnosis.icd10Code && diagnosis.icd10Display);
+  const hasPartialManualDiagnosis = manualDiagnoses.some(diagnosis =>
+    Boolean(diagnosis.icd10Code.trim()) !== Boolean(diagnosis.icd10Display.trim())
+  );
   const meetsCcmConditionsRequirement = !assignedProgramIncludesCcm
-    || Array.from(selectedDiagnosisCodes(selectedConditions)).filter(code => ICD10_CODE_PATTERN.test(code)).length >= 2;
+    || Array.from(new Set<string>(completedManualDiagnoses.map(diagnosis => diagnosis.icd10Code))).filter(code => ICD10_CODE_PATTERN.test(code)).length >= 2;
 
   // Set initial state from patient when modal opens or patient changes
   useEffect(() => {
@@ -100,6 +121,12 @@ export default function EditPatientModal({
         .filter(Boolean);
       const selectedDiagnosisLabels = Array.from(new Set([...savedDiagnosisLabels, ...matchedConditionLabels, ...savedReviewFlag]));
       setSelectedConditions(selectedDiagnosisLabels);
+      const manualRows = (patient.diagnoses || []).map(diagnosis => ({
+        id: `manual_diag_${diagnosis.icd10Code}_${Math.random().toString(36).slice(2, 8)}`,
+        icd10Code: diagnosis.icd10Code,
+        icd10Display: diagnosis.icd10Display
+      }));
+      setManualDiagnoses(manualRows.length > 0 ? manualRows : [createManualDiagnosis()]);
       const selectedCodes = conditionGroupOptions
         .filter(group => group.diagnoses.some(diagnosis => selectedDiagnosisLabels.includes(formatDiagnosis(diagnosis))))
         .map(group => group.code);
@@ -151,10 +178,10 @@ export default function EditPatientModal({
     if (!isLtc) {
       newErrors.isLtc = language === 'ES' ? 'El paciente debe ser Long Term Care (LTC) obligatoriamente' : 'The patient must be Long Term Care (LTC)';
     }
-    if (selectedCategoryCodes.length === 0) {
-      newErrors.conditions = l('Seleccione al menos un Condition Group.', 'Select at least one Condition Group.');
-    } else if (!selectedConditions.some(condition => condition !== 'Clinical Review Required')) {
-      newErrors.conditions = l('Debe seleccionar un diagnóstico específico con código ICD-10.', 'Select a specific diagnosis with an ICD-10 code.');
+    if (completedManualDiagnoses.length === 0) {
+      newErrors.conditions = l('Agregue al menos un ICD y el nombre del diagnóstico.', 'Add at least one ICD and diagnosis name.');
+    } else if (hasPartialManualDiagnosis) {
+      newErrors.conditions = l('Cada fila debe tener ICD y nombre del ICD, o estar completamente vacía.', 'Each row must include both ICD and ICD name, or be completely empty.');
     }
     if (!meetsCcmConditionsRequirement) {
       newErrors.conditions = CCM_CONDITIONS_ERROR;
@@ -168,17 +195,16 @@ export default function EditPatientModal({
     e.preventDefault();
     if (!validate()) return;
 
-    const conditions = ['Long Term Care (LTC)', ...selectedConditions];
-    const patientDiagnoses: PatientDiagnosis[] = conditionGroupOptions.flatMap(group =>
-      group.diagnoses
-        .filter(diagnosis => selectedConditions.includes(formatDiagnosis(diagnosis)))
-        .map(diagnosis => ({
-          conditionGroupCode: group.code,
-          conditionGroupDisplay: group.display,
-          icd10Code: diagnosis.code,
-          icd10Display: diagnosis.name
-        }))
-    );
+    const conditions = [
+      'Long Term Care (LTC)',
+      ...completedManualDiagnoses.map(diagnosis => `${diagnosis.icd10Display} · ${diagnosis.icd10Code}`)
+    ];
+    const patientDiagnoses: PatientDiagnosis[] = completedManualDiagnoses.map(diagnosis => ({
+      conditionGroupCode: 'MANUAL',
+      conditionGroupDisplay: 'Manual Entry',
+      icd10Code: diagnosis.icd10Code,
+      icd10Display: diagnosis.icd10Display
+    }));
     
     const medications = medicationsInput
       .split(',')
@@ -447,197 +473,62 @@ export default function EditPatientModal({
             </div>
 
             <div className="space-y-3 p-4 bg-blue-50/30 border border-blue-100 rounded-xl">
-              <label className="block text-xs font-bold text-slate-700">
-                {l('Diagnósticos / Condiciones *', 'Diagnoses / Conditions *')}
-              </label>
-
-              {isCategoryDropdownOpen && (
-                <div
-                  className="fixed inset-0 z-10 bg-transparent"
-                  onClick={() => setIsCategoryDropdownOpen(false)}
-                />
-              )}
-              {isDiagnosisDropdownOpen && (
-                <div
-                  className="fixed inset-0 z-10 bg-transparent"
-                  onClick={() => setIsDiagnosisDropdownOpen(false)}
-                />
-              )}
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                <div className="relative z-20">
-                  <label className="block text-[10px] font-bold text-slate-500 mb-1">
-                    {l('Categorías Clínicas', 'Clinical Categories')}
-                  </label>
-                  <input
-                    type="text"
-                    value={categorySearch}
-                    onChange={(e) => {
-                      setCategorySearch(e.target.value);
-                      setIsCategoryDropdownOpen(true);
-                    }}
-                    onFocus={() => setIsCategoryDropdownOpen(true)}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-xl text-xs bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 text-slate-800 font-semibold"
-                    placeholder={l('Buscar categoría...', 'Search category...')}
-                  />
-                  {isCategoryDropdownOpen && (
-                    <div className="absolute left-0 right-0 mt-1 bg-white border border-slate-200 rounded-xl shadow-lg z-30 max-h-48 overflow-y-auto">
-                      {conditionGroupOptions
-                        .filter(group => group.display.toLowerCase().includes(categorySearch.toLowerCase()))
-                        .map(group => {
-                          const isSelected = selectedCategoryCodes.includes(group.code);
-                          return (
-                            <div
-                              key={group.code}
-                              onClick={() => {
-                                if (isSelected) {
-                                  setSelectedCategoryCodes(selectedCategoryCodes.filter(code => code !== group.code));
-                                  const removedDiagnosisLabels = group.diagnoses.map(formatDiagnosis);
-                                  setSelectedConditions(selectedConditions.filter(condition => !removedDiagnosisLabels.includes(condition)));
-                                } else {
-                                  setSelectedCategoryCodes([...selectedCategoryCodes, group.code]);
-                                }
-                                setCategorySearch('');
-                              }}
-                              className={`px-3 py-2 text-xs font-semibold hover:bg-blue-50 hover:text-blue-700 cursor-pointer flex justify-between items-center transition-colors ${
-                                isSelected ? 'bg-blue-50/50 text-blue-700 font-bold' : 'text-slate-700'
-                              }`}
-                            >
-                              <span>{group.display}</span>
-                              <span className="text-[10px] text-slate-400 font-bold">{group.code}</span>
-                            </div>
-                          );
-                        })}
-                      {conditionGroupOptions.filter(group => group.display.toLowerCase().includes(categorySearch.toLowerCase())).length === 0 && (
-                        <div className="px-3 py-2 text-xs text-slate-400 italic">
-                          {l('Sin resultados', 'No results found')}
-                        </div>
-                      )}
-                    </div>
-                  )}
-                  {selectedCategoryCodes.length > 0 && (
-                    <div className="flex flex-wrap gap-1 mt-2">
-                      {selectedCategoryCodes.map(code => {
-                        const group = conditionGroupOptions.find(item => item.code === code);
-                        return (
-                          <span key={code} className="inline-flex items-center text-[9px] bg-slate-200 text-slate-700 px-2 py-0.5 rounded-md font-extrabold">
-                            {group?.display || code}
-                            <button
-                              type="button"
-                              onClick={() => {
-                                const removedDiagnosisLabels = group?.diagnoses.map(formatDiagnosis) || [];
-                                setSelectedCategoryCodes(selectedCategoryCodes.filter(item => item !== code));
-                                setSelectedConditions(selectedConditions.filter(condition => !removedDiagnosisLabels.includes(condition)));
-                              }}
-                              className="ml-1 text-slate-400 hover:text-slate-600 font-bold"
-                            >
-                              x
-                            </button>
-                          </span>
-                        );
-                      })}
-                    </div>
-                  )}
-                </div>
-
-                <div className="relative z-20">
-                  <label className="block text-[10px] font-bold text-slate-500 mb-1">
-                    {l('Diagnósticos Disponibles (filtrados)', 'Available Diagnoses (filtered)')}
-                  </label>
-                  <input
-                    type="text"
-                    disabled={selectedCategoryCodes.length === 0}
-                    value={diagnosisSearch}
-                    onChange={(e) => {
-                      setDiagnosisSearch(e.target.value);
-                      setIsDiagnosisDropdownOpen(true);
-                    }}
-                    onFocus={() => setIsDiagnosisDropdownOpen(true)}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-xl text-xs bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 text-slate-800 font-semibold disabled:bg-slate-100 disabled:text-slate-400 disabled:cursor-not-allowed"
-                    placeholder={selectedCategoryCodes.length > 0
-                      ? l('Buscar diagnóstico o CIE-10...', 'Search diagnosis or ICD-10...')
-                      : l('Seleccione al menos una categoría', 'Select at least one category')
-                    }
-                  />
-                  {isDiagnosisDropdownOpen && selectedCategoryCodes.length > 0 && (
-                    <div className="absolute left-0 right-0 mt-1 bg-white border border-slate-200 rounded-xl shadow-lg z-30 max-h-48 overflow-y-auto">
-                      {conditionGroupOptions
-                        .filter(group => selectedCategoryCodes.includes(group.code))
-                        .flatMap(group => group.diagnoses)
-                        .filter((diagnosis, index, self) => self.findIndex(item => item.code === diagnosis.code) === index)
-                        .filter(diagnosis =>
-                          diagnosis.name.toLowerCase().includes(diagnosisSearch.toLowerCase()) ||
-                          diagnosis.code.toLowerCase().includes(diagnosisSearch.toLowerCase())
-                        )
-                        .map(diagnosis => {
-                          const formattedValue = formatDiagnosis(diagnosis);
-                          const isSelected = selectedConditions.includes(formattedValue);
-                          return (
-                            <div
-                              key={diagnosis.code}
-                              onClick={() => {
-                                if (isSelected) {
-                                  setSelectedConditions(selectedConditions.filter(condition => condition !== formattedValue));
-                                } else {
-                                  setSelectedConditions([...selectedConditions, formattedValue]);
-                                }
-                              }}
-                              className={`px-3 py-2 text-xs font-semibold hover:bg-blue-50 hover:text-blue-700 cursor-pointer flex justify-between items-center transition-colors ${
-                                isSelected ? 'bg-blue-50/50 text-blue-700 font-bold' : 'text-slate-700'
-                              }`}
-                            >
-                              <span>{diagnosis.name} <span className="text-[10px] text-slate-400 font-bold ml-1">{diagnosis.code}</span></span>
-                              {isSelected && <span className="text-[10px] bg-blue-600 text-white px-1.5 py-0.5 rounded-md font-bold">OK</span>}
-                            </div>
-                          );
-                        })}
-                      <div
-                        onClick={() => {
-                          const reviewValue = 'Clinical Review Required';
-                          if (selectedConditions.includes(reviewValue)) {
-                            setSelectedConditions(selectedConditions.filter(condition => condition !== reviewValue));
-                          } else {
-                            setSelectedConditions([...selectedConditions, reviewValue]);
-                          }
-                        }}
-                        className={`px-3 py-2 text-xs font-bold hover:bg-amber-100 cursor-pointer border-t border-slate-100 transition-colors flex justify-between items-center ${
-                          selectedConditions.includes('Clinical Review Required') ? 'bg-amber-100 text-amber-800' : 'bg-amber-50 text-amber-700'
-                        }`}
-                      >
-                        <span>{l('Marcar para revisión clínica', 'Mark for clinical review')}</span>
-                        {selectedConditions.includes('Clinical Review Required') && <span className="text-[10px] bg-amber-600 text-white px-1.5 py-0.5 rounded-md font-bold">OK</span>}
-                      </div>
-                    </div>
-                  )}
-                </div>
+              <div className="flex items-center justify-between gap-3">
+                <label className="block text-xs font-bold text-slate-700">
+                  {l('Diagnósticos / Condiciones *', 'Diagnoses / Conditions *')}
+                </label>
+                <button
+                  type="button"
+                  onClick={() => setManualDiagnoses([...manualDiagnoses, createManualDiagnosis()])}
+                  className="text-xs font-bold text-blue-600 hover:text-blue-800 flex items-center bg-blue-50 px-2 py-1 rounded-md"
+                >
+                  + {l('Agregar ICD', 'Add ICD')}
+                </button>
               </div>
 
-              {selectedConditions.length > 0 && (
-                <div className="flex flex-wrap gap-1.5 pt-2 relative z-10">
-                  {selectedConditions.map(condition => {
-                    const isReview = condition === 'Clinical Review Required';
-                    return (
-                      <span
-                        key={condition}
-                        className={`inline-flex items-center text-[10px] font-bold px-2.5 py-1 rounded-full border transition-all ${
-                          isReview
-                            ? 'bg-amber-50 border-amber-200 text-amber-800'
-                            : 'bg-blue-50 border-blue-200 text-blue-800'
-                        }`}
-                      >
-                        {condition}
-                        <button
-                          type="button"
-                          onClick={() => setSelectedConditions(selectedConditions.filter(item => item !== condition))}
-                          className="ml-1.5 hover:text-red-500 text-slate-400 font-bold"
-                        >
-                          x
-                        </button>
-                      </span>
-                    );
-                  })}
-                </div>
-              )}
+              <div className="space-y-2">
+                {manualDiagnoses.map((diagnosis, index) => (
+                  <div key={diagnosis.id} className="grid grid-cols-1 md:grid-cols-[150px_1fr_auto] gap-2 items-start">
+                    <div>
+                      <label className="block text-[10px] font-bold text-slate-500 mb-1">ICD</label>
+                      <input
+                        type="text"
+                        value={diagnosis.icd10Code}
+                        onChange={(e) => {
+                          const next = [...manualDiagnoses];
+                          next[index] = { ...diagnosis, icd10Code: e.target.value.toUpperCase() };
+                          setManualDiagnoses(next);
+                        }}
+                        className="w-full px-3 py-2 border border-slate-300 rounded-xl text-xs bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 text-slate-800 font-semibold"
+                        placeholder="E11.9"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-bold text-slate-500 mb-1">
+                        {l('Nombre del ICD', 'ICD Name')}
+                      </label>
+                      <input
+                        type="text"
+                        value={diagnosis.icd10Display}
+                        onChange={(e) => {
+                          const next = [...manualDiagnoses];
+                          next[index] = { ...diagnosis, icd10Display: e.target.value };
+                          setManualDiagnoses(next);
+                        }}
+                        className="w-full px-3 py-2 border border-slate-300 rounded-xl text-xs bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 text-slate-800 font-semibold"
+                        placeholder={l('Ej. Type 2 Diabetes Mellitus without complications', 'e.g. Type 2 Diabetes Mellitus without complications')}
+                      />
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setManualDiagnoses(manualDiagnoses.length === 1 ? [createManualDiagnosis()] : manualDiagnoses.filter(item => item.id !== diagnosis.id))}
+                      className="mt-5 px-3 py-2 border border-slate-300 rounded-xl text-xs font-bold text-slate-600 bg-white hover:bg-slate-50"
+                    >
+                      {l('Eliminar', 'Remove')}
+                    </button>
+                  </div>
+                ))}
+              </div>
               {(errors.conditions || !meetsCcmConditionsRequirement) && (
                 <p className="text-xs font-semibold text-red-600">
                   {errors.conditions || CCM_CONDITIONS_ERROR}
