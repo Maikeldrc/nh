@@ -9,7 +9,7 @@ interface FacilityManagementProps {
   facilities: FacilityCatalog[];
   patients: Patient[];
   users: User[];
-  onSaveFacility: (facility: FacilityCatalog) => void;
+  onSaveFacility: (facility: FacilityCatalog) => Promise<void>;
   onDeleteFacility: (facility: FacilityCatalog) => Promise<void>;
   onNotify: (message: string, type?: 'success' | 'info') => void;
 }
@@ -36,6 +36,7 @@ export default function FacilityManagement({
   const [form, setForm] = useState<FacilityForm | null>(null);
   const [error, setError] = useState('');
   const [isDeletingId, setIsDeletingId] = useState('');
+  const [isSavingId, setIsSavingId] = useState('');
 
   const visibleFacilities = useMemo(() => {
     return facilities
@@ -68,7 +69,7 @@ export default function FacilityManagement({
     setForm({ name: '', is_active: true });
   };
 
-  const saveForm = () => {
+  const saveForm = async () => {
     if (!form) return;
     const name = form.name.trim();
     if (!name) {
@@ -86,7 +87,7 @@ export default function FacilityManagement({
     }
     const now = new Date().toISOString();
     const existing = form.id ? facilities.find(facility => facility.id === form.id) : undefined;
-    onSaveFacility({
+    const nextFacility = {
       id: form.id || `facility_${name.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '')}_${Date.now()}`,
       name,
       display: name,
@@ -96,17 +97,32 @@ export default function FacilityManagement({
       updated_at: now,
       updated_by: currentUser.name,
       source: existing?.source || 'manual'
-    });
-    setForm(null);
+    };
+    setIsSavingId(nextFacility.id);
+    try {
+      await onSaveFacility(nextFacility);
+      setForm(null);
+    } catch {
+      onNotify(l('No se pudo guardar el facility.', 'Unable to save facility.'), 'info');
+    } finally {
+      setIsSavingId('');
+    }
   };
 
-  const toggleFacility = (facility: FacilityCatalog) => {
-    onSaveFacility({
-      ...facility,
-      is_active: facility.is_active === false,
-      updated_at: new Date().toISOString(),
-      updated_by: currentUser.name
-    });
+  const toggleFacility = async (facility: FacilityCatalog) => {
+    setIsSavingId(facility.id);
+    try {
+      await onSaveFacility({
+        ...facility,
+        is_active: facility.is_active === false,
+        updated_at: new Date().toISOString(),
+        updated_by: currentUser.name
+      });
+    } catch {
+      onNotify(l('No se pudo actualizar el facility.', 'Unable to update facility.'), 'info');
+    } finally {
+      setIsSavingId('');
+    }
   };
 
   const deleteFacility = async (facility: FacilityCatalog) => {
@@ -189,13 +205,13 @@ export default function FacilityManagement({
                     <td className="px-5 py-4 font-mono text-[10px] text-slate-500">{facility.updated_at ? new Date(facility.updated_at).toLocaleDateString() : '-'}</td>
                     <td className="px-5 py-4 text-right">
                       <div className="flex justify-end gap-2">
-                        <button type="button" onClick={() => setForm({ id: facility.id, name: facility.display || facility.name, is_active: facility.is_active !== false })} className="inline-flex items-center rounded-xl border border-blue-200 bg-blue-50 px-3 py-1.5 font-bold text-blue-700 hover:bg-blue-100">
+                        <button type="button" onClick={() => setForm({ id: facility.id, name: facility.display || facility.name, is_active: facility.is_active !== false })} disabled={isSavingId === facility.id || isDeletingId === facility.id} className="inline-flex items-center rounded-xl border border-blue-200 bg-blue-50 px-3 py-1.5 font-bold text-blue-700 hover:bg-blue-100 disabled:cursor-not-allowed disabled:opacity-50">
                           <Edit3 size={13} className="mr-1" /> Edit
                         </button>
-                        <button type="button" onClick={() => toggleFacility(facility)} className="rounded-xl border border-slate-200 px-3 py-1.5 font-bold text-slate-700 hover:bg-slate-50">
+                        <button type="button" onClick={() => void toggleFacility(facility)} disabled={isSavingId === facility.id || isDeletingId === facility.id} className="rounded-xl border border-slate-200 px-3 py-1.5 font-bold text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50">
                           {facility.is_active === false ? 'Activate' : 'Deactivate'}
                         </button>
-                        <button type="button" onClick={() => void deleteFacility(facility)} disabled={!usage.canDelete || isDeletingId === facility.id} className="inline-flex items-center rounded-xl border border-rose-200 bg-rose-50 px-3 py-1.5 font-bold text-rose-700 hover:bg-rose-100 disabled:cursor-not-allowed disabled:opacity-50">
+                        <button type="button" onClick={() => void deleteFacility(facility)} disabled={!usage.canDelete || isSavingId === facility.id || isDeletingId === facility.id} className="inline-flex items-center rounded-xl border border-rose-200 bg-rose-50 px-3 py-1.5 font-bold text-rose-700 hover:bg-rose-100 disabled:cursor-not-allowed disabled:opacity-50">
                           <Trash2 size={13} className="mr-1" /> Delete
                         </button>
                       </div>
@@ -243,11 +259,11 @@ export default function FacilityManagement({
               {error && <p className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs font-bold text-rose-700">{error}</p>}
             </div>
             <div className="flex justify-end gap-3 border-t border-slate-200 p-5">
-              <button type="button" onClick={() => setForm(null)} className="rounded-xl border border-slate-300 px-4 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50">
+              <button type="button" onClick={() => setForm(null)} disabled={Boolean(isSavingId)} className="rounded-xl border border-slate-300 px-4 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50">
                 {l('Cancelar', 'Cancel')}
               </button>
-              <button type="button" onClick={saveForm} className="rounded-xl bg-blue-600 px-4 py-2 text-xs font-extrabold text-white hover:bg-blue-700">
-                {l('Guardar', 'Save')}
+              <button type="button" onClick={() => void saveForm()} disabled={Boolean(isSavingId)} className="rounded-xl bg-blue-600 px-4 py-2 text-xs font-extrabold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60">
+                {isSavingId ? l('Guardando...', 'Saving...') : l('Guardar', 'Save')}
               </button>
             </div>
           </div>

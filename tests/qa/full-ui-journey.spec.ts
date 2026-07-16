@@ -1,6 +1,6 @@
 import { expect, Locator, Page, test } from '@playwright/test';
 import fs from 'node:fs/promises';
-import { credentialsFromEnv, loginAndCaptureSession } from './helpers';
+import { apiJson, authenticatedRequestContext, BootstrapPayload, credentialsFromEnv, loginAndCaptureSession } from './helpers';
 
 test.describe.serial('Production full UI journey QA', () => {
   test.setTimeout(300_000);
@@ -19,10 +19,11 @@ test.describe.serial('Production full UI journey QA', () => {
 
     const adminContext = await browser.newContext({ baseURL: process.env.QA_BASE_URL || 'https://nhcarestart.vercel.app' });
     const adminPage = await adminContext.newPage();
-    await loginAndCaptureSession(adminPage, adminCredentials!);
+    const adminSession = await loginAndCaptureSession(adminPage, adminCredentials!);
     await registerPatientThroughUi(adminPage, firstName, lastName, stamp);
     await expect(adminPage.locator('#patients-admin-table').getByText(fullName)).toBeVisible({ timeout: 30_000 });
     await approveMedicalOrderThroughUi(adminPage, fullName);
+    await waitForPatientReadyInApi(adminSession, fullName);
     await adminPage.screenshot({ path: `qa-evidence/screenshots/${testInfo.project.name}-full-ui-admin-registered.png`, fullPage: true });
     await adminContext.close();
 
@@ -50,6 +51,8 @@ test.describe.serial('Production full UI journey QA', () => {
     await adminPage.locator('#tab-users').click();
     await expect(adminPage.locator('#user-management')).toBeVisible();
     await expect(adminPage.getByRole('button', { name: /New User|Nuevo usuario/i })).toBeVisible();
+    await adminPage.locator('#tab-facilities').click();
+    await manageFacilityThroughUi(adminPage, `QA Facility ${new Date().toISOString().replace(/[-:.TZ]/g, '').slice(0, 14)}`);
     await adminPage.locator('#tab-clinical-catalog').click();
     await expect(adminPage.getByText(/Clinical Catalog|Catálogo|Categorias|Categories/i).first()).toBeVisible();
     await adminPage.locator('#tab-documents').click();
@@ -97,6 +100,8 @@ async function registerPatientThroughUi(page: Page, firstName: string, lastName:
   await modal.locator('input[type="date"]').fill('1945-01-15');
   await modal.getByPlaceholder('e.g. 1EG4-TE5-WY22').fill(`QAUI${stamp}`);
   await modal.getByPlaceholder('e.g. 104-B').fill(`QA_UI_${stamp}`);
+  await modal.getByLabel('CCM').check();
+  await modal.getByLabel('RPM').check();
   await modal.getByLabel(/Confirm patient is Long Term Care|Confirmar que el paciente/i).check();
 
   await selectClinicalCategory(modal, 'Hypertension');
@@ -111,7 +116,7 @@ async function registerPatientThroughUi(page: Page, firstName: string, lastName:
   await modal.getByPlaceholder('e.g. 10 mg').fill('10 mg');
   await modal.getByRole('button', { name: /Save Medication|Guardar/i }).click();
 
-  await modal.getByRole('button', { name: /Register & Close|Registrar y Cerrar/i }).click();
+  await modal.getByRole('button', { name: /^Register$|^Registrar$/i }).click();
   await expect(modal).toHaveCount(0, { timeout: 30_000 });
 }
 
@@ -138,6 +143,33 @@ async function filterDashboard(page: Page, query: string): Promise<void> {
   const search = page.getByPlaceholder(/Search by name|Buscar por nombre/i).first();
   await search.fill(query);
   await expect(page.getByText(query).first()).toBeVisible({ timeout: 30_000 });
+}
+
+async function waitForPatientReadyInApi(session: Awaited<ReturnType<typeof loginAndCaptureSession>>, fullName: string): Promise<void> {
+  const api = await authenticatedRequestContext(session.token);
+  await expect.poll(async () => {
+    const refreshed = await apiJson<BootstrapPayload>(api, `${session.apiBaseUrl}/v1/bootstrap`);
+    const patient = refreshed.body?.patients.find(item => `${item.firstName} ${item.lastName}` === fullName);
+    return patient ? `${patient.status}:${patient.medicalOrder?.status}` : 'missing';
+  }, { timeout: 60_000, intervals: [1000, 2000, 3000, 5000] }).toBe('PENDING_CONSENT:ORDER_APPROVED');
+  await api.dispose();
+}
+
+async function manageFacilityThroughUi(page: Page, facilityName: string): Promise<void> {
+  const panel = page.locator('#facility-management');
+  await expect(panel).toBeVisible();
+  await panel.getByRole('button', { name: /New Facility|Nuevo facility/i }).click();
+  await page.getByLabel(/Facility name/i).fill(facilityName);
+  await page.getByRole('button', { name: /^Save$|^Guardar$/i }).click();
+  await panel.getByPlaceholder(/Search facility|Buscar facility/i).fill(facilityName);
+  const row = panel.getByRole('row').filter({ hasText: facilityName });
+  await expect(row).toBeVisible({ timeout: 30_000 });
+  await row.getByRole('button', { name: /Deactivate/i }).click();
+  await expect(row).toContainText(/Inactive/i);
+  await row.getByRole('button', { name: /Activate/i }).click();
+  await expect(row).toContainText(/Active/i);
+  await row.getByRole('button', { name: /Delete/i }).click();
+  await expect(row).toHaveCount(0, { timeout: 30_000 });
 }
 
 async function approveMedicalOrderThroughUi(page: Page, fullName: string): Promise<void> {

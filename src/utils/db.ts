@@ -152,9 +152,9 @@ export function getFacilities(): FacilityCatalog[] {
   return [...db.facilities];
 }
 
-export function saveFacility(facility: FacilityCatalog): void {
+export async function saveFacility(facility: FacilityCatalog): Promise<void> {
   db.facilities = replaceById(db.facilities, facility).filter(item => !item.is_deleted);
-  remote(saveResource('facilities', facility));
+  await saveResource('facilities', facility);
 }
 
 export async function deleteFacility(facility: FacilityCatalog, currentUserName: string): Promise<void> {

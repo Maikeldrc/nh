@@ -496,9 +496,9 @@ export default function App() {
     showToast(l('Programa guardado.', 'Program saved.'));
   };
 
-  const handleSaveFacility = (facility: FacilityCatalog) => {
+  const handleSaveFacility = async (facility: FacilityCatalog) => {
     if (!currentUser || currentUser.role !== 'ADMIN') return;
-    saveFacility(facility);
+    await saveFacility(facility);
     addAuditLog(
       currentUser.id,
       currentUser.name,

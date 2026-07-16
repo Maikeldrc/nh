@@ -113,6 +113,7 @@ test.describe.serial('Production API and synthetic-data QA', () => {
   });
 
   test('nurse and physician credentials respect production authorization boundaries', async ({ browser }, testInfo) => {
+    test.setTimeout(120_000);
     test.skip(testInfo.project.name !== 'chromium-desktop', 'API authorization boundaries run once on desktop.');
     const nurseCredentials = credentialsFromEnv('NURSE', 'nurse');
     const physicianCredentials = credentialsFromEnv('PHYSICIAN', 'physician');

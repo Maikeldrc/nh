@@ -45,7 +45,7 @@ interface DashboardAdminProps {
   onSaveConditionGroup: (group: ConditionGroupCatalog) => void;
   onSaveDiagnosis: (diagnosis: DiagnosisCatalog) => void;
   onSaveProgram: (program: ProgramCatalog) => void;
-  onSaveFacility: (facility: FacilityCatalog) => void;
+  onSaveFacility: (facility: FacilityCatalog) => Promise<void>;
   onDeleteFacility: (facility: FacilityCatalog) => Promise<void>;
   onUsersChanged: () => Promise<void>;
   onCleanupPatientData: () => Promise<void>;
