@@ -446,7 +446,7 @@ This service is not for emergencies. If you agree, we can continue with your aut
     { label: l('Decisión de Consentimiento Registrada', 'Consent Decision Recorded'), ready: consentDecision !== null, step: 3 },
     { label: l('Firma o Consentimiento Verbal Documentado', 'Consent Signed or Verbal Consent Documented'), ready: patientEvidenceComplete, step: 3 },
     { label: l('PDF de Consentimiento Generado', 'Consent PDF Generated'), ready: consentPdfGenerated, step: 3 },
-    { label: l('Atestación de Enfermería Completada', 'Nurse Attestation Completed'), ready: nurseAttestationComplete, step: 3 },
+    { label: l('Atestación del Personal de Inscripción Completada', 'Enrollment Personnel Attestation Completed'), ready: nurseAttestationComplete, step: 3 },
     { label: l('Orden médica aprobada', 'Medical Order Approved'), ready: requiresMedicalOrder ? medicalOrderApproved : null, step: 4 },
     { label: l('Dispositivo RPM Asignado', 'RPM Device Assigned'), ready: isRpmApplicable ? devDeliveredToPatient : null, step: 4 },
     { label: l('Dispositivo RPM Entregado', 'RPM Device Delivered'), ready: isRpmApplicable ? devDeliveredToPatient : null, step: 4 },
@@ -644,7 +644,7 @@ This service is not for emergencies. If you agree, we can continue with your aut
   // ----------------------------------------------------
   const triggerConsentPDFGeneration = async (isAutomatic = false) => {
     if (!consentRecordComplete) {
-      setAlertMessage(l('Complete la identificación del firmante, la evidencia de consentimiento y la atestación de enfermería antes de generar el PDF.', 'Complete signer identification, consent evidence, and the nurse attestation before generating the PDF.'));
+      setAlertMessage(l('Complete la identificación del firmante, la evidencia de consentimiento y la atestación del personal de inscripción antes de generar el PDF.', 'Complete signer identification, consent evidence, and the enrollment personnel attestation before generating the PDF.'));
       return;
     }
     if (isGeneratingConsentPdf || consentPdfGenerated) return;
@@ -1876,7 +1876,7 @@ This service is not for emergencies. If you agree, we can continue with your aut
 
                   <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
                     <div className="mb-5">
-                      <h3 className="text-lg font-extrabold text-slate-900">{l('Atestación de Enfermería', 'Nurse Attestation')}</h3>
+                      <h3 className="text-lg font-extrabold text-slate-900">{l('Atestación del Personal de Inscripción', 'Enrollment Personnel Attestation')}</h3>
                       <p className="mt-2 max-w-4xl text-sm leading-relaxed text-slate-600">
                         {l(
                           'La explicación del servicio se completó en el Paso 2. La enfermera confirma que la identidad y el rol del firmante fueron confirmados, que el paciente o representante tomó una decisión voluntaria, y que la firma o el consentimiento verbal fue presenciado/documentado durante este encuentro.',
@@ -1912,7 +1912,7 @@ This service is not for emergencies. If you agree, we can continue with your aut
                             [consentDecision === 'ACCEPT', l('Decisión registrada', 'Consent decision recorded')],
                             [representativeComplete && Boolean(signerName), l('Firmante identificado', 'Signer identified')],
                             [patientEvidenceComplete, l('Firma o consentimiento verbal documentado', 'Signature captured or verbal consent documented')],
-                            [nurseAttestationComplete, l('Atestación de enfermería completa', 'Nurse attestation completed')],
+                            [nurseAttestationComplete, l('Atestación del personal de inscripción completa', 'Enrollment personnel attestation completed')],
                             [consentPdfGenerated, l('PDF de consentimiento generado', 'Consent PDF generated')]
                           ].map(([complete, label], index) => (
                             <div key={index} className="flex items-center gap-2">
