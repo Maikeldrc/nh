@@ -16,3 +16,5 @@ qa-evidence/**/*
 *.log
 .env*
 !.env.example
+
+.vercel
