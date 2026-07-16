@@ -280,6 +280,7 @@ export default function VisitWizard({
   const [additionalDeviceType, setAdditionalDeviceType] = useState<'BP Monitor' | 'Scale' | 'Pulse Oximeter' | 'Glucometer' | 'Other'>(savedChoice('additionalDeviceType', 'Scale'));
   const [additionalSerialNumber, setAdditionalSerialNumber] = useState(savedString('additionalSerialNumber'));
   const [additionalDeviceId, setAdditionalDeviceId] = useState(savedString('additionalDeviceId'));
+  const [additionalKitId, setAdditionalKitId] = useState(savedString('additionalKitId'));
 
   // STEP 5: DEVICE ACTIVATION STATUS
   const [deviceAssignedPlatform, setDeviceAssignedPlatform] = useState(savedBool('deviceAssignedPlatform'));
@@ -965,6 +966,7 @@ This service is not for emergencies. If you agree, we can continue with your aut
       additionalDeviceType,
       additionalSerialNumber,
       additionalDeviceId,
+      additionalKitId,
       deviceAssignedPlatform,
       serialLinkedToPatient,
       connectivityConfirmed,
@@ -1824,11 +1826,45 @@ This service is not for emergencies. If you agree, we can continue with your aut
                         <div><label className="mb-1 block text-sm font-bold">Device type</label><select value={deviceType} onChange={(e) => setDeviceType(e.target.value as typeof deviceType)} className="min-h-12 w-full rounded-xl border border-slate-300 bg-white px-3 text-base"><option value="BP Monitor">BP Monitor</option><option value="Scale">Scale</option><option value="Other">Other</option></select></div>
                         <div className="md:col-span-2"><label className="mb-1 block text-sm font-bold">Scan device barcode or enter serial manually</label><input value={serialNumber} onChange={(e) => setSerialNumber(e.target.value)} className="min-h-12 w-full rounded-xl border border-slate-300 px-3 text-base" placeholder="Serial number" /></div>
                       </div>
-                      <button type="button" onClick={() => setHasAdditionalDevice(!hasAdditionalDevice)} className="mt-4 min-h-11 rounded-xl border border-blue-200 px-4 text-sm font-extrabold text-blue-700 hover:bg-blue-50">Add second device</button>
-                      <details className="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-4">
-                        <summary className="cursor-pointer text-sm font-extrabold">Additional device details</summary>
-                        <div className="mt-4 grid gap-4 md:grid-cols-2"><input value={deviceId} onChange={(e) => setDeviceId(e.target.value)} className="min-h-12 rounded-xl border border-slate-300 px-3 text-base" placeholder="SIM ID" /><input value={kitId} onChange={(e) => setKitId(e.target.value)} className="min-h-12 rounded-xl border border-slate-300 px-3 text-base" placeholder="Kit ID" /></div>
-                      </details>
+                      <div className="mt-4 flex flex-wrap gap-3">
+                        <button
+                          type="button"
+                          onClick={() => setHasAdditionalDevice(previous => !previous)}
+                          className="min-h-11 rounded-xl border border-blue-200 px-4 text-sm font-extrabold text-blue-700 hover:bg-blue-50"
+                        >
+                          {hasAdditionalDevice ? 'Remove second device' : 'Add second device'}
+                        </button>
+                      </div>
+                      <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-4">
+                        <p className="text-sm font-extrabold text-slate-900">Primary device details</p>
+                        <div className="mt-4 grid gap-4 md:grid-cols-2">
+                          <input value={deviceId} onChange={(e) => setDeviceId(e.target.value)} className="min-h-12 rounded-xl border border-slate-300 px-3 text-base" placeholder="SIM ID" />
+                          <input value={kitId} onChange={(e) => setKitId(e.target.value)} className="min-h-12 rounded-xl border border-slate-300 px-3 text-base" placeholder="Kit ID" />
+                        </div>
+                      </div>
+                      {hasAdditionalDevice && (
+                        <div className="mt-4 rounded-xl border border-blue-200 bg-blue-50 p-4">
+                          <p className="text-sm font-extrabold text-blue-950">Second device</p>
+                          <div className="mt-4 grid gap-4 md:grid-cols-2">
+                            <div>
+                              <label className="mb-1 block text-sm font-bold">Device type</label>
+                              <select value={additionalDeviceType} onChange={(e) => setAdditionalDeviceType(e.target.value as typeof additionalDeviceType)} className="min-h-12 w-full rounded-xl border border-slate-300 bg-white px-3 text-base">
+                                <option value="BP Monitor">BP Monitor</option>
+                                <option value="Scale">Scale</option>
+                                <option value="Pulse Oximeter">Pulse Oximeter</option>
+                                <option value="Glucometer">Glucometer</option>
+                                <option value="Other">Other</option>
+                              </select>
+                            </div>
+                            <div>
+                              <label className="mb-1 block text-sm font-bold">Serial number</label>
+                              <input value={additionalSerialNumber} onChange={(e) => setAdditionalSerialNumber(e.target.value)} className="min-h-12 w-full rounded-xl border border-slate-300 px-3 text-base" placeholder="Second device serial number" />
+                            </div>
+                            <input value={additionalDeviceId} onChange={(e) => setAdditionalDeviceId(e.target.value)} className="min-h-12 rounded-xl border border-slate-300 px-3 text-base" placeholder="Second device SIM ID" />
+                            <input value={additionalKitId} onChange={(e) => setAdditionalKitId(e.target.value)} className="min-h-12 rounded-xl border border-slate-300 px-3 text-base" placeholder="Second device Kit ID" />
+                          </div>
+                        </div>
+                      )}
                     </div>
 
                     <div className="rounded-2xl border border-slate-200 p-5">
