@@ -94,6 +94,25 @@ export default function EditPatientModal({
   );
   const meetsCcmConditionsRequirement = !assignedProgramIncludesCcm
     || Array.from(new Set<string>(completedManualDiagnoses.map(diagnosis => diagnosis.icd10Code))).filter(code => ICD10_CODE_PATTERN.test(code)).length >= 2;
+  const findCatalogDiagnosisName = (icd10Code: string) => {
+    const normalizedCode = icd10Code.trim().toUpperCase();
+    const compactCode = normalizedCode.replace('.', '');
+    if (!normalizedCode) return '';
+    const match = diagnoses.find(diagnosis => {
+      const catalogCode = diagnosis.icd10_code.trim().toUpperCase();
+      return diagnosis.is_active && (catalogCode === normalizedCode || catalogCode.replace('.', '') === compactCode);
+    });
+    return match?.icd10_display || match?.icd10_description || '';
+  };
+  const updateManualDiagnosisCode = (index: number, value: string) => {
+    const icd10Code = value.toUpperCase();
+    const catalogName = findCatalogDiagnosisName(icd10Code);
+    setManualDiagnoses(previous => previous.map((diagnosis, diagnosisIndex) =>
+      diagnosisIndex === index
+        ? { ...diagnosis, icd10Code, icd10Display: catalogName || diagnosis.icd10Display }
+        : diagnosis
+    ));
+  };
 
   // Set initial state from patient when modal opens or patient changes
   useEffect(() => {
@@ -503,11 +522,7 @@ export default function EditPatientModal({
                       <input
                         type="text"
                         value={diagnosis.icd10Code}
-                        onChange={(e) => {
-                          const next = [...manualDiagnoses];
-                          next[index] = { ...diagnosis, icd10Code: e.target.value.toUpperCase() };
-                          setManualDiagnoses(next);
-                        }}
+                        onChange={(e) => updateManualDiagnosisCode(index, e.target.value)}
                         className="w-full px-3 py-2 border border-slate-300 rounded-xl text-xs bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 text-slate-800 font-semibold"
                         placeholder="E11.9"
                       />
