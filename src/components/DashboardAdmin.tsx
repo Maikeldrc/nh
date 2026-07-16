@@ -23,6 +23,7 @@ import ClinicalCatalogManagement from './ClinicalCatalogManagement';
 import AdminBackups from './AdminBackups';
 import FacilityManagement from './FacilityManagement';
 import TablePagination, { usePaginatedRows } from './TablePagination';
+import { isEnrollmentOperationsRole } from '../utils/roles';
 
 interface DashboardAdminProps {
   currentUser: User;
@@ -103,7 +104,7 @@ export default function DashboardAdmin({
 
   // Filter nurses list for dropdown
   const nursesList = useMemo(() => {
-    return users.filter(u => u.role === 'NURSE' && u.active !== false);
+    return users.filter(u => isEnrollmentOperationsRole(u.role) && u.active !== false);
   }, [users]);
 
   // Summary Metrics

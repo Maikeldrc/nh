@@ -16,6 +16,7 @@ import { cleanupPatientData, downloadDocument, generateDocument } from './utils/
 import { getAuthConfigurationError, logout, observeAuthenticatedUser } from './utils/auth';
 import { approveMedicalOrder, createMedicalOrder, generateAutoOrderIfNeeded, isMedicalOrderApproved, patientRequiresDevice, rejectMedicalOrder, resubmitMedicalOrder } from './utils/medicalOrders';
 import { POWERED_BY, PRODUCT_NAME } from './utils/branding';
+import { isEnrollmentOperationsRole } from './utils/roles';
 import Header from './components/Header';
 import Login from './components/Login';
 import DashboardNurse from './components/DashboardNurse';
@@ -310,7 +311,7 @@ export default function App() {
     if (!currentUser) return;
 
     const patient = getPatients().find(p => p.id === patientId);
-    const nurse = getUsers().find(u => u.id === nurseId && u.role === 'NURSE');
+    const nurse = getUsers().find(u => u.id === nurseId && isEnrollmentOperationsRole(u.role));
     
     if (patient && nurse) {
       const oldNurseName = patient.assignedNurseName;

@@ -4,8 +4,9 @@ import { User, UserRole } from '../types';
 import { useLanguage } from '../utils/LanguageContext';
 import { createUser, updateUser, type UserMutationPayload } from '../utils/apiClient';
 import TablePagination, { usePaginatedRows } from './TablePagination';
+import { ROLE_OPTIONS, roleDisplayName } from '../utils/roles';
 
-const ROLES: UserRole[] = ['ADMIN', 'NURSE', 'PHYSICIAN', 'VIEWER', 'AUDITOR'];
+const ROLES: UserRole[] = ROLE_OPTIONS;
 
 interface UserManagementProps {
   currentUser: User;
@@ -294,7 +295,7 @@ export default function UserManagement({
               <label className="space-y-1 text-xs font-bold text-slate-600">
                 {l('Rol', 'Role')}
                 <select value={form.role} onChange={event => setForm({ ...form, role: event.target.value as UserRole })} className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-800">
-                  {ROLES.map(role => <option key={role} value={role}>{role}</option>)}
+                  {ROLES.map(role => <option key={role} value={role}>{roleDisplayName(role)}</option>)}
                 </select>
               </label>
               <div className="grid grid-cols-2 gap-3">
@@ -420,11 +421,12 @@ function roleBadge(role: UserRole) {
   const styles: Record<UserRole, string> = {
     ADMIN: 'bg-blue-50 text-blue-700 border-blue-200',
     NURSE: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+    AUXILIARY_PERSONNEL: 'bg-cyan-50 text-cyan-700 border-cyan-200',
     PHYSICIAN: 'bg-violet-50 text-violet-700 border-violet-200',
     VIEWER: 'bg-slate-50 text-slate-700 border-slate-200',
     AUDITOR: 'bg-amber-50 text-amber-700 border-amber-200'
   };
-  return <span className={`rounded-full border px-2 py-0.5 font-extrabold ${styles[role] || styles.VIEWER}`}>{role}</span>;
+  return <span className={`rounded-full border px-2 py-0.5 font-extrabold ${styles[role] || styles.VIEWER}`}>{roleDisplayName(role)}</span>;
 }
 
 function statusBadge(active: boolean, l: (es: string, en: string) => string) {

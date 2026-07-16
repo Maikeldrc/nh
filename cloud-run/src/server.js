@@ -32,7 +32,7 @@ import {
 } from './backups.js';
 
 const app = express();
-const USER_ROLES = new Set(['ADMIN', 'NURSE', 'PHYSICIAN', 'VIEWER', 'AUDITOR']);
+const USER_ROLES = new Set(['ADMIN', 'NURSE', 'AUXILIARY_PERSONNEL', 'PHYSICIAN', 'VIEWER', 'AUDITOR']);
 const ADMIN_ONLY_RESOURCES = new Set([
   'backups',
   'backup-config',

@@ -119,6 +119,8 @@ function getRoleMeta(role: User['role'], t: (key: string) => string) {
       return { initial: 'A', label: t('admin'), icon: <Shield size={10} className="text-emerald-600" /> };
     case 'PHYSICIAN':
       return { initial: 'P', label: t('physician'), icon: <Stethoscope size={10} className="text-violet-600" /> };
+    case 'AUXILIARY_PERSONNEL':
+      return { initial: 'A', label: t('auxiliary_personnel'), icon: <UserIcon size={10} className="text-blue-600" /> };
     case 'AUDITOR':
       return { initial: 'A', label: t('auditor'), icon: <ClipboardCheck size={10} className="text-slate-600" /> };
     case 'VIEWER':

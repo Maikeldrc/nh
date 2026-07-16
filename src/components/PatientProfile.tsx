@@ -7,6 +7,7 @@ import {
 import EditPatientModal from './EditPatientModal';
 import { useLanguage } from '../utils/LanguageContext';
 import { getMedicalOrderStatus, patientRequiresDevice } from '../utils/medicalOrders';
+import { isEnrollmentOperationsRole } from '../utils/roles';
 
 interface PatientProfileProps {
   currentUser: User;
@@ -145,7 +146,7 @@ export default function PatientProfile({
         </div>
 
         {/* Start/Resume Visit button only for Nurses & Non-Active patients */}
-        {currentUser.role === 'NURSE' && patient.status !== 'ACTIVE' && (
+        {isEnrollmentOperationsRole(currentUser.role) && patient.status !== 'ACTIVE' && (
           <div className="flex space-x-2">
             {isResumable && onContinueVisit ? (
               <button

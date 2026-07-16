@@ -27,7 +27,7 @@ export interface QaUser {
   id: string;
   name: string;
   email: string;
-  role: 'ADMIN' | 'NURSE' | 'PHYSICIAN' | 'VIEWER' | 'AUDITOR';
+  role: 'ADMIN' | 'NURSE' | 'AUXILIARY_PERSONNEL' | 'PHYSICIAN' | 'VIEWER' | 'AUDITOR';
   active?: boolean;
 }
 

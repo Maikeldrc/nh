@@ -3,6 +3,7 @@ import { Patient, User, Medication, ConditionGroupCatalog, DiagnosisCatalog, Pro
 import { X, UserPlus, Calendar, MapPin, HeartPulse, UserCheck, Stethoscope, CheckCheck, CheckCircle, Loader2 } from 'lucide-react';
 import { useLanguage } from '../utils/LanguageContext';
 import { POWERED_BY, PRACTICE_NAME, PRODUCT_NAME } from '../utils/branding';
+import { isEnrollmentOperationsRole } from '../utils/roles';
 
 interface RegisterPatientModalProps {
   isOpen: boolean;
@@ -410,8 +411,8 @@ export default function RegisterPatientModal({
   const [isLtc, setIsLtc] = useState(false); // Mandatory condition for Long Term Care (LTC)
   
   // Nurses list
-  const nurses = users.filter(u => u.role === 'NURSE' && u.active !== false);
-  const assignedNurseId = currentUser.role === 'NURSE' ? currentUser.id : (nurses[0]?.id || '');
+  const nurses = users.filter(u => isEnrollmentOperationsRole(u.role) && u.active !== false);
+  const assignedNurseId = isEnrollmentOperationsRole(currentUser.role) ? currentUser.id : (nurses[0]?.id || '');
 
   // RTM and inactive programs are not available during new patient registration.
   const eligiblePrograms = activePrograms.filter(program => program.code !== 'RTM' && program.code !== 'Other');

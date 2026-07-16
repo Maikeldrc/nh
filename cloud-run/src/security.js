@@ -4,6 +4,8 @@ import { getAuth } from 'firebase-admin/auth';
 
 if (!getApps().length) initializeApp();
 
+const ENROLLMENT_OPERATIONS_ROLES = new Set(['NURSE', 'AUXILIARY_PERSONNEL']);
+
 export function requestContext(req, res, next) {
   req.requestId = req.get('x-request-id') || crypto.randomUUID();
   res.set('x-request-id', req.requestId);
@@ -73,7 +75,7 @@ export function canReadPatient(user, patient) {
 
 export function canWritePatient(user, patient) {
   if (user.role === 'ADMIN') return true;
-  if (!['NURSE', 'PHYSICIAN'].includes(user.role)) return false;
+  if (![...ENROLLMENT_OPERATIONS_ROLES, 'PHYSICIAN'].includes(user.role)) return false;
   return canReadPatient(user, patient);
 }
 
