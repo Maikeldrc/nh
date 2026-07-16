@@ -1402,6 +1402,7 @@ This service is not for emergencies. If you agree, we can continue with your aut
       setAlertMessage('Complete authorized representative identity and authority before continuing.');
       return;
     }
+    setAlertMessage(null);
     setStep(2);
   };
 
@@ -1427,6 +1428,7 @@ This service is not for emergencies. If you agree, we can continue with your aut
       pdfReady = await triggerConsentPDFGeneration(true);
     }
     if (pdfReady) {
+      setAlertMessage(null);
       setStep(3);
     }
   };
@@ -1444,6 +1446,7 @@ This service is not for emergencies. If you agree, we can continue with your aut
     visitObj.status = 'COMPLETED';
     visitObj.endTime = new Date().toISOString();
     visitObj.currentStep = 3;
+    setAlertMessage(null);
     onSaveAndExit(visitObj, consentObj, deviceObj, readingObj, shouldActivate);
   };
 
