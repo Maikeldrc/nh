@@ -1,5 +1,5 @@
 import { useState, FormEvent, useEffect } from 'react';
-import { ConditionGroupCatalog, DiagnosisCatalog, Patient, PatientDiagnosis, User } from '../types';
+import { ConditionGroupCatalog, DiagnosisCatalog, Medication, Patient, PatientDiagnosis, User } from '../types';
 import { PROGRAMS } from '../data';
 import { X, Edit3, Calendar, MapPin, HeartPulse, Save } from 'lucide-react';
 import { useLanguage } from '../utils/LanguageContext';
@@ -74,9 +74,32 @@ export default function EditPatientModal({
   const [selectedConditions, setSelectedConditions] = useState<string[]>([]);
   const [manualDiagnoses, setManualDiagnoses] = useState<ManualDiagnosis[]>([createManualDiagnosis()]);
   const [isDiagnosisDropdownOpen, setIsDiagnosisDropdownOpen] = useState(false);
-  const [medicationsInput, setMedicationsInput] = useState('');
+  const [medications, setMedications] = useState<Medication[]>([]);
+  const [isMedicationListPending, setIsMedicationListPending] = useState(false);
+  const [isAddingMed, setIsAddingMed] = useState(false);
+  const [medSearch, setMedSearch] = useState('');
+  const [isMedDropdownOpen, setIsMedDropdownOpen] = useState(false);
+  const [medStrength, setMedStrength] = useState('');
+  const [medFrequency, setMedFrequency] = useState('Daily');
   const [requiredDevice, setRequiredDevice] = useState('');
   const [isLtc, setIsLtc] = useState(true); // Pre-fill with true since it's mandatory, but must be checked
+  const COMMON_MEDICATIONS = [
+    'Lisinopril', 'Metformin', 'Atorvastatin', 'Amlodipine', 'Furosemide',
+    'Omeprazole', 'Losartan', 'Gabapentin', 'Levothyroxine', 'Sertraline',
+    'Pantoprazole', 'Hydrochlorothiazide', 'Carvedilol', 'Metoprolol', 'Simvastatin'
+  ];
+  const toEditableMedication = (medication: string | Medication): Medication => {
+    if (typeof medication !== 'string') return medication;
+    return {
+      medication_name: medication,
+      normalized_medication_name: medication.toLowerCase(),
+      strength: '',
+      frequency: '',
+      source: 'Existing Record',
+      selected_by: patient.assignedNurseName || currentUser.name,
+      selected_at: new Date().toISOString()
+    };
+  };
   const ICD10_CODE_PATTERN = /^[A-Z][0-9][0-9A-Z](?:\.[0-9A-Z]{1,4})?$/;
   const CCM_CONDITIONS_ERROR = 'CCM requires at least 2 chronic conditions with valid ICD-10 codes.';
   const assignedProgramIncludesCcm = assignedProgram
@@ -154,7 +177,12 @@ export default function EditPatientModal({
       setCategorySearch('');
       setDiagnosisSearch('');
       
-      setMedicationsInput((patient.medications || []).map(m => typeof m === 'string' ? m : `${m.medication_name} ${m.strength} — ${m.frequency}`).join(', '));
+      setMedications((patient.medications || []).map(toEditableMedication));
+      setIsMedicationListPending(Boolean(patient.medicationsPendingReview));
+      setIsAddingMed(false);
+      setMedSearch('');
+      setMedStrength('');
+      setMedFrequency('Daily');
       
       // Determine if they are LTC (should be true for all registered patients under the new policy)
       const hasLtc = (patient.conditions || []).some(
@@ -228,11 +256,6 @@ export default function EditPatientModal({
       icd10Display: diagnosis.icd10Display
     }));
     
-    const medications = medicationsInput
-      .split(',')
-      .map(m => m.trim())
-      .filter(m => m.length > 0);
-
     const updatedPatient: Patient = {
       ...patient,
       firstName: firstName.trim(),
@@ -245,6 +268,7 @@ export default function EditPatientModal({
       conditions,
       diagnoses: patientDiagnoses,
       medications,
+      medicationsPendingReview: isMedicationListPending,
       requiredDevice,
       medicalOrder: assignedProgram.includes('RPM') && requiredDevice
         ? patient.medicalOrder || {
@@ -560,17 +584,204 @@ export default function EditPatientModal({
               )}
             </div>
 
-            <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1">
-                {language === 'ES' ? 'Medicamentos Actuales (separados por comas)' : 'Current Medications (comma separated)'}
-              </label>
-              <input
-                type="text"
-                value={medicationsInput}
-                onChange={(e) => setMedicationsInput(e.target.value)}
-                className="w-full px-3 py-2 border border-slate-300 rounded-xl text-xs bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 text-slate-800 font-semibold"
-                placeholder="e.g. Lisinopril 10mg daily, Metformin 500mg BID"
-              />
+            <div className="space-y-3 p-4 bg-slate-50 border border-slate-200 rounded-xl">
+              <div className="flex justify-between items-center">
+                <label className="block text-xs font-bold text-slate-700">
+                  {language === 'ES' ? 'Medicamentos Actuales' : 'Current Medications'}
+                </label>
+                {!isMedicationListPending && !isAddingMed && (
+                  <button
+                    type="button"
+                    onClick={() => setIsAddingMed(true)}
+                    className="text-xs font-bold text-blue-600 hover:text-blue-800 flex items-center bg-blue-50 px-2 py-1 rounded-md"
+                  >
+                    + {language === 'ES' ? 'Agregar Medicamento' : 'Add Medication'}
+                  </button>
+                )}
+              </div>
+
+              {isMedDropdownOpen && (
+                <div
+                  className="fixed inset-0 z-10 bg-transparent"
+                  onClick={() => setIsMedDropdownOpen(false)}
+                />
+              )}
+
+              {isAddingMed && !isMedicationListPending && (
+                <div className="bg-white p-3 rounded-lg border border-slate-200 shadow-sm relative z-20 space-y-3">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                    <div className="relative col-span-1">
+                      <label className="block text-[10px] font-bold text-slate-500 mb-1">
+                        {language === 'ES' ? 'Nombre del Medicamento' : 'Medication Name'}
+                      </label>
+                      <input
+                        type="text"
+                        value={medSearch}
+                        onChange={(e) => {
+                          setMedSearch(e.target.value);
+                          setIsMedDropdownOpen(true);
+                        }}
+                        onFocus={() => setIsMedDropdownOpen(true)}
+                        className="w-full px-3 py-1.5 border border-slate-300 rounded-lg text-xs focus:ring-2 focus:ring-blue-500 font-semibold"
+                        placeholder={language === 'ES' ? 'Buscar medicamento...' : 'Search medication name...'}
+                      />
+                      {isMedDropdownOpen && medSearch.length > 0 && (
+                        <div className="absolute left-0 right-0 mt-1 bg-white border border-slate-200 rounded-lg shadow-lg z-30 max-h-40 overflow-y-auto">
+                          {COMMON_MEDICATIONS
+                            .filter(m => m.toLowerCase().includes(medSearch.toLowerCase()))
+                            .map(m => (
+                              <div
+                                key={m}
+                                onClick={() => {
+                                  setMedSearch(m);
+                                  setIsMedDropdownOpen(false);
+                                }}
+                                className="px-3 py-2 text-xs hover:bg-blue-50 cursor-pointer font-semibold text-slate-700"
+                              >
+                                {m}
+                              </div>
+                            ))}
+                          {COMMON_MEDICATIONS.filter(m => m.toLowerCase().includes(medSearch.toLowerCase())).length === 0 && (
+                            <div className="px-3 py-2 text-xs text-slate-500 italic">
+                              {language === 'ES' ? `Presione enter para usar "${medSearch}"` : `Press enter to use "${medSearch}"`}
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="col-span-1">
+                      <label className="block text-[10px] font-bold text-slate-500 mb-1">
+                        {language === 'ES' ? 'Dosis / Concentración' : 'Strength'}
+                      </label>
+                      <input
+                        type="text"
+                        value={medStrength}
+                        onChange={(e) => setMedStrength(e.target.value)}
+                        className="w-full px-3 py-1.5 border border-slate-300 rounded-lg text-xs focus:ring-2 focus:ring-blue-500 font-semibold"
+                        placeholder="e.g. 10 mg"
+                      />
+                    </div>
+
+                    <div className="col-span-1">
+                      <label className="block text-[10px] font-bold text-slate-500 mb-1">
+                        {language === 'ES' ? 'Frecuencia' : 'Frequency'}
+                      </label>
+                      <select
+                        value={medFrequency}
+                        onChange={(e) => setMedFrequency(e.target.value)}
+                        className="w-full px-3 py-1.5 border border-slate-300 rounded-lg text-xs focus:ring-2 focus:ring-blue-500 font-semibold bg-white"
+                      >
+                        <option value="Daily">Daily</option>
+                        <option value="Twice daily">Twice daily</option>
+                        <option value="Three times daily">Three times daily</option>
+                        <option value="Every morning">Every morning</option>
+                        <option value="Every night">Every night</option>
+                        <option value="As needed">As needed</option>
+                        <option value="Other">Other</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className="flex justify-end space-x-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsAddingMed(false);
+                        setMedSearch('');
+                        setMedStrength('');
+                        setMedFrequency('Daily');
+                      }}
+                      className="text-[10px] px-3 py-1.5 text-slate-500 hover:bg-slate-100 rounded-md font-bold"
+                    >
+                      {language === 'ES' ? 'Cancelar' : 'Cancel'}
+                    </button>
+                    <button
+                      type="button"
+                      disabled={!medSearch.trim()}
+                      onClick={() => {
+                        if (!medSearch.trim()) return;
+                        const newMed: Medication = {
+                          medication_name: medSearch.trim(),
+                          normalized_medication_name: medSearch.trim().toLowerCase(),
+                          strength: medStrength.trim(),
+                          frequency: medFrequency,
+                          source: 'Manual Entry',
+                          selected_by: currentUser.name,
+                          selected_at: new Date().toISOString()
+                        };
+                        const isDup = medications.some(m =>
+                          m.normalized_medication_name === newMed.normalized_medication_name &&
+                          m.strength.toLowerCase() === newMed.strength.toLowerCase() &&
+                          m.frequency === newMed.frequency
+                        );
+                        if (!isDup) setMedications([...medications, newMed]);
+                        setMedSearch('');
+                        setMedStrength('');
+                        setMedFrequency('Daily');
+                        setIsAddingMed(false);
+                      }}
+                      className="text-[10px] px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-md font-bold disabled:opacity-50"
+                    >
+                      {language === 'ES' ? 'Guardar' : 'Save Medication'}
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {medications.length > 0 && !isMedicationListPending && (
+                <div className="space-y-2 mt-2">
+                  {medications.map((med, idx) => (
+                    <div key={`${med.normalized_medication_name}-${idx}`} className="flex justify-between items-center bg-white border border-slate-200 px-3 py-2 rounded-lg relative z-10">
+                      <div className="text-xs font-semibold text-slate-800">
+                        {med.medication_name}
+                        {med.strength && <span className="text-slate-500 font-normal"> {med.strength}</span>}
+                        {med.frequency && (
+                          <>
+                            <span className="text-slate-400 mx-1">-</span>
+                            <span className="text-slate-600 font-bold">{med.frequency}</span>
+                          </>
+                        )}
+                      </div>
+                      <div className="flex space-x-2">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setMedSearch(med.medication_name);
+                            setMedStrength(med.strength);
+                            setMedFrequency(med.frequency || 'Daily');
+                            setMedications(medications.filter((_, i) => i !== idx));
+                            setIsAddingMed(true);
+                          }}
+                          className="text-[10px] text-blue-600 hover:text-blue-800 font-bold"
+                        >
+                          {language === 'ES' ? 'Editar' : 'Edit'}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setMedications(medications.filter((_, i) => i !== idx))}
+                          className="text-[10px] text-red-500 hover:text-red-700 font-bold"
+                        >
+                          {language === 'ES' ? 'Eliminar' : 'Delete'}
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              <div className="flex items-center pt-2">
+                <input
+                  type="checkbox"
+                  id="edit-meds-pending"
+                  checked={isMedicationListPending}
+                  onChange={(e) => setIsMedicationListPending(e.target.checked)}
+                  className="w-4 h-4 text-blue-600 bg-white border-slate-300 rounded focus:ring-blue-500 cursor-pointer"
+                />
+                <label htmlFor="edit-meds-pending" className="ml-2 text-xs font-bold text-slate-600 cursor-pointer">
+                  {language === 'ES' ? 'Lista de medicamentos no disponible en este momento' : 'Medication list not available at this time'}
+                </label>
+              </div>
             </div>
           </div>
 
