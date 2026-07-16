@@ -306,7 +306,25 @@ export default function UserManagement({
                 <span className="text-[10px] font-semibold text-slate-400">{l('Uno por línea o separados por coma.', 'One per line or comma-separated.')}</span>
               </label>
               <div className="space-y-2 md:col-span-2">
-                <p className="text-xs font-bold text-slate-600">{l('Acceso a nursing homes', 'Nursing Home Access')}</p>
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <p className="text-xs font-bold text-slate-600">{l('Acceso a nursing homes', 'Nursing Home Access')}</p>
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setForm({ ...form, nursingHomeAccess: [...NURSING_HOMES] })}
+                      className="rounded-lg border border-blue-200 bg-blue-50 px-3 py-1.5 text-[10px] font-extrabold text-blue-700 transition hover:bg-blue-100"
+                    >
+                      Select All
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setForm({ ...form, nursingHomeAccess: [] })}
+                      className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-[10px] font-extrabold text-slate-600 transition hover:bg-slate-50"
+                    >
+                      Deselect All
+                    </button>
+                  </div>
+                </div>
                 <div className="grid gap-2 md:grid-cols-2">
                   {NURSING_HOMES.map(home => (
                     <label key={home} className="flex items-start gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-semibold text-slate-700">
