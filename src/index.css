@@ -7,6 +7,93 @@
 
 @layer base {
   :root {
+    /* AMAVITA CareStart premium design tokens */
+    --primary-700: #3545d6;
+    --primary-600: #4656f6;
+    --primary-500: #5b68fa;
+    --primary-100: #e9edff;
+    --primary-50: #f4f6ff;
+
+    --success-700: #087a50;
+    --success-600: #0f9f68;
+    --success-100: #ddf7ea;
+    --success-50: #effcf5;
+
+    --warning-700: #a65a00;
+    --warning-600: #d97706;
+    --warning-100: #fdebc8;
+    --warning-50: #fff8e8;
+
+    --error-700: #b42332;
+    --error-600: #d92d43;
+    --error-100: #fddce1;
+    --error-50: #fff2f4;
+
+    --info-700: #175cd3;
+    --info-600: #2970ff;
+    --info-100: #d9e7ff;
+    --info-50: #f1f6ff;
+
+    --neutral-950: #0b1220;
+    --neutral-900: #101828;
+    --neutral-700: #344054;
+    --neutral-600: #475467;
+    --neutral-500: #667085;
+    --neutral-400: #98a2b3;
+    --neutral-300: #d0d5dd;
+    --neutral-200: #e4e7ec;
+    --neutral-100: #f2f4f7;
+    --neutral-50: #f8fafc;
+
+    --color-bg-canvas: var(--neutral-50);
+    --color-bg-surface: #ffffff;
+    --color-bg-subtle: var(--neutral-100);
+    --color-text-primary: var(--neutral-900);
+    --color-text-secondary: var(--neutral-700);
+    --color-text-muted: var(--neutral-500);
+    --color-text-disabled: var(--neutral-400);
+    --color-border-default: var(--neutral-200);
+    --color-border-strong: var(--neutral-300);
+    --color-primary: var(--primary-600);
+    --color-primary-hover: var(--primary-700);
+    --color-primary-subtle: var(--primary-50);
+    --color-success: var(--success-600);
+    --color-success-subtle: var(--success-50);
+    --color-warning: var(--warning-600);
+    --color-warning-subtle: var(--warning-50);
+    --color-error: var(--error-600);
+    --color-error-subtle: var(--error-50);
+
+    --font-sans-premium: Inter, Roboto, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    --radius-input: 8px;
+    --radius-button: 9px;
+    --radius-selection: 12px;
+    --radius-card: 14px;
+    --radius-container: 16px;
+    --radius-modal: 18px;
+    --radius-pill: 999px;
+    --space-1: 4px;
+    --space-2: 8px;
+    --space-3: 12px;
+    --space-4: 16px;
+    --space-5: 20px;
+    --space-6: 24px;
+    --space-8: 32px;
+    --space-10: 40px;
+    --space-12: 48px;
+    --space-16: 64px;
+    --shadow-card:
+      0 1px 2px rgba(16, 24, 40, 0.04),
+      0 4px 12px rgba(16, 24, 40, 0.04);
+    --shadow-elevated:
+      0 2px 4px rgba(16, 24, 40, 0.05),
+      0 12px 28px rgba(16, 24, 40, 0.08);
+    --shadow-footer: 0 -8px 24px rgba(16, 24, 40, 0.06);
+    --duration-fast: 140ms;
+    --duration-normal: 180ms;
+    --duration-slow: 220ms;
+    --ease-standard: cubic-bezier(0.2, 0, 0, 1);
+
     --premium-bg: #f7f9ff;
     --premium-surface: rgba(255, 255, 255, 0.94);
     --premium-surface-solid: #ffffff;
@@ -39,32 +126,93 @@
 
   html {
     background: var(--premium-bg);
+    font-family: var(--font-sans-premium);
   }
 
   body {
     min-height: 100vh;
     background:
-      radial-gradient(circle at 16% 0%, rgba(79, 70, 229, 0.1), transparent 30rem),
-      radial-gradient(circle at 90% 8%, rgba(14, 165, 233, 0.09), transparent 28rem),
-      linear-gradient(180deg, #fbfdff 0%, #f6f8fd 48%, #eef3f8 100%);
-    color: var(--premium-text);
+      radial-gradient(circle at 16% -6%, rgba(70, 86, 246, 0.08), transparent 30rem),
+      radial-gradient(circle at 90% 4%, rgba(41, 112, 255, 0.06), transparent 28rem),
+      linear-gradient(180deg, #ffffff 0%, var(--neutral-50) 42%, #eef3f8 100%);
+    color: var(--color-text-primary);
+    font-family: var(--font-sans-premium);
+    font-size: 14px;
+    line-height: 1.5;
     letter-spacing: 0;
     text-rendering: geometricPrecision;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4 {
+    color: var(--neutral-950);
+    letter-spacing: 0;
+  }
+
+  h1 {
+    font-size: 1.625rem;
+    line-height: 2.125rem;
+    font-weight: 700;
+  }
+
+  h2 {
+    font-size: 1.375rem;
+    line-height: 1.875rem;
+    font-weight: 700;
+  }
+
+  h3 {
+    font-size: 1.0625rem;
+    line-height: 1.5rem;
+    font-weight: 650;
+  }
+
+  h4 {
+    font-size: 0.9375rem;
+    line-height: 1.375rem;
+    font-weight: 650;
   }
 
   button,
   input,
   select,
   textarea {
+    font-family: var(--font-sans-premium);
     letter-spacing: 0;
   }
 
   button {
     cursor: pointer;
+    transition:
+      background-color var(--duration-fast) var(--ease-standard),
+      border-color var(--duration-fast) var(--ease-standard),
+      box-shadow var(--duration-fast) var(--ease-standard),
+      color var(--duration-fast) var(--ease-standard),
+      transform var(--duration-fast) var(--ease-standard);
   }
 
   button:disabled {
     cursor: not-allowed;
+  }
+
+  button:focus-visible,
+  a:focus-visible,
+  input:focus-visible,
+  select:focus-visible,
+  textarea:focus-visible,
+  [tabindex]:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(70, 86, 246, 0.18) !important;
+  }
+
+  label {
+    color: var(--color-text-secondary);
+  }
+
+  ::placeholder {
+    color: var(--neutral-500);
   }
 }
 
@@ -73,14 +221,45 @@
     background: transparent;
   }
 
+  #main-application-frame > main {
+    width: min(100% - 32px, 1440px);
+    margin-inline: auto;
+  }
+
   #app-header {
     position: sticky;
     top: 0;
     z-index: 40;
-    border-bottom-color: rgba(203, 213, 225, 0.68);
-    background: rgba(255, 255, 255, 0.86);
-    box-shadow: 0 1px 0 rgba(255, 255, 255, 0.75) inset, 0 14px 34px rgba(15, 23, 42, 0.05);
+    min-height: 68px;
+    border-bottom-color: var(--color-border-default);
+    background: rgba(255, 255, 255, 0.92);
+    box-shadow: 0 1px 0 rgba(255, 255, 255, 0.75) inset, 0 10px 28px rgba(16, 24, 40, 0.05);
     backdrop-filter: blur(18px);
+  }
+
+  #brand-logo span {
+    color: var(--neutral-950);
+  }
+
+  #brand-logo p,
+  #app-header .text-slate-500 {
+    color: var(--neutral-500);
+  }
+
+  #dashboard-admin,
+  #dashboard-nurse,
+  [id^="patient-profile-"],
+  #admin-backups,
+  #clinical-catalog-management {
+    color: var(--color-text-primary);
+  }
+
+  #dashboard-admin h1,
+  #dashboard-nurse h1,
+  [id^="patient-profile-"] h1 {
+    font-size: clamp(1.5rem, 2vw, 1.875rem);
+    line-height: 1.2;
+    font-weight: 700;
   }
 
   #brand-logo > div:first-child,
@@ -116,9 +295,10 @@
   #clinical-catalog-management > div,
   #wizard-body,
   #wizard-progress {
-    border-color: var(--premium-border);
-    background: var(--premium-surface);
-    box-shadow: var(--premium-shadow-sm);
+    border-color: var(--color-border-default);
+    border-radius: var(--radius-container);
+    background: rgba(255, 255, 255, 0.96);
+    box-shadow: var(--shadow-card);
     backdrop-filter: blur(12px);
   }
 
@@ -127,7 +307,7 @@
   [id^="patient-profile-"] > .bg-white:first-of-type,
   #admin-backups > div:first-child,
   #clinical-catalog-management > div:first-child {
-    box-shadow: var(--premium-shadow);
+    box-shadow: var(--shadow-elevated);
   }
 
   #admin-stats-grid > div,
@@ -138,7 +318,21 @@
   #wizard-body section .rounded-xl,
   #register-patient-modal-container .rounded-2xl,
   #register-patient-modal-container .rounded-xl {
-    border-color: var(--premium-border);
+    border-color: var(--color-border-default);
+    border-radius: var(--radius-card);
+    box-shadow: var(--shadow-card);
+    background-color: var(--color-bg-surface);
+  }
+
+  #admin-stats-grid > div,
+  #nurse-stats-grid > div,
+  [id^="patient-profile-"] .grid > .bg-white,
+  #admin-documents-grid > div,
+  #admin-backups .bg-white,
+  #clinical-catalog-management .bg-white,
+  #facility-management .bg-white,
+  [id$="-panel"],
+  [id$="-grid"] > div {
     box-shadow: 0 1px 0 rgba(255, 255, 255, 0.85) inset;
   }
 
@@ -146,20 +340,23 @@
   #nurse-stats-grid > div {
     background:
       linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(248, 250, 252, 0.9));
-    transition: transform 160ms ease, box-shadow 160ms ease, border-color 160ms ease;
+    transition:
+      transform var(--duration-fast) var(--ease-standard),
+      box-shadow var(--duration-fast) var(--ease-standard),
+      border-color var(--duration-fast) var(--ease-standard);
   }
 
   #admin-stats-grid > div:hover,
   #nurse-stats-grid > div:hover,
   #admin-documents-grid > div:hover {
     transform: translateY(-1px);
-    box-shadow: var(--premium-shadow-sm);
+    box-shadow: var(--shadow-elevated);
   }
 
   #admin-stats-grid > div[class*="border-slate-800"] {
-    border-color: rgba(79, 70, 229, 0.5) !important;
-    background: linear-gradient(180deg, rgba(238, 242, 255, 0.92), rgba(255, 255, 255, 0.94)) !important;
-    box-shadow: 0 0 0 4px rgba(79, 70, 229, 0.09), var(--premium-shadow-sm);
+    border-color: rgba(70, 86, 246, 0.5) !important;
+    background: linear-gradient(180deg, var(--primary-50), rgba(255, 255, 255, 0.96)) !important;
+    box-shadow: 0 0 0 4px rgba(70, 86, 246, 0.09), var(--shadow-card);
   }
 
   #admin-tabs,
@@ -190,17 +387,23 @@
   input:not([type="checkbox"]):not([type="radio"]),
   select,
   textarea {
-    border-color: rgba(203, 213, 225, 0.95);
-    background-color: rgba(255, 255, 255, 0.92);
+    min-height: 42px;
+    border-color: var(--color-border-strong);
+    border-radius: var(--radius-input);
+    background-color: rgba(255, 255, 255, 0.96);
+    color: var(--color-text-primary);
     box-shadow: 0 1px 0 rgba(255, 255, 255, 0.92) inset;
-    transition: border-color 150ms ease, box-shadow 150ms ease, background-color 150ms ease;
+    transition:
+      border-color var(--duration-fast) var(--ease-standard),
+      box-shadow var(--duration-fast) var(--ease-standard),
+      background-color var(--duration-fast) var(--ease-standard);
   }
 
   input:not([type="checkbox"]):not([type="radio"]):focus,
   select:focus,
   textarea:focus {
-    border-color: rgba(79, 70, 229, 0.78) !important;
-    box-shadow: 0 0 0 4px rgba(79, 70, 229, 0.12), 0 1px 0 rgba(255, 255, 255, 0.9) inset !important;
+    border-color: var(--color-primary) !important;
+    box-shadow: 0 0 0 3px rgba(70, 86, 246, 0.14), 0 1px 0 rgba(255, 255, 255, 0.9) inset !important;
     outline: none;
   }
 
@@ -211,34 +414,45 @@
 
   button[class*="bg-blue-600"],
   button[class*="bg-indigo-600"] {
-    border: 1px solid rgba(79, 70, 229, 0.18);
-    background-image: linear-gradient(135deg, #6366f1 0%, #4f46e5 48%, #3730a3 100%);
-    box-shadow: 0 12px 26px rgba(79, 70, 229, 0.22);
+    min-height: 44px;
+    border: 1px solid rgba(70, 86, 246, 0.18);
+    border-radius: var(--radius-button);
+    background-color: var(--primary-600);
+    background-image: linear-gradient(135deg, var(--primary-500) 0%, var(--primary-600) 52%, var(--primary-700) 100%);
+    box-shadow: 0 12px 26px rgba(70, 86, 246, 0.2);
+    font-weight: 650;
   }
 
   button[class*="bg-blue-600"]:hover,
   button[class*="bg-indigo-600"]:hover {
-    background-image: linear-gradient(135deg, #6d6ff4 0%, #5146e6 42%, #312e81 100%);
-    box-shadow: 0 16px 34px rgba(79, 70, 229, 0.28);
+    background-color: var(--primary-700);
+    background-image: linear-gradient(135deg, var(--primary-500) 0%, var(--primary-700) 100%);
+    box-shadow: 0 16px 34px rgba(70, 86, 246, 0.26);
+    transform: translateY(-1px);
   }
 
   button[class*="bg-emerald-600"] {
-    border: 1px solid rgba(5, 150, 105, 0.16);
-    background-image: linear-gradient(135deg, #10b981 0%, #059669 54%, #047857 100%);
-    box-shadow: 0 12px 26px rgba(5, 150, 105, 0.2);
+    min-height: 44px;
+    border: 1px solid rgba(15, 159, 104, 0.16);
+    border-radius: var(--radius-button);
+    background-color: var(--success-600);
+    background-image: linear-gradient(135deg, #22c55e 0%, var(--success-600) 54%, var(--success-700) 100%);
+    box-shadow: 0 12px 26px rgba(15, 159, 104, 0.18);
+    font-weight: 650;
   }
 
   button[class*="border-blue-200"],
   a[class*="border-blue-200"] {
-    border-color: rgba(99, 102, 241, 0.26);
-    background-color: rgba(238, 242, 255, 0.68);
-    color: #4338ca;
+    border-color: var(--primary-100);
+    background-color: var(--primary-50);
+    color: var(--primary-700);
+    border-radius: var(--radius-button);
   }
 
   button[class*="border-blue-200"]:hover,
   a[class*="border-blue-200"]:hover {
-    border-color: rgba(79, 70, 229, 0.42);
-    background-color: rgba(224, 231, 255, 0.92);
+    border-color: rgba(70, 86, 246, 0.36);
+    background-color: var(--primary-100);
   }
 
   #wizard-container {
@@ -737,6 +951,249 @@
     #wizard-progress * {
       transition-duration: 0.01ms !important;
       animation-duration: 0.01ms !important;
+    }
+  }
+
+  /* App-wide AMAVITA premium system layer */
+  .bg-white {
+    border-color: var(--color-border-default);
+  }
+
+  .rounded-2xl {
+    border-radius: var(--radius-container);
+  }
+
+  .rounded-xl {
+    border-radius: var(--radius-selection);
+  }
+
+  .rounded-lg {
+    border-radius: var(--radius-button);
+  }
+
+  .shadow-sm {
+    box-shadow: var(--shadow-card);
+  }
+
+  .shadow-lg,
+  .shadow-xl,
+  .shadow-2xl {
+    box-shadow: var(--shadow-elevated);
+  }
+
+  .text-slate-800,
+  .text-slate-900 {
+    color: var(--neutral-900);
+  }
+
+  .text-slate-700 {
+    color: var(--neutral-700);
+  }
+
+  .text-slate-600,
+  .text-slate-500 {
+    color: var(--neutral-600);
+  }
+
+  .text-slate-400 {
+    color: var(--neutral-400);
+  }
+
+  .border-slate-200 {
+    border-color: var(--neutral-200);
+  }
+
+  .border-slate-300 {
+    border-color: var(--neutral-300);
+  }
+
+  .bg-slate-50 {
+    background-color: var(--neutral-50);
+  }
+
+  .bg-slate-100 {
+    background-color: var(--neutral-100);
+  }
+
+  .text-blue-600,
+  .text-blue-700,
+  .text-indigo-600,
+  .text-indigo-700 {
+    color: var(--primary-700);
+  }
+
+  .bg-blue-50,
+  .bg-indigo-50 {
+    background-color: var(--primary-50);
+  }
+
+  .border-blue-100,
+  .border-blue-200,
+  .border-indigo-100,
+  .border-indigo-200 {
+    border-color: var(--primary-100);
+  }
+
+  .bg-emerald-50,
+  .bg-green-50 {
+    background-color: var(--success-50);
+  }
+
+  .border-emerald-100,
+  .border-emerald-200,
+  .border-green-100,
+  .border-green-200 {
+    border-color: var(--success-100);
+  }
+
+  .text-emerald-600,
+  .text-emerald-700,
+  .text-emerald-800,
+  .text-green-600,
+  .text-green-700 {
+    color: var(--success-700);
+  }
+
+  .bg-amber-50,
+  .bg-yellow-50,
+  .bg-orange-50 {
+    background-color: var(--warning-50);
+  }
+
+  .border-amber-100,
+  .border-amber-200,
+  .border-yellow-100,
+  .border-yellow-200,
+  .border-orange-100,
+  .border-orange-200 {
+    border-color: var(--warning-100);
+  }
+
+  .text-amber-600,
+  .text-amber-700,
+  .text-amber-800,
+  .text-yellow-700,
+  .text-yellow-800,
+  .text-orange-600,
+  .text-orange-700 {
+    color: var(--warning-700);
+  }
+
+  .bg-red-50,
+  .bg-rose-50 {
+    background-color: var(--error-50);
+  }
+
+  .border-red-100,
+  .border-red-200,
+  .border-rose-100,
+  .border-rose-200 {
+    border-color: var(--error-100);
+  }
+
+  .text-red-600,
+  .text-red-700,
+  .text-red-800,
+  .text-rose-600,
+  .text-rose-700,
+  .text-rose-800 {
+    color: var(--error-700);
+  }
+
+  span[class*="rounded-full"],
+  span[class*="rounded-xl"][class*="text-xs"],
+  span[class*="rounded-md"][class*="text-"] {
+    border-radius: var(--radius-pill);
+    font-weight: 700;
+  }
+
+  [role="dialog"],
+  .fixed.inset-0 > div,
+  .fixed.inset-0 .bg-white {
+    border-radius: var(--radius-modal);
+  }
+
+  .fixed.inset-0 {
+    backdrop-filter: blur(6px);
+  }
+
+  table th {
+    color: var(--neutral-600);
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+  }
+
+  table td {
+    color: var(--neutral-700);
+  }
+
+  textarea {
+    line-height: 1.45;
+  }
+
+  input[type="checkbox"],
+  input[type="radio"] {
+    min-width: 16px;
+    min-height: 16px;
+  }
+
+  button[class*="border-slate-300"],
+  button[class*="border-slate-200"],
+  a[class*="border-slate-300"],
+  a[class*="border-slate-200"] {
+    border-radius: var(--radius-button);
+    background-color: rgba(255, 255, 255, 0.95);
+    color: var(--neutral-700);
+  }
+
+  button[class*="border-slate-300"]:hover,
+  button[class*="border-slate-200"]:hover,
+  a[class*="border-slate-300"]:hover,
+  a[class*="border-slate-200"]:hover {
+    border-color: var(--neutral-300);
+    background-color: var(--neutral-50);
+  }
+
+  button[class*="bg-red-"],
+  button[class*="bg-rose-"] {
+    border-radius: var(--radius-button);
+  }
+
+  [id*="modal"] label,
+  [id*="form"] label,
+  #register-patient-modal-container label,
+  #wizard-body label {
+    font-size: 0.75rem;
+    line-height: 1rem;
+    font-weight: 650;
+  }
+
+  #login-page .bg-white,
+  #register-patient-modal-container > div,
+  #edit-patient-modal,
+  #medical-order-review-modal {
+    border: 1px solid var(--color-border-default);
+    box-shadow: var(--shadow-elevated);
+  }
+
+  #login-page input {
+    min-height: 44px;
+  }
+
+  #login-page button[type="submit"] {
+    min-height: 44px;
+  }
+
+  @media (max-width: 640px) {
+    #main-application-frame > main {
+      width: min(100% - 16px, 100%);
+    }
+
+    button,
+    input,
+    select {
+      min-height: 44px;
     }
   }
 }
