@@ -521,6 +521,43 @@ export default function RegisterPatientModal({
            medicareId.trim().length > 0;
   };
 
+  const resetForm = () => {
+    setFirstName('');
+    setLastName('');
+    setBirthDate('');
+    setMedicareId('');
+    setNursingHome(defaultNursingHome);
+    setRoom('');
+    setSelectedPrograms([]);
+    setSelectedConditions([]);
+    setManualDiagnoses([createManualDiagnosis()]);
+    setCategorySearch('');
+    setSelectedCategoryCodes([]);
+    setDiagnosisSearch('');
+    setMedications([]);
+    setIsMedicationListPending(false);
+    setMedSearch('');
+    setMedStrength('');
+    setIsLtc(false);
+    setErrors({});
+  };
+
+  const validateDraft = () => {
+    const newErrors: Record<string, string> = {};
+    if (!firstName.trim() && !lastName.trim() && !medicareId.trim()) {
+      newErrors.draft = language === 'ES'
+        ? 'Para guardar un borrador, capture al menos nombre, apellido o Medicare ID.'
+        : 'To save a draft, enter at least first name, last name, or Medicare ID.';
+    }
+    if (hasPartialManualDiagnosis) {
+      newErrors.conditions = language === 'ES'
+        ? 'Cada fila de ICD debe tener código y nombre, o estar completamente vacía.'
+        : 'Each ICD row must include both code and name, or be completely empty.';
+    }
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
   const handleCancel = () => {
     if (hasUnsavedChanges()) {
       setShowCancelConfirm(true);
@@ -529,12 +566,13 @@ export default function RegisterPatientModal({
     }
   };
 
-  const submitForm = async (action: 'CLOSE' | 'ADD_ANOTHER') => {
-    if (!validate()) return;
-    setIsSaving(true);
+  const buildPatientPayload = (status: Patient['status']): Patient => {
+    const isDraft = status === 'INCOMPLETE';
+    const displayFirstName = firstName.trim() || (isDraft ? 'Draft' : '');
+    const displayLastName = lastName.trim() || (isDraft ? 'Patient' : '');
 
     const conditions = [
-      'Long Term Care (LTC)',
+      ...(isLtc ? ['Long Term Care (LTC)'] : []),
       ...completedManualDiagnoses.map(diagnosis => `${diagnosis.icd10Display} · ${diagnosis.icd10Code}`)
     ];
     const patientDiagnoses = completedManualDiagnoses.map(diagnosis => ({
@@ -547,13 +585,13 @@ export default function RegisterPatientModal({
     const finalMedications = [...medications];
     const selectedNurse = nurses.find(n => n.id === assignedNurseId) || currentUser;
 
-    const newPatient: Patient = {
+    return {
       id: `pat_${Date.now()}`,
-      firstName: firstName.trim(),
-      lastName: lastName.trim(),
+      firstName: displayFirstName,
+      lastName: displayLastName,
       birthDate,
-      medicareId: medicareId.trim(),
-      nursingHome,
+      medicareId: medicareId.trim() || undefined,
+      nursingHome: nursingHome || defaultNursingHome || 'Input Facility',
       room: room.trim() || undefined,
       provider: 'Dr. Robert Chen', // default provider
       practice: PRACTICE_NAME,    // default medical practice
@@ -563,10 +601,35 @@ export default function RegisterPatientModal({
       medications: finalMedications,
       medicationsPendingReview: isMedicationListPending,
       requiredDevice,
-      status: 'PENDING_CONSENT',
+      status,
       assignedNurseId: selectedNurse.id,
       assignedNurseName: selectedNurse.name
     };
+  };
+
+  const submitDraft = async () => {
+    if (!validateDraft()) return;
+    setIsSaving(true);
+
+    const draftPatient = buildPatientPayload('INCOMPLETE');
+
+    await new Promise(resolve => setTimeout(resolve, 500));
+
+    onRegister(draftPatient);
+
+    setSuccessMessage(language === 'ES' ? `${PRODUCT_NAME}: borrador guardado.` : `${PRODUCT_NAME}: draft saved.`);
+    setTimeout(() => {
+      setIsSaving(false);
+      resetForm();
+      onClose();
+    }, 500);
+  };
+
+  const submitForm = async (action: 'CLOSE' | 'ADD_ANOTHER') => {
+    if (!validate()) return;
+    setIsSaving(true);
+
+    const newPatient = buildPatientPayload('PENDING_CONSENT');
 
     // Simulate short network delay for loading feedback
     await new Promise(resolve => setTimeout(resolve, 500));
@@ -577,48 +640,14 @@ export default function RegisterPatientModal({
       setSuccessMessage(language === 'ES' ? `${PRODUCT_NAME}: paciente registrado con éxito.` : `${PRODUCT_NAME}: patient registered successfully.`);
       setTimeout(() => {
         setIsSaving(false);
-        setFirstName('');
-        setLastName('');
-        setBirthDate('');
-        setMedicareId('');
-        setNursingHome(defaultNursingHome);
-        setRoom('');
-        setSelectedPrograms([]);
-        setSelectedConditions([]);
-        setManualDiagnoses([createManualDiagnosis()]);
-        setCategorySearch('');
-        setSelectedCategoryCodes([]);
-        setDiagnosisSearch('');
-        setMedications([]);
-        setIsMedicationListPending(false);
-        setMedSearch('');
-        setMedStrength('');
-        setIsLtc(false);
-        setErrors({});
+        resetForm();
         onClose();
       }, 500);
     } else {
       setSuccessMessage(language === 'ES' ? `${PRODUCT_NAME}: paciente registrado con éxito. Puedes agregar otro.` : `${PRODUCT_NAME}: patient registered successfully. You can now add another patient.`);
       setIsSaving(false);
       
-      setFirstName('');
-      setLastName('');
-      setBirthDate('');
-      setMedicareId('');
-      setNursingHome(defaultNursingHome);
-      setRoom('');
-      setSelectedPrograms([]);
-      setSelectedConditions([]);
-      setManualDiagnoses([createManualDiagnosis()]);
-      setCategorySearch('');
-      setSelectedCategoryCodes([]);
-      setDiagnosisSearch('');
-      setMedications([]);
-      setIsMedicationListPending(false);
-      setMedSearch('');
-      setMedStrength('');
-      setIsLtc(false);
-      setErrors({});
+      resetForm();
       
       setTimeout(() => {
         setSuccessMessage(null);
@@ -1177,7 +1206,15 @@ export default function RegisterPatientModal({
           </div>
 
           {/* Footer Controls */}
-          <div className="bg-slate-50 px-6 py-4 border-t border-slate-100 flex items-center justify-end gap-3 rounded-b-2xl">
+          <div className="bg-slate-50 px-6 py-4 border-t border-slate-100 flex flex-col gap-3 rounded-b-2xl sm:flex-row sm:items-center sm:justify-between">
+            <div className="min-h-5">
+              {errors.draft && (
+                <p className="text-xs font-semibold text-red-600">
+                  {errors.draft}
+                </p>
+              )}
+            </div>
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-end">
             {/* Cancel */}
             <button
               type="button"
@@ -1187,6 +1224,19 @@ export default function RegisterPatientModal({
             >
               <X size={14} />
               {language === 'ES' ? 'Cancelar' : 'Cancel'}
+            </button>
+            {/* Draft */}
+            <button
+              type="button"
+              onClick={submitDraft}
+              disabled={isSaving}
+              className="flex items-center justify-center gap-1.5 px-4 py-2.5 border border-amber-300 rounded-xl text-xs font-bold text-amber-800 bg-amber-50 hover:bg-amber-100 transition disabled:opacity-50 cursor-pointer"
+            >
+              {isSaving ? (
+                <><Loader2 size={14} className="animate-spin" />{language === 'ES' ? 'Guardando...' : 'Saving...'}</>
+              ) : (
+                <><CheckCircle size={14} />{language === 'ES' ? 'Guardar Draft' : 'Save Draft'}</>
+              )}
             </button>
             {/* Register */}
             <button
@@ -1201,6 +1251,7 @@ export default function RegisterPatientModal({
                 <><CheckCheck size={14} />{language === 'ES' ? 'Registrar' : 'Register'}</>
               )}
             </button>
+            </div>
           </div>
         </form>
       </div>

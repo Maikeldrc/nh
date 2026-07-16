@@ -714,7 +714,8 @@ export default function App() {
     if (!currentUser) return;
 
     // Auto-generate medical order for RPM patients
-    const autoOrder = generateAutoOrderIfNeeded(newPatient, currentUser);
+    const isDraftRegistration = newPatient.status === 'INCOMPLETE';
+    const autoOrder = isDraftRegistration ? undefined : generateAutoOrderIfNeeded(newPatient, currentUser);
     if (autoOrder) {
       newPatient.medicalOrder = autoOrder;
     }
@@ -727,9 +728,11 @@ export default function App() {
       currentUser.role,
       newPatient.id,
       `${newPatient.firstName} ${newPatient.lastName}`,
-      'Paciente Registrado',
+      isDraftRegistration ? 'Borrador de Paciente Guardado' : 'Paciente Registrado',
       'PATIENT',
-      `Nuevo paciente registrado en ${newPatient.nursingHome} (habitacion ${newPatient.room || 'N/A'}) bajo el programa ${newPatient.assignedProgram}.`
+      isDraftRegistration
+        ? `Borrador de paciente guardado en ${newPatient.nursingHome} (habitacion ${newPatient.room || 'N/A'}). Pendiente completar registro.`
+        : `Nuevo paciente registrado en ${newPatient.nursingHome} (habitacion ${newPatient.room || 'N/A'}) bajo el programa ${newPatient.assignedProgram}.`
     );
 
     if (autoOrder) {
@@ -746,7 +749,10 @@ export default function App() {
     }
 
     refreshAppState();
-    showToast(l(`${PRODUCT_NAME}: paciente ${newPatient.firstName} ${newPatient.lastName} registrado con éxito.`, `${PRODUCT_NAME}: patient ${newPatient.firstName} ${newPatient.lastName} registered successfully.`));
+    showToast(isDraftRegistration
+      ? l(`${PRODUCT_NAME}: borrador de paciente guardado.`, `${PRODUCT_NAME}: patient draft saved.`)
+      : l(`${PRODUCT_NAME}: paciente ${newPatient.firstName} ${newPatient.lastName} registrado con éxito.`, `${PRODUCT_NAME}: patient ${newPatient.firstName} ${newPatient.lastName} registered successfully.`)
+    );
 
     // If admin and an order was auto-generated, open the review modal
     if (autoOrder && currentUser.role === 'ADMIN') {
