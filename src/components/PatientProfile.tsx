@@ -53,6 +53,17 @@ export default function PatientProfile({
   const patientLogs = useMemo(() => {
     return auditLogs.filter(log => log.patientId === patient.id);
   }, [auditLogs, patient.id]);
+  const uniqueReadings = useMemo(() => {
+    const seen = new Set<string>();
+    return bpReadings.filter(reading => {
+      const key = reading.readingType === 'WEIGHT'
+        ? `WEIGHT:${reading.weightLbs ?? ''}`
+        : `BP:${reading.systolic ?? ''}:${reading.diastolic ?? ''}:${reading.pulse ?? ''}`;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+  }, [bpReadings]);
 
   // Is the visit resumable?
   const isResumable = patient.status === 'INCOMPLETE';
@@ -303,53 +314,28 @@ export default function PatientProfile({
             <Activity size={14} className="mr-1.5 text-slate-500" /> {l('Lecturas Iniciales', 'Initial Readings')}
           </h3>
 
-          {bpReadings.length === 0 ? (
+          {uniqueReadings.length === 0 ? (
             <div className="text-center py-6 text-slate-400 border border-dashed border-slate-200 rounded-xl text-xs italic">
               {l('Ninguna lectura registrada', 'No readings recorded')}
             </div>
           ) : (
             <div className="space-y-3">
-              {bpReadings.map((reading) => {
+              {uniqueReadings.map((reading) => {
                 const isWeightReading = reading.readingType === 'WEIGHT';
-                const hasBpValues = typeof reading.systolic === 'number' && typeof reading.diastolic === 'number';
-                const highBP = hasBpValues && (reading.systolic! >= 140 || reading.diastolic! >= 90);
-                const lowBP = hasBpValues && (reading.systolic! <= 90 || reading.diastolic! <= 60);
                 
                 return (
-                  <div key={reading.id} className="p-3 border rounded-xl bg-slate-50/50 space-y-1.5">
+                  <div key={reading.id} className="p-3 border rounded-xl bg-slate-50/50">
                     {isWeightReading ? (
-                      <>
-                        <div className="flex justify-between items-center">
-                          <span className="text-2xl font-black text-slate-800">{reading.weightLbs} <span className="text-xs font-bold text-slate-500">lb</span></span>
-                          <span className="text-xs font-bold text-slate-700">{l('Bascula', 'Scale')}</span>
-                        </div>
-                        <div className="flex justify-between items-center text-[10px] text-slate-500 font-semibold">
-                          <span>{l('Lectura de peso inicial', 'Initial weight reading')}</span>
-                          <span className="bg-slate-200 text-slate-700 px-2.5 py-0.5 rounded-xl font-bold uppercase text-[8px] border border-slate-300">{reading.source}</span>
-                        </div>
-                      </>
+                      <div className="flex justify-between items-center">
+                        <span className="text-2xl font-black text-slate-800">{reading.weightLbs} <span className="text-xs font-bold text-slate-500">lb</span></span>
+                        <span className="text-xs font-bold text-slate-700">{l('Peso', 'Weight')}</span>
+                      </div>
                     ) : (
-                      <>
-                        <div className="flex justify-between items-center">
-                          <span className="text-2xl font-black text-slate-800">{reading.systolic}/{reading.diastolic} <span className="text-xs font-bold text-slate-500">mmHg</span></span>
-                          <span className="text-xs font-bold text-slate-700">{reading.pulse} <span className="text-[9px] text-slate-400 uppercase font-mono">BPM</span></span>
-                        </div>
-
-                        <div className="flex justify-between items-center text-[10px] text-slate-500 font-semibold">
-                          <span>{l('Brazo', 'Arm')}: {reading.arm === 'LEFT' ? l('Izquierdo', 'Left') : l('Derecho', 'Right')} • {reading.position}</span>
-                          <span className="bg-slate-200 text-slate-700 px-2.5 py-0.5 rounded-xl font-bold uppercase text-[8px] border border-slate-300">{reading.source}</span>
-                        </div>
-                      </>
-                    )}
-
-                    {(highBP || lowBP) && (
-                      <div className="bg-amber-50 border border-amber-200 p-2 rounded-xl flex items-center space-x-1.5">
-                        <ShieldAlert size={12} className="text-amber-600 shrink-0" />
-                        <span className="text-[10px] font-bold text-amber-800">{l('Alerta: Puede ser necesaria una revisión clínica.', 'Alert: Clinical review may be needed.')}</span>
+                      <div className="flex justify-between items-center">
+                        <span className="text-2xl font-black text-slate-800">{reading.systolic}/{reading.diastolic} <span className="text-xs font-bold text-slate-500">mmHg</span></span>
+                        <span className="text-xs font-bold text-slate-700">{reading.pulse} <span className="text-[9px] text-slate-400 uppercase font-mono">BPM</span></span>
                       </div>
                     )}
-
-                    <p className="text-[10px] text-slate-400 italic">{l('Registrado el', 'Recorded on')} {new Date(reading.dateTime).toLocaleString()}</p>
                   </div>
                 );
               })}
