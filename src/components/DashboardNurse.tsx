@@ -271,6 +271,7 @@ export default function DashboardNurse({
             <select
               value={selectedNH}
               onChange={(e) => setSelectedNH(e.target.value)}
+              aria-label={language === 'ES' ? 'Filtrar por Nursing Home' : 'Filter by nursing home'}
               className="px-2.5 py-1.5 border border-slate-300 rounded-xl text-xs bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 font-semibold text-slate-700"
             >
               <option value="">{language === 'ES' ? 'Todos los Nursing Homes' : 'All Nursing Homes'}</option>
