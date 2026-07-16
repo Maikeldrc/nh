@@ -141,6 +141,12 @@
     box-shadow: var(--premium-shadow-sm);
   }
 
+  #admin-stats-grid > div[class*="border-slate-800"] {
+    border-color: rgba(79, 70, 229, 0.5) !important;
+    background: linear-gradient(180deg, rgba(238, 242, 255, 0.92), rgba(255, 255, 255, 0.94)) !important;
+    box-shadow: 0 0 0 4px rgba(79, 70, 229, 0.09), var(--premium-shadow-sm);
+  }
+
   #admin-tabs,
   [id$="-tabs"] {
     border-color: var(--premium-border);
