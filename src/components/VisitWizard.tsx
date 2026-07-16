@@ -523,13 +523,8 @@ This service is not for emergencies. If you agree, we can continue with your aut
   useEffect(() => {
     if (consentSignerType === 'UNABLE') {
       setSignatureMethod('UNABLE');
-    } else if (signatureMethod === 'UNABLE') {
-      setSignatureMethod(representativeSignatureMethod === 'REMOTE_LINK' ? 'TYPE' : 'DRAW');
-      setUnableSignMethod('');
-      setUnableToSignReason('');
-      setUnableConsentConfirmed(false);
     }
-  }, [consentSignerType, representativeSignatureMethod, signatureMethod]);
+  }, [consentSignerType]);
 
   useEffect(() => {
     if (representativeSignatureMethod === 'REMOTE_LINK' && consentSignerType === 'REPRESENTATIVE') {
