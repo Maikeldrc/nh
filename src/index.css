@@ -12,6 +12,21 @@
     --premium-surface-solid: #ffffff;
     --premium-border: rgba(203, 213, 225, 0.82);
     --premium-border-strong: rgba(148, 163, 184, 0.48);
+    --enrollment-primary: #4f5ef7;
+    --enrollment-primary-hover: #3f4fe8;
+    --enrollment-primary-light: #eef1ff;
+    --enrollment-success: #16a36a;
+    --enrollment-success-light: #ecfdf3;
+    --enrollment-warning: #f59e0b;
+    --enrollment-warning-light: #fff7e6;
+    --enrollment-error: #dc3545;
+    --enrollment-error-light: #fff1f2;
+    --enrollment-text: #0f172a;
+    --enrollment-secondary: #475569;
+    --enrollment-muted: #64748b;
+    --enrollment-border: #dde3ee;
+    --enrollment-canvas: #f7f9fc;
+    --enrollment-card: #ffffff;
     --premium-primary: #4f46e5;
     --premium-primary-strong: #4338ca;
     --premium-primary-soft: #eef2ff;
@@ -352,6 +367,376 @@
     #dashboard-nurse,
     [id^="patient-profile-"] {
       gap: 1rem;
+    }
+  }
+
+  #main-application-frame:has(#wizard-container) {
+    background:
+      radial-gradient(circle at 12% -10%, rgba(79, 94, 247, 0.11), transparent 34rem),
+      linear-gradient(180deg, #ffffff 0%, var(--enrollment-canvas) 42%, #eef3f8 100%);
+  }
+
+  #main-application-frame:has(#wizard-container) #app-header {
+    display: none;
+  }
+
+  #main-application-frame:has(#wizard-container) > main {
+    padding: 0 0 7rem;
+  }
+
+  #wizard-container {
+    max-width: none;
+    width: 100%;
+    margin: 0;
+    padding: 0;
+  }
+
+  #wizard-progress {
+    position: sticky;
+    top: 0;
+    z-index: 30;
+    width: 100%;
+    border-width: 0 0 1px;
+    border-radius: 0;
+    border-color: var(--enrollment-border);
+    background: rgba(255, 255, 255, 0.92);
+    box-shadow: 0 10px 30px rgba(15, 23, 42, 0.05);
+    backdrop-filter: blur(18px);
+  }
+
+  #wizard-progress > div:first-child {
+    width: min(100%, 1440px);
+    margin-inline: auto;
+    padding-inline: clamp(1rem, 3vw, 2.5rem);
+  }
+
+  #wizard-progress > div:first-child > div:first-child {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 0.85rem;
+    align-items: center;
+  }
+
+  #wizard-progress > div:first-child > div:first-child::before {
+    content: "";
+    width: 3rem;
+    height: 3rem;
+    border-radius: 1rem;
+    background:
+      linear-gradient(135deg, rgba(79, 94, 247, 0.95), rgba(63, 79, 232, 0.95));
+    box-shadow: 0 16px 32px rgba(79, 94, 247, 0.22);
+  }
+
+  #wizard-progress h1 {
+    font-size: clamp(1.65rem, 2.4vw, 2.25rem);
+    line-height: 1.08;
+    color: var(--enrollment-text);
+    letter-spacing: 0;
+  }
+
+  #wizard-progress p {
+    color: var(--enrollment-muted);
+  }
+
+  #wizard-progress p:first-child {
+    color: var(--enrollment-primary);
+  }
+
+  #wizard-progress > .grid {
+    position: relative;
+    width: min(100%, 1240px);
+    margin-inline: auto;
+    padding: 0.4rem clamp(1rem, 3vw, 2.5rem) 0;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  #wizard-progress > .grid::before {
+    content: "";
+    position: absolute;
+    left: clamp(2rem, 7vw, 7rem);
+    right: clamp(2rem, 7vw, 7rem);
+    top: 2.3rem;
+    height: 1px;
+    background: var(--enrollment-border);
+  }
+
+  #wizard-progress > .grid > button {
+    position: relative;
+    display: grid;
+    grid-template-columns: 2.5rem 1fr;
+    align-items: center;
+    gap: 0.75rem;
+    min-height: 4.7rem;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+    text-align: left;
+  }
+
+  #wizard-progress > .grid > button::before {
+    content: "";
+    width: 2.25rem;
+    height: 2.25rem;
+    border-radius: 999px;
+    border: 2px solid #a7b0c2;
+    background: #fff;
+    grid-row: 1 / span 2;
+    box-shadow: 0 0 0 6px #fff;
+    z-index: 1;
+  }
+
+  #wizard-progress > .grid > button::after {
+    content: "";
+    position: absolute;
+    left: 1.05rem;
+    top: 1.72rem;
+    z-index: 2;
+    width: 0.55rem;
+    height: 0.55rem;
+    border-radius: 999px;
+    background: transparent;
+  }
+
+  #wizard-progress > .grid > button[aria-current="step"]::before {
+    border-color: var(--enrollment-primary);
+    background: var(--enrollment-primary);
+  }
+
+  #wizard-progress > .grid > button[aria-current="step"]::after {
+    background: #fff;
+  }
+
+  #wizard-progress > .grid > button:not([aria-current="step"]):not(:disabled)::before {
+    border-color: var(--enrollment-success);
+    background: var(--enrollment-success);
+  }
+
+  #wizard-progress > .grid > button:not([aria-current="step"]):not(:disabled)::after {
+    background: #fff;
+  }
+
+  #wizard-progress > .grid span:first-of-type {
+    grid-column: 2;
+    font-size: 0.68rem;
+    letter-spacing: 0.06em;
+    color: var(--enrollment-muted);
+  }
+
+  #wizard-progress > .grid span:last-of-type {
+    grid-column: 2;
+    font-size: 0.95rem;
+    color: var(--enrollment-secondary);
+  }
+
+  #wizard-progress > .grid > button[aria-current="step"] span:last-of-type {
+    color: var(--enrollment-primary);
+  }
+
+  #wizard-progress > .mt-4 {
+    width: min(100%, 1240px);
+    margin: 0 auto;
+    border-radius: 999px;
+    background: #e8edfb;
+  }
+
+  #wizard-progress > .mt-4 > div {
+    background: linear-gradient(90deg, var(--enrollment-primary), var(--enrollment-primary-hover));
+  }
+
+  #wizard-body {
+    width: min(calc(100% - 2rem), 1240px);
+    max-width: 1240px;
+    margin: 2rem auto 0;
+    border-radius: 1.25rem;
+    border-color: var(--enrollment-border);
+    background: var(--enrollment-card);
+    box-shadow: 0 22px 60px rgba(15, 23, 42, 0.08);
+  }
+
+  #wizard-body > section {
+    padding: clamp(1.25rem, 3vw, 2.25rem);
+    background: var(--enrollment-card);
+  }
+
+  #wizard-body h2 {
+    font-size: clamp(1.55rem, 2.2vw, 2rem);
+    line-height: 1.15;
+    letter-spacing: 0;
+  }
+
+  #wizard-body h3 {
+    font-size: 1.15rem;
+    letter-spacing: 0;
+  }
+
+  #wizard-body h4 {
+    font-size: 1rem;
+  }
+
+  #wizard-body h2 + p,
+  #wizard-body h3 + p,
+  #wizard-body h4 + p {
+    color: var(--enrollment-secondary);
+    font-size: 0.95rem;
+  }
+
+  #wizard-body .rounded-2xl,
+  #wizard-body .rounded-xl {
+    border-color: var(--enrollment-border);
+  }
+
+  #wizard-body section > .rounded-2xl,
+  #wizard-body section > .rounded-xl,
+  #wizard-body label.rounded-2xl,
+  #wizard-body label.rounded-xl {
+    background: #fff;
+    box-shadow: 0 1px 0 rgba(255, 255, 255, 0.9) inset;
+  }
+
+  #wizard-body section > .bg-slate-50,
+  #wizard-body .bg-slate-50 {
+    background: #f8fafc;
+  }
+
+  #wizard-body label[class*="bg-blue-50"],
+  #wizard-body section[class*="bg-blue-50"] {
+    background: linear-gradient(180deg, rgba(238, 241, 255, 0.92), #fff);
+    border-color: rgba(79, 94, 247, 0.25);
+  }
+
+  #wizard-body label[class*="bg-blue-50"]:has(input:checked),
+  #wizard-body label:has(input[type="checkbox"]:checked) {
+    background: linear-gradient(180deg, var(--enrollment-success-light), #fff);
+    border-color: rgba(22, 163, 106, 0.35);
+  }
+
+  #wizard-body button[class*="border-2"] {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    min-height: 5.7rem;
+    border-width: 1px;
+    border-color: var(--enrollment-border);
+    background: #fff;
+    padding: 1.1rem 1.15rem;
+    box-shadow: 0 1px 0 rgba(255, 255, 255, 0.9) inset;
+    transition: border-color 160ms ease, box-shadow 160ms ease, transform 160ms ease, background-color 160ms ease;
+  }
+
+  #wizard-body button[class*="border-2"]:hover {
+    transform: translateY(-1px);
+    border-color: rgba(79, 94, 247, 0.35);
+    box-shadow: 0 12px 24px rgba(15, 23, 42, 0.06);
+  }
+
+  #wizard-body button[class*="border-2"]::after {
+    content: "";
+    width: 1.35rem;
+    height: 1.35rem;
+    border: 2px solid #cbd5e1;
+    border-radius: 999px;
+    align-self: start;
+  }
+
+  #wizard-body button[class*="border-2"][class*="border-blue-600"] {
+    background: linear-gradient(180deg, rgba(238, 241, 255, 0.96), #fff);
+    border-color: var(--enrollment-primary);
+    box-shadow: 0 0 0 4px rgba(79, 94, 247, 0.08), 0 14px 30px rgba(79, 94, 247, 0.09);
+  }
+
+  #wizard-body button[class*="border-2"][class*="border-blue-600"]::after {
+    border-color: var(--enrollment-primary);
+    background: radial-gradient(circle at center, var(--enrollment-primary) 42%, transparent 45%);
+  }
+
+  #wizard-body button[class*="border-2"] span:first-child {
+    font-size: 1rem;
+    color: var(--enrollment-text);
+  }
+
+  #wizard-body button[class*="border-2"] span:last-child {
+    grid-column: 1 / -1;
+    max-width: 90%;
+    font-size: 0.82rem;
+    color: var(--enrollment-secondary);
+  }
+
+  #wizard-body .grid:has(> div > label + input),
+  #wizard-body .grid:has(> div > label + select),
+  #wizard-body .grid:has(> div > label + textarea) {
+    background: #f8fafc;
+    border: 1px solid var(--enrollment-border);
+    border-radius: 1rem;
+    padding: 1rem;
+  }
+
+  #wizard-body label {
+    color: var(--enrollment-text);
+  }
+
+  #wizard-body input:not([type="checkbox"]):not([type="radio"]),
+  #wizard-body select,
+  #wizard-body textarea {
+    min-height: 2.85rem;
+    border-radius: 0.75rem;
+    border-color: var(--enrollment-border);
+    font-size: 0.9rem;
+  }
+
+  #wizard-body footer {
+    position: sticky;
+    bottom: 0;
+    border-top: 1px solid var(--enrollment-border);
+    background: rgba(255, 255, 255, 0.94);
+    box-shadow: 0 -18px 45px rgba(15, 23, 42, 0.08);
+    backdrop-filter: blur(18px);
+  }
+
+  #wizard-body footer button {
+    min-height: 3rem;
+  }
+
+  #wizard-body footer button[class*="bg-blue-600"] {
+    background-image: linear-gradient(135deg, var(--enrollment-primary), var(--enrollment-primary-hover));
+  }
+
+  #wizard-body footer button:disabled {
+    background-image: none;
+    background-color: #a5b4fc;
+    color: rgba(255, 255, 255, 0.86);
+    box-shadow: none;
+  }
+
+  #wizard-body footer button[class*="bg-emerald-600"] {
+    background-image: linear-gradient(135deg, #16a36a, #0f8a5b);
+  }
+
+  @media (max-width: 900px) {
+    #wizard-progress > .grid {
+      grid-template-columns: 1fr;
+      gap: 0.25rem;
+    }
+
+    #wizard-progress > .grid::before {
+      display: none;
+    }
+
+    #wizard-body {
+      width: min(calc(100% - 1rem), 100%);
+      margin-top: 1rem;
+      border-radius: 1rem;
+    }
+
+    #wizard-body footer {
+      gap: 0.75rem;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    #wizard-body *,
+    #wizard-progress * {
+      transition-duration: 0.01ms !important;
+      animation-duration: 0.01ms !important;
     }
   }
 }
