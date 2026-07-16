@@ -75,7 +75,7 @@ export default function EditPatientModal({
   const [manualDiagnoses, setManualDiagnoses] = useState<ManualDiagnosis[]>([createManualDiagnosis()]);
   const [isDiagnosisDropdownOpen, setIsDiagnosisDropdownOpen] = useState(false);
   const [medicationsInput, setMedicationsInput] = useState('');
-  const [requiredDevice, setRequiredDevice] = useState('BP Monitor');
+  const [requiredDevice, setRequiredDevice] = useState('');
   const [isLtc, setIsLtc] = useState(true); // Pre-fill with true since it's mandatory, but must be checked
   const ICD10_CODE_PATTERN = /^[A-Z][0-9][0-9A-Z](?:\.[0-9A-Z]{1,4})?$/;
   const CCM_CONDITIONS_ERROR = 'CCM requires at least 2 chronic conditions with valid ICD-10 codes.';
@@ -105,7 +105,7 @@ export default function EditPatientModal({
       setNursingHome(patient.nursingHome || nursingHomes[0] || '');
       setRoom(patient.room || '');
       setAssignedProgram(patient.assignedProgram || 'RPM');
-      setRequiredDevice(patient.requiredDevice || 'BP Monitor');
+      setRequiredDevice(patient.requiredDevice || '');
       
       const savedDiagnosisLabels = (patient.diagnoses || []).map(diagnosis => `${diagnosis.icd10Display} · ${diagnosis.icd10Code}`);
       const savedReviewFlag = (patient.conditions || []).includes('Clinical Review Required') ? ['Clinical Review Required'] : [];
@@ -178,6 +178,9 @@ export default function EditPatientModal({
     if (!isLtc) {
       newErrors.isLtc = language === 'ES' ? 'El paciente debe ser Long Term Care (LTC) obligatoriamente' : 'The patient must be Long Term Care (LTC)';
     }
+    if (assignedProgram.includes('RPM') && !requiredDevice) {
+      newErrors.requiredDevice = l('Seleccione el dispositivo requerido.', 'Select the required device.');
+    }
     if (completedManualDiagnoses.length === 0) {
       newErrors.conditions = l('Agregue al menos un ICD y el nombre del diagnóstico.', 'Add at least one ICD and diagnosis name.');
     } else if (hasPartialManualDiagnosis) {
@@ -224,7 +227,7 @@ export default function EditPatientModal({
       diagnoses: patientDiagnoses,
       medications,
       requiredDevice,
-      medicalOrder: assignedProgram.includes('RPM') && requiredDevice !== 'None'
+      medicalOrder: assignedProgram.includes('RPM') && requiredDevice
         ? patient.medicalOrder || {
             id: `ord_pending_${patient.id}`,
             status: 'ORDER_REQUIRED',
@@ -464,9 +467,15 @@ export default function EditPatientModal({
                   onChange={(e) => setRequiredDevice(e.target.value)}
                   className="w-full px-3 py-2 border border-slate-300 rounded-xl text-xs bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 text-slate-800 font-semibold"
                 >
+                  <option value="" disabled>{l('Seleccione dispositivo', 'Select device')}</option>
                   <option value="BP Monitor">BPM</option>
                   <option value="Scale">SCALE</option>
                 </select>
+                {errors.requiredDevice && (
+                  <span className="mt-1 block text-[10px] font-semibold text-red-500">
+                    {errors.requiredDevice}
+                  </span>
+                )}
               </div>
 
               <div />
