@@ -28,6 +28,7 @@ export default function RegisterPatientModal({
   nursingHomes
 }: RegisterPatientModalProps) {
   const { language } = useLanguage();
+  const defaultNursingHome = nursingHomes.find(home => home === 'Input Facility') || nursingHomes[0] || '';
   
   // Autocomplete Data
   interface ConditionGroup {
@@ -372,15 +373,15 @@ export default function RegisterPatientModal({
   const [lastName, setLastName] = useState('');
   const [birthDate, setBirthDate] = useState('');
   const [medicareId, setMedicareId] = useState('');
-  const [nursingHome, setNursingHome] = useState(nursingHomes[0] || '');
+  const [nursingHome, setNursingHome] = useState(defaultNursingHome);
   const [room, setRoom] = useState('');
   const activePrograms = programs.filter(program => program.is_active);
   const [selectedPrograms, setSelectedPrograms] = useState<string[]>([]);
   const assignedProgram = selectedPrograms.join(' + ');
   const [selectedConditions, setSelectedConditions] = useState<string[]>([]);
   useEffect(() => {
-    if (!nursingHome && nursingHomes[0]) setNursingHome(nursingHomes[0]);
-  }, [nursingHome, nursingHomes]);
+    if (!nursingHome && defaultNursingHome) setNursingHome(defaultNursingHome);
+  }, [nursingHome, defaultNursingHome]);
   
   // Auto-complete inputs
   const [categorySearch, setCategorySearch] = useState('');
@@ -561,7 +562,7 @@ export default function RegisterPatientModal({
         setLastName('');
         setBirthDate('');
         setMedicareId('');
-        setNursingHome(nursingHomes[0] || '');
+        setNursingHome(defaultNursingHome);
         setRoom('');
         setSelectedPrograms([]);
         setSelectedConditions([]);
@@ -584,7 +585,7 @@ export default function RegisterPatientModal({
       setLastName('');
       setBirthDate('');
       setMedicareId('');
-      setNursingHome(nursingHomes[0] || '');
+      setNursingHome(defaultNursingHome);
       setRoom('');
       setSelectedPrograms([]);
       setSelectedConditions([]);
