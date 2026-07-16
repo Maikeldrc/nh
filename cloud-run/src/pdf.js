@@ -11,6 +11,7 @@ const drive = google.drive({ version: 'v3', auth: new google.auth.GoogleAuth({
 function renderPdf(type, patient, source) {
   if (type === 'CONSENT') return renderConsentPdf(patient, source.consent || source);
   if (type === 'DEVICE_DELIVERY') return renderDeviceDeliveryPdf(patient, source.device || source);
+  if (type === 'MEDICAL_ORDER') return renderMedicalOrderPdf(patient, source.order || source);
 
   return new Promise((resolve, reject) => {
     const chunks = [];
@@ -298,6 +299,136 @@ function renderDeviceDeliveryPdf(patient, device) {
   });
 }
 
+function renderMedicalOrderPdf(patient, order) {
+  return new Promise((resolve, reject) => {
+    const chunks = [];
+    const doc = new PDFDocument({
+      size: 'LETTER',
+      margin: 0,
+      autoFirstPage: true,
+      bufferPages: false
+    });
+    doc.on('data', chunk => chunks.push(chunk));
+    doc.on('end', () => resolve(Buffer.concat(chunks)));
+    doc.on('error', reject);
+
+    const page = { x: 28, y: 24, w: 556, h: 744 };
+    const navy = '#1D4E89';
+    const blue = '#2563EB';
+    const cyan = '#0EA5E9';
+    const green = '#059669';
+    const purple = '#7C3AED';
+    const amber = '#D97706';
+    const line = '#CBD5E1';
+    const muted = '#64748B';
+    const text = '#111827';
+    const soft = '#F8FAFC';
+
+    const generatedAt = order.approvedAt || order.submittedAt || order.createdAt || new Date().toISOString();
+    const docId = order.id || `ord_${Date.now()}`;
+    const patientName = `${patient.firstName || ''} ${patient.lastName || ''}`.trim() || 'Patient';
+    const facility = patient.nursingHome || '';
+    const program = patient.assignedProgram || '';
+    const deviceType = order.deviceType || patient.requiredDevice || 'RPM Device';
+    const requestedBy = order.createdBy || 'AMAVITA Care Team';
+    const physician = order.assignedPhysician || patient.provider || 'Assigned Physician';
+    const reviewedBy = order.reviewedBy || physician;
+    const status = order.status || 'ORDER_APPROVED';
+
+    premiumHeader(doc, page, {
+      color: navy,
+      title: 'AMAVITA CareStart',
+      subtitle: 'POWERED BY ITERA.HEALTH',
+      docId,
+      date: generatedAt,
+      by: reviewedBy
+    });
+
+    doc.fillColor(text).font('Helvetica-Bold').fontSize(12.5)
+      .text('Physician Medical Order', page.x, page.y + 66);
+    doc.fillColor(muted).font('Helvetica').fontSize(7.6)
+      .text('Confidential medical record documenting device order, physician review, approval status, and activation authorization.', page.x, page.y + 82);
+
+    let y = page.y + 101;
+
+    sectionHeader(doc, page.x, y, page.w, 'Patient & Program', blue);
+    y += 18;
+    card(doc, page.x, y, page.w, 61, soft, line);
+    const leftX = page.x + 13;
+    const rightX = page.x + 206;
+    const rowYs = [y + 10, y + 28, y + 46];
+    labelValue(doc, leftX, rowYs[0], 170, 'Name', patientName);
+    labelValue(doc, leftX, rowYs[1], 170, 'DOB', patient.birthDate || patient.dob || '');
+    labelValue(doc, leftX, rowYs[2], 170, 'Medicare ID', patient.medicareId || '');
+    labelValue(doc, rightX, rowYs[0], 340, 'Nursing Home', facility, { valueSize: facility.length > 58 ? 7.1 : 7.8 });
+    labelValue(doc, rightX, rowYs[1], 160, 'Room', patient.room || '');
+    labelValue(doc, rightX + 170, rowYs[1], 160, 'Program', program);
+    labelValue(doc, rightX, rowYs[2], 340, 'Practice', patient.practice || '');
+    y += 72;
+
+    sectionHeader(doc, page.x, y, page.w, 'Device Medical Order', cyan);
+    y += 18;
+    card(doc, page.x, y, page.w, 86, '#FFFFFF', line);
+    const c1 = page.x + 13;
+    const c2 = page.x + 202;
+    const c3 = page.x + 390;
+    labelValue(doc, c1, y + 10, 168, 'Order ID', docId, { valueSize: 6.6 });
+    labelValue(doc, c1, y + 33, 168, 'Device Type', deviceType);
+    labelValue(doc, c1, y + 56, 168, 'Order Version', order.orderVersion || 'N/A', { valueSize: 6.6 });
+    labelValue(doc, c2, y + 10, 168, 'Status', humanize(status), { valueSize: 6.7 });
+    labelValue(doc, c2, y + 33, 168, 'Submitted', formatDateTime(order.submittedAt || order.createdAt || generatedAt), { valueSize: 6.4 });
+    labelValue(doc, c2, y + 56, 168, 'Approved', order.approvedAt ? formatDateTime(order.approvedAt) : 'Pending', { valueSize: 6.4 });
+    labelValue(doc, c3, y + 10, 150, 'Requested By', requestedBy, { valueSize: 6.8 });
+    labelValue(doc, c3, y + 33, 150, 'Assigned Physician', physician, { valueSize: 6.8 });
+    labelValue(doc, c3, y + 56, 150, 'Reviewed By', reviewedBy, { valueSize: 6.8 });
+    y += 98;
+
+    sectionHeader(doc, page.x, y, page.w, 'Clinical Authorization', green);
+    y += 18;
+    card(doc, page.x, y, page.w, 106, '#FFFFFF', line);
+    checklistItem(doc, page.x + 13, y + 13, 'Patient enrolled in a device-eligible care management program', Boolean(program));
+    checklistItem(doc, page.x + 13, y + 36, `Remote monitoring device ordered: ${deviceType}`, Boolean(deviceType));
+    checklistItem(doc, page.x + 13, y + 59, 'Physician review completed or pending workflow documented', Boolean(reviewedBy));
+    checklistItem(doc, page.x + 13, y + 82, 'Device activation may proceed only after approved order status', status === 'ORDER_APPROVED');
+
+    const noteX = page.x + 324;
+    doc.fillColor('#0F172A').font('Helvetica-Bold').fontSize(7.4).text('Provider Notes', noteX, y + 13, { width: 210 });
+    doc.fillColor('#334155').font('Helvetica').fontSize(6.7)
+      .text(order.revisionNotes || 'No additional provider notes documented.', noteX, y + 28, { width: 210, height: 62, lineGap: 0.6 });
+    y += 117;
+
+    sectionHeader(doc, page.x, y, page.w, 'Audit Trail', purple);
+    y += 18;
+    card(doc, page.x, y, page.w, 134, '#FFFFFF', line);
+    const trail = Array.isArray(order.auditTrail) ? order.auditTrail.slice(-4) : [];
+    if (trail.length === 0) {
+      doc.fillColor('#64748B').font('Helvetica-Bold').fontSize(7)
+        .text('No audit trail entries documented.', page.x + 13, y + 13, { width: page.w - 26 });
+    } else {
+      trail.forEach((entry, index) => {
+        const ty = y + 12 + (index * 29);
+        doc.circle(page.x + 17, ty + 5, 2.4).fill(index === trail.length - 1 ? green : blue);
+        doc.fillColor('#0F172A').font('Helvetica-Bold').fontSize(6.9)
+          .text(`${entry.action || 'ACTION'} · ${formatDateTime(entry.dateTime || generatedAt)}`, page.x + 27, ty, { width: 225, height: 9 });
+        doc.fillColor('#475569').font('Helvetica-Bold').fontSize(6.6)
+          .text(entry.userName || 'AMAVITA Care Team', page.x + 260, ty, { width: 130, height: 9, ellipsis: true });
+        doc.fillColor('#334155').font('Helvetica').fontSize(6.3)
+          .text(entry.notes || '', page.x + 27, ty + 11, { width: page.w - 54, height: 15, ellipsis: true });
+      });
+    }
+    y += 145;
+
+    sectionHeader(doc, page.x, y, page.w, 'Order Confirmation', amber);
+    y += 18;
+    const sigW = (page.w - 10) / 2;
+    signatureCard(doc, page.x, y, sigW, 94, 'Ordering / Requesting Clinician', requestedBy, order.createdAt || generatedAt, undefined, requestedBy);
+    signatureCard(doc, page.x + sigW + 10, y, sigW, 94, 'Physician Review / Approval', reviewedBy, order.approvedAt || generatedAt, undefined, reviewedBy);
+
+    pdfFooter(doc, page, docId);
+    doc.end();
+  });
+}
+
 function field(doc, label, value) {
   doc.fontSize(7).fillColor('#64748B').text(label.toUpperCase());
   doc.fontSize(9).fillColor('#111827').text(value, { lineGap: 1 });
@@ -462,6 +593,21 @@ export async function getPdfBuffer(driveFileId) {
     { responseType: 'arraybuffer' }
   )));
   return Buffer.from(response.data);
+}
+
+export async function deletePdfFile(driveFileId) {
+  if (!driveFileId) return false;
+  try {
+    await retryTransientGoogleError(() => drive.files.delete({
+      fileId: driveFileId,
+      supportsAllDrives: true
+    }));
+    return true;
+  } catch (error) {
+    const status = Number(error?.status || error?.code || error?.response?.status || 0);
+    if (status === 404) return false;
+    throw error;
+  }
 }
 
 async function withPdfStorageError(operation) {

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Patient, Visit, Consent, Device, BPReading, User, DocumentRecord, TechnicalActivationStatus } from '../types';
 import SignaturePad from './SignaturePad';
 import { 
@@ -213,7 +213,9 @@ export default function VisitWizard({
   const [consentPdfProgress, setConsentPdfProgress] = useState(0);
   const [consentPdfProgressLabel, setConsentPdfProgressLabel] = useState('');
   const [showFullConsent, setShowFullConsent] = useState(false);
+  const previousSignatureMethodRef = useRef(signatureMethod);
   const isVerbalConsent = signatureMethod === 'UNABLE' && unableSignMethod === 'VERBAL';
+  const isMarkXConsent = signatureMethod === 'UNABLE' && unableSignMethod === 'MARK_X';
   const needsRepresentativeDetails = consentSignerType === 'REPRESENTATIVE' ||
     (signatureMethod === 'UNABLE' && unableSignMethod === 'REPRESENTATIVE_SIGNATURE');
   const representativeComplete = !needsRepresentativeDetails ||
@@ -222,6 +224,7 @@ export default function VisitWizard({
   const unableConsentComplete = signatureMethod !== 'UNABLE' || Boolean(
     unableSignMethod &&
     unableToSignReason.trim() &&
+    (!isMarkXConsent || patientSignature) &&
     unableConsentConfirmed
   );
   const patientEvidenceComplete =
@@ -518,6 +521,8 @@ This service is not for emergencies. If you agree, we can continue with your aut
   }, [representativeSignatureMethod, consentSignerType]);
 
   useEffect(() => {
+    if (previousSignatureMethodRef.current === signatureMethod) return;
+    previousSignatureMethodRef.current = signatureMethod;
     setPatientSignature('');
     setTypedSignatureConfirmed(false);
     setUnableConsentConfirmed(false);
@@ -1536,9 +1541,6 @@ This service is not for emergencies. If you agree, we can continue with your aut
                       <p className="mt-1 text-xs font-semibold text-slate-500">
                         {l('Fecha efectiva', 'Effective date')}: {CONSENT_TEXT_EFFECTIVE_DATE}
                       </p>
-                      <p className="mt-1 text-xs font-semibold text-slate-500">
-                        {l('Versión del texto', 'Text version')}: {CONSENT_TEXT_VERSION}
-                      </p>
                     </div>
                     <div className="mt-5 space-y-5">
                       {FULL_CONSENT_SECTIONS.map(section => (
@@ -1791,6 +1793,7 @@ This service is not for emergencies. If you agree, we can continue with your aut
                               value={unableSignMethod}
                               onChange={(e) => {
                                 setUnableSignMethod(e.target.value as typeof unableSignMethod);
+                                setPatientSignature('');
                                 setUnableConsentConfirmed(false);
                                 setConsentPdfGenerated(false);
                               }}
@@ -1816,17 +1819,43 @@ This service is not for emergencies. If you agree, we can continue with your aut
                             />
                           </div>
                         </div>
+                        {isMarkXConsent && (
+                          <div className="rounded-2xl border border-amber-200 bg-white p-4">
+                            <p className="mb-3 text-xs font-semibold text-slate-600">
+                              {l(
+                                'Capture aquí la marca o X realizada por el paciente. Seleccionar el método no confirma la marca hasta guardar esta captura.',
+                                'Capture the patient mark or X here. Selecting the method does not confirm the mark until this capture is saved.'
+                              )}
+                            </p>
+                            <SignaturePad
+                              id="patient-mark-x-signature"
+                              label={l('Marca / X del paciente', 'Patient Mark / X')}
+                              onSave={handleSavePatientSignature}
+                              onClear={() => {
+                                setPatientSignature('');
+                                setUnableConsentConfirmed(false);
+                              }}
+                              savedDataUrl={patientSignature}
+                              signerName={`${patient.firstName} ${patient.lastName}`}
+                              confirmLabel={l('Guardar Marca / X', 'Save Mark / X')}
+                            />
+                          </div>
+                        )}
                         <button
                           type="button"
                           onClick={() => {
-                            if (!unableSignMethod || !unableToSignReason.trim()) return;
+                            if (!unableSignMethod || !unableToSignReason.trim() || (isMarkXConsent && !patientSignature)) return;
                             setUnableConsentConfirmed(true);
                           }}
-                          disabled={!unableSignMethod || !unableToSignReason.trim() || unableConsentConfirmed}
+                          disabled={!unableSignMethod || !unableToSignReason.trim() || (isMarkXConsent && !patientSignature) || unableConsentConfirmed}
                           className="inline-flex min-h-11 items-center justify-center rounded-xl bg-amber-600 px-5 text-sm font-extrabold text-white shadow-lg shadow-amber-600/20 hover:bg-amber-700 disabled:cursor-not-allowed disabled:opacity-50"
                         >
                           <CheckCircle size={16} className="mr-2" />
-                          {isVerbalConsent ? l('Confirmar Consentimiento Verbal', 'Confirm Verbal Consent') : l('Confirmar Firma', 'Confirm Signature')}
+                          {isVerbalConsent
+                            ? l('Confirmar Consentimiento Verbal', 'Confirm Verbal Consent')
+                            : isMarkXConsent
+                              ? l('Confirmar Marca / X', 'Confirm Mark / X')
+                              : l('Confirmar Firma', 'Confirm Signature')}
                         </button>
                         {unableConsentConfirmed && (
                           <p className="text-xs font-bold text-emerald-700">{l('Método especial confirmado. La atestación de enfermería sigue siendo obligatoria.', 'Special method confirmed. Nurse attestation is still required.')}</p>

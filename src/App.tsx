@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import {
   User, Patient, AuditLog, DocumentRecord, Visit, Consent, Device, BPReading,
-  ConditionGroupCatalog, DiagnosisCatalog, CatalogImportHistory
+  ConditionGroupCatalog, DiagnosisCatalog, CatalogImportHistory, ProgramCatalog
 } from './types';
 import { 
   getPatients, getAuditLogs, getDocuments,
@@ -9,9 +9,10 @@ import {
   saveDevice, saveBPReading, saveDocument, addAuditLog, getActiveVisitForPatient,
   getLatestVisitForPatient, getConsentByPatientId, getDeviceByPatientId, getBPReadingsByPatientId,
   getConditionGroups, getDiagnoses, getCatalogImportHistory, saveConditionCatalog,
-  setConditionGroupActive, setDiagnosisActive, saveConditionGroup, saveDiagnosis, hydrateDB, getUsers
+  setConditionGroupActive, setDiagnosisActive, saveConditionGroup, saveDiagnosis, hydrateDB, getUsers,
+  getPrograms, saveProgram
 } from './utils/db';
-import { downloadDocument, generateDocument } from './utils/apiClient';
+import { cleanupPatientData, downloadDocument, generateDocument } from './utils/apiClient';
 import { getAuthConfigurationError, logout, observeAuthenticatedUser } from './utils/auth';
 import { approveMedicalOrder, createMedicalOrder, generateAutoOrderIfNeeded, isMedicalOrderApproved, patientRequiresDevice, rejectMedicalOrder, resubmitMedicalOrder } from './utils/medicalOrders';
 import { POWERED_BY, PRODUCT_NAME } from './utils/branding';
@@ -40,6 +41,7 @@ export default function App() {
   const [conditionGroups, setConditionGroups] = useState<ConditionGroupCatalog[]>([]);
   const [diagnoses, setDiagnoses] = useState<DiagnosisCatalog[]>([]);
   const [catalogImports, setCatalogImports] = useState<CatalogImportHistory[]>([]);
+  const [programs, setPrograms] = useState<ProgramCatalog[]>([]);
   const [authLoading, setAuthLoading] = useState(true);
   const [authError, setAuthError] = useState(getAuthConfigurationError());
   
@@ -103,6 +105,7 @@ export default function App() {
     setConditionGroups(getConditionGroups());
     setDiagnoses(getDiagnoses());
     setCatalogImports(getCatalogImportHistory());
+    setPrograms(getPrograms());
   };
 
   const reloadAppState = async () => {
@@ -460,6 +463,34 @@ export default function App() {
     refreshAppState();
   };
 
+  const handleSaveProgram = (program: ProgramCatalog) => {
+    if (!currentUser || currentUser.role !== 'ADMIN') return;
+    saveProgram(program);
+    addAuditLog(
+      currentUser.id,
+      currentUser.name,
+      currentUser.role,
+      undefined,
+      undefined,
+      program.is_active ? 'program_updated' : 'program_deactivated',
+      'GENERAL',
+      ''
+    );
+    refreshAppState();
+    showToast(l('Programa guardado.', 'Program saved.'));
+  };
+
+  const handleCleanupPatientData = async () => {
+    if (!currentUser || currentUser.role !== 'ADMIN') return;
+    const result = await cleanupPatientData();
+    await reloadAppState();
+    const clearedPatients = result.cleared.patients || 0;
+    showToast(l(
+      `Limpieza completada: ${clearedPatients} pacientes y ${result.deletedPdfFiles} PDF eliminados.`,
+      `Cleanup complete: ${clearedPatients} patients and ${result.deletedPdfFiles} PDFs deleted.`
+    ), 'success');
+  };
+
   const handleGenerateDeliveryPDF = async (device: Device, callback: (pdfDataUrl: string) => void): Promise<void> => {
     if (!currentUser) throw new Error('Authentication required.');
     const patientObj = patients.find(p => p.id === device.patientId);
@@ -749,6 +780,7 @@ export default function App() {
               conditionGroups={conditionGroups}
               diagnoses={diagnoses}
               catalogImports={catalogImports}
+              programs={programs}
               onViewProfile={handleViewProfile}
               onReassignNurse={handleReassignNurse}
               onDownloadPDF={handleDownloadPDF}
@@ -758,7 +790,9 @@ export default function App() {
               onImportConditionCatalog={() => setIsCatalogImportOpen(true)}
               onSaveConditionGroup={handleSaveConditionGroup}
               onSaveDiagnosis={handleSaveDiagnosis}
+              onSaveProgram={handleSaveProgram}
               onUsersChanged={reloadAppState}
+              onCleanupPatientData={handleCleanupPatientData}
               onNotify={showToast}
             />
           ) : (
@@ -826,6 +860,7 @@ export default function App() {
         users={getUsers()}
         conditionGroups={conditionGroups}
         diagnoses={diagnoses}
+        programs={programs}
       />
 
       <ConditionCatalogImportModal

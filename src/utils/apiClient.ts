@@ -29,6 +29,7 @@ export interface BootstrapPayload {
   conditionGroups: import('../types').ConditionGroupCatalog[];
   diagnoses: import('../types').DiagnosisCatalog[];
   catalogImports: import('../types').CatalogImportHistory[];
+  programs: import('../types').ProgramCatalog[];
 }
 
 export interface UserMutationPayload {
@@ -44,6 +45,14 @@ export interface UserMutationPayload {
 export interface CreateUserResponse {
   user: import('../types').User;
   setupLink?: string;
+}
+
+export interface CleanupPatientDataResponse {
+  ok: boolean;
+  cleared: Record<string, number>;
+  deletedPdfFiles: number;
+  missingPdfFiles: number;
+  failedPdfFiles: number;
 }
 
 function requireApiBaseUrl(): string {
@@ -126,6 +135,12 @@ export function updateUser(
   return apiRequest<import('../types').User>(`/v1/users/${encodeURIComponent(userId)}`, {
     method: 'PATCH',
     body: JSON.stringify(payload)
+  });
+}
+
+export function cleanupPatientData(): Promise<CleanupPatientDataResponse> {
+  return apiRequest<CleanupPatientDataResponse>('/v1/admin/cleanup-patient-data', {
+    method: 'POST'
   });
 }
 

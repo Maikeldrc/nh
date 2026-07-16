@@ -14,20 +14,23 @@ import {
   CatalogImportHistory,
   ConditionGroupCatalog,
   DiagnosisCatalog,
+  ProgramCatalog,
   User
 } from '../types';
 import { useLanguage } from '../utils/LanguageContext';
 
-type CatalogTab = 'overview' | 'groups' | 'diagnoses' | 'relationships' | 'history';
+type CatalogTab = 'overview' | 'programs' | 'groups' | 'diagnoses' | 'relationships' | 'history';
 
 interface Props {
   currentUser: User;
   groups: ConditionGroupCatalog[];
   diagnoses: DiagnosisCatalog[];
   history: CatalogImportHistory[];
+  programs: ProgramCatalog[];
   onImportExcel: () => void;
   onSaveGroup: (group: ConditionGroupCatalog) => void;
   onSaveDiagnosis: (diagnosis: DiagnosisCatalog) => void;
+  onSaveProgram: (program: ProgramCatalog) => void;
   onNotify: (message: string, type?: 'success' | 'info') => void;
 }
 
@@ -48,6 +51,15 @@ interface DiagnosisForm {
   is_active: boolean;
 }
 
+interface ProgramForm {
+  id?: string;
+  code: string;
+  display: string;
+  description: string;
+  is_active: boolean;
+  requires_device: boolean;
+}
+
 const cleanCode = (value: string) => value.trim().replace(/\s+/g, '_');
 const cleanIcd = (value: string) => value.trim().toUpperCase();
 
@@ -56,9 +68,11 @@ export default function ClinicalCatalogManagement({
   groups,
   diagnoses,
   history,
+  programs,
   onImportExcel,
   onSaveGroup,
   onSaveDiagnosis,
+  onSaveProgram,
   onNotify
 }: Props) {
   const { language } = useLanguage();
@@ -69,9 +83,12 @@ export default function ClinicalCatalogManagement({
   const [groupFilter, setGroupFilter] = useState('ALL');
   const [diagnosisFilter, setDiagnosisFilter] = useState('ALL');
   const [diagnosisGroupFilter, setDiagnosisGroupFilter] = useState('');
+  const [programSearch, setProgramSearch] = useState('');
+  const [programFilter, setProgramFilter] = useState('ALL');
   const [selectedGroupId, setSelectedGroupId] = useState(groups[0]?.id || '');
   const [groupForm, setGroupForm] = useState<GroupForm | null>(null);
   const [diagnosisForm, setDiagnosisForm] = useState<DiagnosisForm | null>(null);
+  const [programForm, setProgramForm] = useState<ProgramForm | null>(null);
   const [confirm, setConfirm] = useState<{ title: string; body: string; action: () => void } | null>(null);
   const [error, setError] = useState('');
 
@@ -86,8 +103,17 @@ export default function ClinicalCatalogManagement({
       .map(item => ({ at: item.updated_at || item.imported_at || '', by: item.updated_by || item.imported_by || '' }))
       .filter(item => item.at)
       .sort((a, b) => b.at.localeCompare(a.at))[0];
-    return { activeGroups, inactiveGroups, activeDiagnoses, inactiveDiagnoses, withoutGroup, latestImport, latestUpdated };
-  }, [groups, diagnoses, history]);
+    const activePrograms = programs.filter(program => program.is_active).length;
+    return { activeGroups, inactiveGroups, activeDiagnoses, inactiveDiagnoses, withoutGroup, latestImport, latestUpdated, activePrograms };
+  }, [groups, diagnoses, history, programs]);
+
+  const filteredPrograms = useMemo(() => {
+    return programs
+      .filter(program => program.display.toLowerCase().includes(programSearch.toLowerCase())
+        || program.code.toLowerCase().includes(programSearch.toLowerCase()))
+      .filter(program => programFilter === 'ALL' ? true : programFilter === 'ACTIVE' ? program.is_active : !program.is_active)
+      .sort((a, b) => a.display.localeCompare(b.display));
+  }, [programs, programSearch, programFilter]);
 
   const filteredGroups = useMemo(() => {
     return groups
@@ -127,6 +153,11 @@ export default function ClinicalCatalogManagement({
   const openNewGroup = () => {
     setError('');
     setGroupForm({ display: '', code: '', description: '', is_active: true });
+  };
+
+  const openNewProgram = () => {
+    setError('');
+    setProgramForm({ code: '', display: '', description: '', is_active: true, requires_device: false });
   };
 
   const openNewDiagnosis = (groupId = selectedGroup?.id || groups[0]?.id || '') => {
@@ -182,6 +213,37 @@ export default function ClinicalCatalogManagement({
     }
     setGroupForm(null);
     onNotify(l('Grupo clínico guardado.', 'Clinical category saved.'));
+  };
+
+  const saveProgram = () => {
+    if (!programForm) return;
+    const code = cleanCode(programForm.code);
+    const display = programForm.display.trim();
+    if (!code || !display) {
+      setError(l('Code y display son obligatorios.', 'Code and display are required.'));
+      return;
+    }
+    const duplicate = programs.find(program => program.id !== programForm.id && program.code.toLowerCase() === code.toLowerCase());
+    if (duplicate) {
+      setError(l('Ya existe un programa con ese code.', 'A program with that code already exists.'));
+      return;
+    }
+    const now = new Date().toISOString();
+    const existing = programForm.id ? programs.find(program => program.id === programForm.id) : undefined;
+    onSaveProgram({
+      id: programForm.id || `program_${code.toLowerCase().replace(/[^a-z0-9]+/g, '_')}_${Date.now()}`,
+      code,
+      display,
+      description: programForm.description.trim(),
+      is_active: programForm.is_active,
+      requires_device: programForm.requires_device,
+      created_at: existing?.created_at || now,
+      created_by: existing?.created_by || currentUser.name,
+      updated_at: now,
+      updated_by: currentUser.name,
+      source: existing?.source || 'manual'
+    });
+    setProgramForm(null);
   };
 
   const saveDiagnosis = () => {
@@ -259,6 +321,16 @@ export default function ClinicalCatalogManagement({
     });
   };
 
+  const toggleProgram = (program: ProgramCatalog) => {
+    onSaveProgram({
+      ...program,
+      is_active: !program.is_active,
+      updated_at: new Date().toISOString(),
+      updated_by: currentUser.name
+    });
+    onNotify(program.is_active ? l('Programa desactivado.', 'Program deactivated.') : l('Programa activado.', 'Program activated.'));
+  };
+
   const moveDiagnosis = (diagnosis: DiagnosisCatalog, groupId: string) => {
     const group = groups.find(item => item.id === groupId);
     if (!group) return;
@@ -332,7 +404,7 @@ export default function ClinicalCatalogManagement({
       </div>
 
       <div className="flex max-w-3xl rounded-xl border border-slate-200 bg-white p-1">
-        {(['overview', 'groups', 'diagnoses', 'relationships', 'history'] as CatalogTab[]).map(item => (
+        {(['overview', 'programs', 'groups', 'diagnoses', 'relationships', 'history'] as CatalogTab[]).map(item => (
           <button key={item} onClick={() => setTab(item)} className={`flex-1 rounded-xl px-3 py-2 text-xs font-extrabold ${tab === item ? 'bg-blue-600 text-white' : 'text-slate-600 hover:bg-slate-50'}`}>
             {tabLabel(item, l)}
           </button>
@@ -344,6 +416,7 @@ export default function ClinicalCatalogManagement({
           <Metric label={l('Active Groups', 'Active Groups')} value={metrics.activeGroups} />
           <Metric label={l('Inactive Groups', 'Inactive Groups')} value={metrics.inactiveGroups} tone="amber" />
           <Metric label={l('Active ICD-10', 'Active ICD-10')} value={metrics.activeDiagnoses} tone="emerald" />
+          <Metric label={l('Active Programs', 'Active Programs')} value={metrics.activePrograms} tone="violet" />
           <Metric label={l('Inactive ICD-10', 'Inactive ICD-10')} value={metrics.inactiveDiagnoses} tone="rose" />
           <Metric label={l('Without Group', 'Without Group')} value={metrics.withoutGroup} tone="violet" />
           <Metric label={l('Last Import', 'Last Import')} value={metrics.latestImport ? new Date(metrics.latestImport.imported_at).toLocaleDateString() : '-'} />
@@ -354,6 +427,50 @@ export default function ClinicalCatalogManagement({
             <p className="mt-2 text-xs font-semibold text-blue-700">
               {l('Última actualización por', 'Last updated by')}: {metrics.latestUpdated?.by || '-'} {metrics.latestUpdated?.at ? `· ${new Date(metrics.latestUpdated.at).toLocaleString()}` : ''}
             </p>
+          </div>
+        </div>
+      )}
+
+      {tab === 'programs' && (
+        <div className="rounded-2xl border border-slate-200 bg-white shadow-sm">
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 bg-slate-50/60 p-4">
+            <Toolbar search={programSearch} setSearch={setProgramSearch} filter={programFilter} setFilter={setProgramFilter} placeholder={l('Search programs...', 'Search programs...')} />
+            <button onClick={openNewProgram} className="inline-flex items-center rounded-xl bg-blue-600 px-3 py-2 text-xs font-extrabold text-white hover:bg-blue-700">
+              <Plus size={14} className="mr-1" /> {l('New Program', 'New Program')}
+            </button>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-slate-200 text-xs">
+              <thead className="bg-slate-50 text-[10px] font-extrabold uppercase text-slate-500">
+                <tr>
+                  <th className="px-5 py-3 text-left">Program</th>
+                  <th className="px-5 py-3 text-left">Code</th>
+                  <th className="px-5 py-3 text-left">Device</th>
+                  <th className="px-5 py-3 text-left">Status</th>
+                  <th className="px-5 py-3 text-left">Updated</th>
+                  <th className="px-5 py-3 text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {filteredPrograms.map(program => (
+                  <tr key={program.id}>
+                    <td className="px-5 py-4"><strong className="text-slate-900">{program.display}</strong><p className="mt-1 text-slate-500">{program.description || '-'}</p></td>
+                    <td className="px-5 py-4 font-mono font-bold text-slate-600">{program.code}</td>
+                    <td className="px-5 py-4 font-bold text-slate-600">{program.requires_device ? 'Required' : 'Not required'}</td>
+                    <td className="px-5 py-4"><StatusBadge active={program.is_active} l={l} /></td>
+                    <td className="px-5 py-4 text-[10px] font-semibold text-slate-500">{program.updated_at ? new Date(program.updated_at).toLocaleString() : '-'}</td>
+                    <td className="px-5 py-4 text-right">
+                      <ActionButtons
+                        onEdit={() => setProgramForm({ id: program.id, code: program.code, display: program.display, description: program.description || '', is_active: program.is_active, requires_device: program.requires_device === true })}
+                        onToggle={() => toggleProgram(program)}
+                        active={program.is_active}
+                        l={l}
+                      />
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         </div>
       )}
@@ -534,6 +651,25 @@ export default function ClinicalCatalogManagement({
         </Modal>
       )}
 
+      {programForm && (
+        <Modal title={programForm.id ? l('Edit Program', 'Edit Program') : l('New Program', 'New Program')} onClose={() => setProgramForm(null)} error={error} onSave={saveProgram} l={l}>
+          <Field label="Code" value={programForm.code} onChange={code => setProgramForm({ ...programForm, code })} />
+          <Field label="Display" value={programForm.display} onChange={display => setProgramForm({ ...programForm, display })} />
+          <label className="space-y-1 text-xs font-bold text-slate-600 md:col-span-2">
+            Description
+            <textarea value={programForm.description} onChange={event => setProgramForm({ ...programForm, description: event.target.value })} rows={3} className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm text-slate-800" />
+          </label>
+          <label className="flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-bold text-slate-700">
+            <input type="checkbox" checked={programForm.requires_device} onChange={event => setProgramForm({ ...programForm, requires_device: event.target.checked })} />
+            Requires device
+          </label>
+          <label className="flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-bold text-slate-700">
+            <input type="checkbox" checked={programForm.is_active} onChange={event => setProgramForm({ ...programForm, is_active: event.target.checked })} />
+            Active
+          </label>
+        </Modal>
+      )}
+
       {diagnosisForm && (
         <Modal title={diagnosisForm.id ? l('Edit ICD-10 Diagnosis', 'Edit ICD-10 Diagnosis') : l('New ICD-10 Diagnosis', 'New ICD-10 Diagnosis')} onClose={() => setDiagnosisForm(null)} error={error} onSave={saveDiagnosis} l={l}>
           <label className="space-y-1 text-xs font-bold text-slate-600 md:col-span-2">
@@ -576,6 +712,7 @@ export default function ClinicalCatalogManagement({
 function tabLabel(tab: CatalogTab, l: (es: string, en: string) => string) {
   const labels: Record<CatalogTab, string> = {
     overview: l('Overview', 'Overview'),
+    programs: l('Programs', 'Programs'),
     groups: l('Clinical Categories', 'Clinical Categories'),
     diagnoses: l('ICD-10 Diagnoses', 'ICD-10 Diagnoses'),
     relationships: l('Relationships', 'Relationships'),

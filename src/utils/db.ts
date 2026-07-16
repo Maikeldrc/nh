@@ -8,10 +8,12 @@ import {
   DiagnosisCatalog,
   DocumentRecord,
   Patient,
+  ProgramCatalog,
   User,
   UserRole,
   Visit
 } from '../types';
+import { DEFAULT_CONDITION_GROUP_CATALOG, DEFAULT_DIAGNOSIS_CATALOG, DEFAULT_PROGRAM_CATALOG } from '../data';
 import {
   createActivity,
   getBootstrap,
@@ -31,6 +33,7 @@ interface MemoryDatabase {
   conditionGroups: ConditionGroupCatalog[];
   diagnoses: DiagnosisCatalog[];
   catalogImports: CatalogImportHistory[];
+  programs: ProgramCatalog[];
   currentUser: User | null;
 }
 
@@ -46,6 +49,7 @@ const emptyDatabase = (): MemoryDatabase => ({
   conditionGroups: [],
   diagnoses: [],
   catalogImports: [],
+  programs: [],
   currentUser: null
 });
 
@@ -84,9 +88,10 @@ export async function hydrateDB(): Promise<User> {
     readings: payload.readings || [],
     documents: payload.documents || [],
     auditLogs: payload.auditLogs || [],
-    conditionGroups: payload.conditionGroups || [],
-    diagnoses: payload.diagnoses || [],
+    conditionGroups: payload.conditionGroups?.length ? payload.conditionGroups : DEFAULT_CONDITION_GROUP_CATALOG,
+    diagnoses: payload.diagnoses?.length ? payload.diagnoses : DEFAULT_DIAGNOSIS_CATALOG,
     catalogImports: payload.catalogImports || [],
+    programs: payload.programs?.length ? payload.programs : DEFAULT_PROGRAM_CATALOG,
     currentUser: payload.currentUser
   };
   return payload.currentUser;
@@ -120,6 +125,15 @@ export function getDiagnoses(): DiagnosisCatalog[] {
 
 export function getCatalogImportHistory(): CatalogImportHistory[] {
   return [...db.catalogImports];
+}
+
+export function getPrograms(): ProgramCatalog[] {
+  return [...db.programs];
+}
+
+export function saveProgram(program: ProgramCatalog): void {
+  db.programs = replaceById(db.programs, program);
+  remote(saveResource('programs', program));
 }
 
 export function saveConditionCatalog(

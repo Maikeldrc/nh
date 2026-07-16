@@ -1,9 +1,10 @@
-import { useState, useMemo } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Patient, User, PatientStatus } from '../types';
-import { NURSING_HOMES, PROGRAMS } from '../data';
+import { NURSING_HOMES } from '../data';
 import { 
   Search, Users, FileText, Smartphone, CheckCircle, 
-  AlertTriangle, ArrowRight, Play, RefreshCw, Eye, MapPin, Calendar, UserPlus
+  AlertTriangle, ArrowRight, Play, RefreshCw, Eye, MapPin, Calendar, UserPlus,
+  ChevronLeft, ChevronRight
 } from 'lucide-react';
 import { useLanguage } from '../utils/LanguageContext';
 import { getMedicalOrderStatus, patientRequiresDevice } from '../utils/medicalOrders';
@@ -18,6 +19,8 @@ interface DashboardNurseProps {
   onGenerateMedicalOrder: (patientId: string) => void;
 }
 
+const PATIENTS_PER_PAGE = 10;
+
 export default function DashboardNurse({ 
   currentUser, 
   patients, 
@@ -30,6 +33,7 @@ export default function DashboardNurse({
   const [search, setSearch] = useState('');
   const [selectedNH, setSelectedNH] = useState('');
   const [selectedStatus, setSelectedStatus] = useState<string>('ALL');
+  const [patientPage, setPatientPage] = useState(1);
   const { language, t } = useLanguage();
   const l = (es: string, en: string) => language === 'ES' ? es : en;
 
@@ -75,6 +79,23 @@ export default function DashboardNurse({
       return matchSearch && matchNH && matchStatus;
     });
   }, [assignedPatients, search, selectedNH, selectedStatus]);
+
+  const patientTotalPages = Math.max(1, Math.ceil(filteredPatients.length / PATIENTS_PER_PAGE));
+  const safePatientPage = Math.min(patientPage, patientTotalPages);
+  const patientStartIndex = filteredPatients.length === 0 ? 0 : (safePatientPage - 1) * PATIENTS_PER_PAGE + 1;
+  const patientEndIndex = Math.min(safePatientPage * PATIENTS_PER_PAGE, filteredPatients.length);
+  const paginatedPatients = filteredPatients.slice(
+    (safePatientPage - 1) * PATIENTS_PER_PAGE,
+    safePatientPage * PATIENTS_PER_PAGE
+  );
+
+  useEffect(() => {
+    setPatientPage(1);
+  }, [search, selectedNH, selectedStatus]);
+
+  useEffect(() => {
+    if (patientPage > patientTotalPages) setPatientPage(patientTotalPages);
+  }, [patientPage, patientTotalPages]);
 
   // Status Badge helper
   const getStatusBadge = (status: PatientStatus) => {
@@ -283,7 +304,7 @@ export default function DashboardNurse({
 
         ) : (
           <div className="divide-y divide-slate-100" id="nurse-patients-list">
-            {filteredPatients.map((patient) => {
+            {paginatedPatients.map((patient) => {
               const isResume = patient.status === 'INCOMPLETE';
               
               return (
@@ -381,6 +402,36 @@ export default function DashboardNurse({
                 </div>
               );
             })}
+            {filteredPatients.length > PATIENTS_PER_PAGE && (
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 bg-slate-50/60 px-5 py-4">
+                <p className="text-xs font-semibold text-slate-500">
+                  {l('Mostrando', 'Showing')} {patientStartIndex}-{patientEndIndex} {l('de', 'of')} {filteredPatients.length}
+                </p>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setPatientPage(page => Math.max(1, page - 1))}
+                    disabled={safePatientPage === 1}
+                    className="inline-flex h-8 items-center rounded-xl border border-slate-300 bg-white px-3 text-xs font-bold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    <ChevronLeft size={14} className="mr-1" />
+                    {l('Anterior', 'Previous')}
+                  </button>
+                  <span className="min-w-[4.5rem] text-center text-xs font-extrabold text-slate-700">
+                    {safePatientPage} / {patientTotalPages}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setPatientPage(page => Math.min(patientTotalPages, page + 1))}
+                    disabled={safePatientPage === patientTotalPages}
+                    className="inline-flex h-8 items-center rounded-xl border border-slate-300 bg-white px-3 text-xs font-bold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    {l('Siguiente', 'Next')}
+                    <ChevronRight size={14} className="ml-1" />
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>

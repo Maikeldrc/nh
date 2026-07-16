@@ -6,6 +6,7 @@ import { getAuth } from 'firebase-admin/auth';
 import { config } from './config.js';
 import {
   appendActivity,
+  clearRecords,
   getRecord,
   listRecords,
   resources,
@@ -21,7 +22,7 @@ import {
   requireRoles
 } from './security.js';
 import { validateConsent, validateDevice, validatePatient } from './validation.js';
-import { createPdf, getPdfBuffer } from './pdf.js';
+import { createPdf, deletePdfFile, getPdfBuffer } from './pdf.js';
 
 const app = express();
 const USER_ROLES = new Set(['ADMIN', 'NURSE', 'PHYSICIAN', 'VIEWER', 'AUDITOR']);
@@ -72,7 +73,7 @@ app.get('/v1/bootstrap', async (req, res, next) => {
     const related = async resource => (await listRecords(resource))
       .filter(record => !record.patientId || patientIds.has(record.patientId));
     const [visits, consents, devices, readings, documents, conditionGroups,
-      diagnoses, catalogImports, auditLogs, users] = await Promise.all([
+      diagnoses, catalogImports, programs, auditLogs, users] = await Promise.all([
       related('visits'),
       related('consents'),
       related('devices'),
@@ -81,6 +82,7 @@ app.get('/v1/bootstrap', async (req, res, next) => {
       listRecords('condition-groups'),
       listRecords('diagnoses'),
       listRecords('catalog-imports'),
+      listRecords('programs'),
       ['ADMIN', 'AUDITOR'].includes(req.user.role)
         ? related('activity-log')
         : Promise.resolve([]),
@@ -111,7 +113,8 @@ app.get('/v1/bootstrap', async (req, res, next) => {
       auditLogs,
       conditionGroups,
       diagnoses,
-      catalogImports
+      catalogImports,
+      programs
     });
   } catch (error) {
     return next(error);
@@ -147,7 +150,7 @@ app.put('/v1/:resource/:id', async (req, res, next) => {
       return res.status(405).json({ error: 'method_not_allowed' });
     }
     const record = { ...req.body, id };
-    if (['condition-groups', 'diagnoses', 'catalog-imports'].includes(resource) && req.user.role !== 'ADMIN') {
+    if (['condition-groups', 'diagnoses', 'catalog-imports', 'programs'].includes(resource) && req.user.role !== 'ADMIN') {
       return res.status(403).json({ error: 'forbidden' });
     }
     const patient = resource === 'patients'
@@ -182,7 +185,8 @@ app.put('/v1/:resource/:id', async (req, res, next) => {
     if (resource === 'diagnoses') {
       validateDiagnosis(record, await listRecords('diagnoses'), await listRecords('condition-groups'), id);
     }
-    const existing = ['condition-groups', 'diagnoses'].includes(resource)
+    if (resource === 'programs') validateProgram(record, await listRecords('programs'), id);
+    const existing = ['condition-groups', 'diagnoses', 'programs'].includes(resource)
       ? await getRecord(resource, id)
       : undefined;
     const saved = await upsertRecord(resource, id, record);
@@ -206,6 +210,63 @@ app.post('/v1/activity-log', async (req, res, next) => {
       safe.result || 'success'
     );
     return res.status(204).end();
+  } catch (error) {
+    return next(error);
+  }
+});
+
+app.post('/v1/admin/cleanup-patient-data', requireRoles('ADMIN'), async (req, res, next) => {
+  try {
+    const documents = await listRecords('documents');
+    let deletedPdfFiles = 0;
+    let missingPdfFiles = 0;
+    let failedPdfFiles = 0;
+
+    for (const document of documents) {
+      if (!document.driveFileId) continue;
+      try {
+        const deleted = await deletePdfFile(document.driveFileId);
+        if (deleted) deletedPdfFiles += 1;
+        else missingPdfFiles += 1;
+      } catch (error) {
+        failedPdfFiles += 1;
+        console.error(JSON.stringify({
+          severity: 'ERROR',
+          request_id: req.requestId,
+          route: '/v1/admin/cleanup-patient-data',
+          status: error.status || error.code || error.response?.status || 500,
+          error_type: error.name || 'Error',
+          non_blocking: true
+        }));
+      }
+    }
+    if (failedPdfFiles > 0) throw httpError(503, 'pdf_cleanup_failed');
+
+    const transactionalResources = [
+      'visits',
+      'consents',
+      'devices',
+      'readings',
+      'documents',
+      'medical-orders',
+      'device-activation',
+      'medications',
+      'patients',
+      'activity-log'
+    ];
+    const cleared = {};
+    for (const resource of transactionalResources) {
+      cleared[resource] = await clearRecords(resource);
+    }
+
+    await activity(req, 'cleaned_patient_data', 'ADMIN', 'patient_data_cleanup');
+    return res.json({
+      ok: true,
+      cleared,
+      deletedPdfFiles,
+      missingPdfFiles,
+      failedPdfFiles
+    });
   } catch (error) {
     return next(error);
   }
@@ -486,6 +547,11 @@ function actionFor(resource, record, existing) {
     }
     return 'diagnosis_updated';
   }
+  if (resource === 'programs') {
+    if (!existing) return 'program_created';
+    if (existing.is_active !== record.is_active) return record.is_active ? 'program_activated' : 'program_deactivated';
+    return 'program_updated';
+  }
   if (resource === 'medications') return 'added_medication';
   if (resource === 'medical-orders') return 'created_medical_order';
   if (resource === 'devices') return 'assigned_device';
@@ -526,6 +592,18 @@ function validateDiagnosis(diagnosis, allDiagnoses, allGroups, id) {
     && String(item.icd10_code || '').trim().toUpperCase() === code
   );
   if (duplicate) throw httpError(422, 'duplicate_icd10_in_condition_group');
+}
+
+function validateProgram(program, allPrograms, id) {
+  const code = String(program.code || '').trim();
+  const display = String(program.display || '').trim();
+  if (!code) throw httpError(422, 'program_code_required');
+  if (!display) throw httpError(422, 'program_display_required');
+  const duplicate = allPrograms.find(item =>
+    String(item.id) !== String(id)
+    && String(item.code || '').trim().toLowerCase() === code.toLowerCase()
+  );
+  if (duplicate) throw httpError(422, 'duplicate_program_code');
 }
 
 function pendingMedicalOrder(patient, user) {

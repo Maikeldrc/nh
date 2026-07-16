@@ -188,3 +188,17 @@ export async function upsertRecord(resourceName, id, record) {
 export async function appendActivity(activity) {
   return upsertRecord('activity-log', activity.activity_id, activity);
 }
+
+export async function clearRecords(resourceName) {
+  const resource = resources[resourceName];
+  if (!resource) throw new Error('Unknown resource.');
+  const existingRecords = await listRecords(resourceName);
+  recordsCache.delete(resourceName);
+  await ensureSheet(resource);
+  await withSheetsRetry(() => sheets.spreadsheets.values.clear({
+    spreadsheetId: config.spreadsheetId,
+    range: `${quoteTab(resource.tab)}!A2:ZZ`
+  }));
+  recordsCache.set(resourceName, { records: [], expiresAt: Date.now() + CACHE_TTL_MS });
+  return existingRecords.length;
+}

@@ -1,4 +1,4 @@
-import { Patient, User, AuditLog, Consent, Device, BPReading, DocumentRecord } from './types';
+import { Patient, User, AuditLog, Consent, Device, BPReading, DocumentRecord, ConditionGroupCatalog, DiagnosisCatalog, ProgramCatalog } from './types';
 import { PRACTICE_NAME } from './utils/branding';
 
 export const NURSING_HOMES = [
@@ -80,6 +80,43 @@ export const PROGRAMS = [
   'PCM',
   'RTM',
   'Other'
+];
+
+export const DEFAULT_PROGRAM_CATALOG: ProgramCatalog[] = [
+  { id: 'program_ccm', code: 'CCM', display: 'CCM', description: 'Chronic Care Management', is_active: true, requires_device: false, source: 'default' },
+  { id: 'program_rpm', code: 'RPM', display: 'RPM', description: 'Remote Patient Monitoring', is_active: true, requires_device: true, source: 'default' },
+  { id: 'program_pcm', code: 'PCM', display: 'PCM', description: 'Principal Care Management', is_active: true, requires_device: false, source: 'default' },
+  { id: 'program_rtm', code: 'RTM', display: 'RTM', description: 'Remote Therapeutic Monitoring', is_active: false, requires_device: true, source: 'default' },
+  { id: 'program_other', code: 'Other', display: 'Other', description: 'Other configured service', is_active: false, requires_device: false, source: 'default' }
+];
+
+export const DEFAULT_CONDITION_GROUP_CATALOG: ConditionGroupCatalog[] = [
+  { id: 'cg_dm', code: 'DM', display: 'Diabetes Mellitus', description: 'Diabetes and related metabolic diagnoses.', icd10_count: 4, is_active: true, imported_at: '', imported_by: 'System', source: 'default' },
+  { id: 'cg_hhk', code: 'HHK', display: 'Hypertension - Heart - Kidney', description: 'Hypertension, heart failure, and kidney disease.', icd10_count: 4, is_active: true, imported_at: '', imported_by: 'System', source: 'default' },
+  { id: 'cg_cvc', code: 'CVC', display: 'Cardiovascular Comorbidities', description: 'Cardiac rhythm, coronary artery, and valve disease.', icd10_count: 2, is_active: true, imported_at: '', imported_by: 'System', source: 'default' },
+  { id: 'cg_copd', code: 'COPD', display: 'Chronic Obstructive Pulmonary Disease', description: 'COPD and chronic lung disease.', icd10_count: 1, is_active: true, imported_at: '', imported_by: 'System', source: 'default' },
+  { id: 'cg_ckd', code: 'CKD', display: 'Chronic Kidney Disease', description: 'CKD stages and ESRD.', icd10_count: 1, is_active: true, imported_at: '', imported_by: 'System', source: 'default' },
+  { id: 'cg_bh', code: 'BH', display: 'Behavioral Health', description: 'Depression, anxiety, and related behavioral health conditions.', icd10_count: 1, is_active: true, imported_at: '', imported_by: 'System', source: 'default' },
+  { id: 'cg_oa', code: 'OA', display: 'Osteoarthritis', description: 'Osteoarthritis and degenerative joint disease.', icd10_count: 1, is_active: true, imported_at: '', imported_by: 'System', source: 'default' },
+  { id: 'cg_dem', code: 'DEM', display: 'Dementia and Neurocognitive Disorders', description: 'Dementia, Alzheimer disease, and vascular dementia.', icd10_count: 1, is_active: true, imported_at: '', imported_by: 'System', source: 'default' }
+];
+
+export const DEFAULT_DIAGNOSIS_CATALOG: DiagnosisCatalog[] = [
+  { id: 'dx_dm_e119', condition_group_id: 'cg_dm', condition_group_code: 'DM', icd10_code: 'E11.9', icd10_display: 'Type 2 Diabetes Mellitus without complications', icd10_description: 'Type 2 Diabetes Mellitus without complications', is_active: true, imported_at: '', imported_by: 'System', source: 'default', relationship_status: 'ACTIVE' },
+  { id: 'dx_dm_e1121', condition_group_id: 'cg_dm', condition_group_code: 'DM', icd10_code: 'E11.21', icd10_display: 'Type 2 Diabetes Mellitus with diabetic nephropathy', icd10_description: 'Type 2 Diabetes Mellitus with diabetic nephropathy', is_active: true, imported_at: '', imported_by: 'System', source: 'default', relationship_status: 'ACTIVE' },
+  { id: 'dx_dm_e1142', condition_group_id: 'cg_dm', condition_group_code: 'DM', icd10_code: 'E11.42', icd10_display: 'Type 2 Diabetes Mellitus with diabetic polyneuropathy', icd10_description: 'Type 2 Diabetes Mellitus with diabetic polyneuropathy', is_active: true, imported_at: '', imported_by: 'System', source: 'default', relationship_status: 'ACTIVE' },
+  { id: 'dx_dm_e109', condition_group_id: 'cg_dm', condition_group_code: 'DM', icd10_code: 'E10.9', icd10_display: 'Type 1 Diabetes Mellitus without complications', icd10_description: 'Type 1 Diabetes Mellitus without complications', is_active: true, imported_at: '', imported_by: 'System', source: 'default', relationship_status: 'ACTIVE' },
+  { id: 'dx_hhk_i10', condition_group_id: 'cg_hhk', condition_group_code: 'HHK', icd10_code: 'I10', icd10_display: 'Essential Hypertension', icd10_description: 'Essential Hypertension', is_active: true, imported_at: '', imported_by: 'System', source: 'default', relationship_status: 'ACTIVE' },
+  { id: 'dx_hhk_i110', condition_group_id: 'cg_hhk', condition_group_code: 'HHK', icd10_code: 'I11.0', icd10_display: 'Hypertensive Heart Disease with Heart Failure', icd10_description: 'Hypertensive Heart Disease with Heart Failure', is_active: true, imported_at: '', imported_by: 'System', source: 'default', relationship_status: 'ACTIVE' },
+  { id: 'dx_hhk_i129', condition_group_id: 'cg_hhk', condition_group_code: 'HHK', icd10_code: 'I12.9', icd10_display: 'Hypertensive Chronic Kidney Disease', icd10_description: 'Hypertensive Chronic Kidney Disease', is_active: true, imported_at: '', imported_by: 'System', source: 'default', relationship_status: 'ACTIVE' },
+  { id: 'dx_hhk_i509', condition_group_id: 'cg_hhk', condition_group_code: 'HHK', icd10_code: 'I50.9', icd10_display: 'Congestive Heart Failure', icd10_description: 'Congestive Heart Failure', is_active: true, imported_at: '', imported_by: 'System', source: 'default', relationship_status: 'ACTIVE' },
+  { id: 'dx_cvc_i4891', condition_group_id: 'cg_cvc', condition_group_code: 'CVC', icd10_code: 'I48.91', icd10_display: 'Atrial Fibrillation', icd10_description: 'Atrial Fibrillation', is_active: true, imported_at: '', imported_by: 'System', source: 'default', relationship_status: 'ACTIVE' },
+  { id: 'dx_cvc_i2510', condition_group_id: 'cg_cvc', condition_group_code: 'CVC', icd10_code: 'I25.10', icd10_display: 'Coronary Artery Disease', icd10_description: 'Coronary Artery Disease', is_active: true, imported_at: '', imported_by: 'System', source: 'default', relationship_status: 'ACTIVE' },
+  { id: 'dx_copd_j449', condition_group_id: 'cg_copd', condition_group_code: 'COPD', icd10_code: 'J44.9', icd10_display: 'Chronic Obstructive Pulmonary Disease, Unspecified', icd10_description: 'Chronic Obstructive Pulmonary Disease, Unspecified', is_active: true, imported_at: '', imported_by: 'System', source: 'default', relationship_status: 'ACTIVE' },
+  { id: 'dx_ckd_n1830', condition_group_id: 'cg_ckd', condition_group_code: 'CKD', icd10_code: 'N18.30', icd10_display: 'Chronic Kidney Disease, Stage 3', icd10_description: 'Chronic Kidney Disease, Stage 3', is_active: true, imported_at: '', imported_by: 'System', source: 'default', relationship_status: 'ACTIVE' },
+  { id: 'dx_bh_f331', condition_group_id: 'cg_bh', condition_group_code: 'BH', icd10_code: 'F33.1', icd10_display: 'Major Depressive Disorder, Recurrent, Moderate', icd10_description: 'Major Depressive Disorder, Recurrent, Moderate', is_active: true, imported_at: '', imported_by: 'System', source: 'default', relationship_status: 'ACTIVE' },
+  { id: 'dx_oa_m1990', condition_group_id: 'cg_oa', condition_group_code: 'OA', icd10_code: 'M19.90', icd10_display: 'Osteoarthritis, Unspecified Site', icd10_description: 'Osteoarthritis, Unspecified Site', is_active: true, imported_at: '', imported_by: 'System', source: 'default', relationship_status: 'ACTIVE' },
+  { id: 'dx_dem_g309', condition_group_id: 'cg_dem', condition_group_code: 'DEM', icd10_code: 'G30.9', icd10_display: "Alzheimer's Disease, Unspecified", icd10_description: "Alzheimer's Disease, Unspecified", is_active: true, imported_at: '', imported_by: 'System', source: 'default', relationship_status: 'ACTIVE' }
 ];
 
 export const SEED_PATIENTS: Patient[] = [

@@ -1,18 +1,20 @@
-import { useState, useMemo } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import {
   CatalogImportHistory,
   ConditionGroupCatalog,
   DiagnosisCatalog,
+  ProgramCatalog,
   Patient,
   User,
   AuditLog,
   DocumentRecord,
   PatientStatus
 } from '../types';
-import { NURSING_HOMES, PROGRAMS } from '../data';
+import { NURSING_HOMES } from '../data';
 import { 
   Search, Users, Shield, FileText, Smartphone, CheckCircle, 
-  AlertTriangle, Eye, ArrowUpDown, Calendar, MapPin, Download, History, UserPlus, FileSpreadsheet
+  AlertTriangle, Eye, ArrowUpDown, Calendar, MapPin, Download, History, UserPlus, FileSpreadsheet,
+  Trash2, ChevronLeft, ChevronRight, X
 } from 'lucide-react';
 import { useLanguage } from '../utils/LanguageContext';
 import { getMedicalOrderStatus, patientRequiresDevice } from '../utils/medicalOrders';
@@ -28,6 +30,7 @@ interface DashboardAdminProps {
   conditionGroups: ConditionGroupCatalog[];
   diagnoses: DiagnosisCatalog[];
   catalogImports: CatalogImportHistory[];
+  programs: ProgramCatalog[];
   onViewProfile: (patientId: string) => void;
   onReassignNurse: (patientId: string, nurseId: string) => void;
   onDownloadPDF: (docRecord: DocumentRecord) => void;
@@ -37,9 +40,13 @@ interface DashboardAdminProps {
   onImportConditionCatalog: () => void;
   onSaveConditionGroup: (group: ConditionGroupCatalog) => void;
   onSaveDiagnosis: (diagnosis: DiagnosisCatalog) => void;
+  onSaveProgram: (program: ProgramCatalog) => void;
   onUsersChanged: () => Promise<void>;
+  onCleanupPatientData: () => Promise<void>;
   onNotify: (message: string, type?: 'success' | 'info') => void;
 }
+
+const PATIENTS_PER_PAGE = 10;
 
 export default function DashboardAdmin({
   currentUser,
@@ -50,6 +57,7 @@ export default function DashboardAdmin({
   conditionGroups,
   diagnoses,
   catalogImports,
+  programs,
   onViewProfile,
   onReassignNurse,
   onDownloadPDF,
@@ -59,7 +67,9 @@ export default function DashboardAdmin({
   onImportConditionCatalog,
   onSaveConditionGroup,
   onSaveDiagnosis,
+  onSaveProgram,
   onUsersChanged,
+  onCleanupPatientData,
   onNotify
 }: DashboardAdminProps) {
   const { language } = useLanguage();
@@ -69,6 +79,10 @@ export default function DashboardAdmin({
   const [selectedNurse, setSelectedNurse] = useState('');
   const [selectedProgram, setSelectedProgram] = useState('');
   const [selectedStatus, setSelectedStatus] = useState<string>('ALL');
+  const [patientPage, setPatientPage] = useState(1);
+  const [isCleanupConfirmOpen, setIsCleanupConfirmOpen] = useState(false);
+  const [cleanupConfirmText, setCleanupConfirmText] = useState('');
+  const [isCleaningPatientData, setIsCleaningPatientData] = useState(false);
   const isAdmin = currentUser.role === 'ADMIN';
   
   // Tab control: 'patients' | 'audit_logs' | 'documents' | 'catalog' | 'users'
@@ -104,7 +118,8 @@ export default function DashboardAdmin({
       
       const matchNH = selectedNH ? p.nursingHome === selectedNH : true;
       const matchNurse = selectedNurse ? p.assignedNurseId === selectedNurse : true;
-      const matchProgram = selectedProgram ? p.assignedProgram === selectedProgram : true;
+      const patientPrograms = String(p.assignedProgram || '').split('+').map(program => program.trim());
+      const matchProgram = selectedProgram ? patientPrograms.includes(selectedProgram) : true;
       const orderStatus = getMedicalOrderStatus(p);
       const matchStatus = selectedStatus === 'ALL'
         ? true
@@ -117,6 +132,23 @@ export default function DashboardAdmin({
       return matchSearch && matchNH && matchNurse && matchProgram && matchStatus;
     });
   }, [patients, search, selectedNH, selectedNurse, selectedProgram, selectedStatus]);
+
+  const patientTotalPages = Math.max(1, Math.ceil(filteredPatients.length / PATIENTS_PER_PAGE));
+  const safePatientPage = Math.min(patientPage, patientTotalPages);
+  const patientStartIndex = filteredPatients.length === 0 ? 0 : (safePatientPage - 1) * PATIENTS_PER_PAGE + 1;
+  const patientEndIndex = Math.min(safePatientPage * PATIENTS_PER_PAGE, filteredPatients.length);
+  const paginatedPatients = filteredPatients.slice(
+    (safePatientPage - 1) * PATIENTS_PER_PAGE,
+    safePatientPage * PATIENTS_PER_PAGE
+  );
+
+  useEffect(() => {
+    setPatientPage(1);
+  }, [search, selectedNH, selectedNurse, selectedProgram, selectedStatus, activeTab]);
+
+  useEffect(() => {
+    if (patientPage > patientTotalPages) setPatientPage(patientTotalPages);
+  }, [patientPage, patientTotalPages]);
 
   // Filtered Documents
   const filteredDocuments = useMemo(() => {
@@ -171,6 +203,18 @@ export default function DashboardAdmin({
     }
   };
 
+  const handleConfirmCleanup = async () => {
+    if (cleanupConfirmText !== 'LIMPIAR') return;
+    setIsCleaningPatientData(true);
+    try {
+      await onCleanupPatientData();
+      setIsCleanupConfirmOpen(false);
+      setCleanupConfirmText('');
+    } finally {
+      setIsCleaningPatientData(false);
+    }
+  };
+
   return (
     <div className="space-y-8 animate-fade-in" id="dashboard-admin">
       {/* Welcome & Reset Action */}
@@ -183,7 +227,15 @@ export default function DashboardAdmin({
           </p>
         </div>
         {isAdmin && (
-          <div className="flex space-x-2 shrink-0">
+          <div className="flex flex-wrap justify-end gap-2 shrink-0">
+            <button
+              onClick={() => setIsCleanupConfirmOpen(true)}
+              className="inline-flex items-center justify-center px-4 py-2 text-xs font-bold text-rose-700 bg-rose-50 hover:bg-rose-100 rounded-xl border border-rose-200 transition cursor-pointer"
+              id="btn-cleanup-patient-data"
+            >
+              <Trash2 size={13} className="mr-1.5" />
+              {l('Limpiar datos', 'Clean Data')}
+            </button>
             <button
               onClick={onImportConditionCatalog}
               className="inline-flex items-center justify-center px-4 py-2 text-xs font-bold text-blue-700 bg-blue-50 hover:bg-blue-100 rounded-xl border border-blue-200 transition cursor-pointer"
@@ -328,9 +380,11 @@ export default function DashboardAdmin({
           groups={conditionGroups}
           diagnoses={diagnoses}
           history={catalogImports}
+          programs={programs}
           onImportExcel={onImportConditionCatalog}
           onSaveGroup={onSaveConditionGroup}
           onSaveDiagnosis={onSaveDiagnosis}
+          onSaveProgram={onSaveProgram}
           onNotify={onNotify}
         />
       ) : (
@@ -380,8 +434,8 @@ export default function DashboardAdmin({
             className="px-2.5 py-1.5 border border-slate-300 rounded-xl text-xs bg-white font-semibold text-slate-700 focus:ring-2 focus:ring-blue-500 focus:outline-none"
           >
             <option value="">{l('Programa: Todos', 'Program: All')}</option>
-            {PROGRAMS.map(prog => (
-              <option key={prog} value={prog}>{prog}</option>
+            {programs.filter(program => program.is_active).map(program => (
+              <option key={program.id} value={program.code}>{program.display}</option>
             ))}
           </select>
 
@@ -440,7 +494,7 @@ export default function DashboardAdmin({
                     </td>
                   </tr>
                 ) : (
-                  filteredPatients.map((patient) => (
+                  paginatedPatients.map((patient) => (
                     <tr key={patient.id} className="hover:bg-slate-50/20 transition">
                       {/* Name & DOB */}
                       <td className="px-6 py-4 whitespace-nowrap">
@@ -526,6 +580,36 @@ export default function DashboardAdmin({
                 )}
               </tbody>
             </table>
+            {filteredPatients.length > PATIENTS_PER_PAGE && (
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 px-6 py-4 border-t border-slate-200 bg-slate-50/60">
+                <p className="text-xs font-semibold text-slate-500">
+                  {l('Mostrando', 'Showing')} {patientStartIndex}-{patientEndIndex} {l('de', 'of')} {filteredPatients.length}
+                </p>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setPatientPage(page => Math.max(1, page - 1))}
+                    disabled={safePatientPage === 1}
+                    className="inline-flex h-8 items-center rounded-xl border border-slate-300 bg-white px-3 text-xs font-bold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    <ChevronLeft size={14} className="mr-1" />
+                    {l('Anterior', 'Previous')}
+                  </button>
+                  <span className="min-w-[4.5rem] text-center text-xs font-extrabold text-slate-700">
+                    {safePatientPage} / {patientTotalPages}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setPatientPage(page => Math.min(patientTotalPages, page + 1))}
+                    disabled={safePatientPage === patientTotalPages}
+                    className="inline-flex h-8 items-center rounded-xl border border-slate-300 bg-white px-3 text-xs font-bold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    {l('Siguiente', 'Next')}
+                    <ChevronRight size={14} className="ml-1" />
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         )}
 
@@ -618,6 +702,83 @@ export default function DashboardAdmin({
           </div>
         )}
       </div>
+      )}
+      {isCleanupConfirmOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/45 p-4">
+          <div className="w-full max-w-lg rounded-2xl border border-rose-200 bg-white shadow-2xl">
+            <div className="flex items-start justify-between gap-4 border-b border-slate-200 p-5">
+              <div>
+                <h2 className="text-base font-extrabold text-slate-900">
+                  {l('Confirmar limpieza de datos', 'Confirm Data Cleanup')}
+                </h2>
+                <p className="mt-1 text-xs font-semibold text-slate-500">
+                  {l('Esta acción no se puede deshacer.', 'This action cannot be undone.')}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  if (isCleaningPatientData) return;
+                  setIsCleanupConfirmOpen(false);
+                  setCleanupConfirmText('');
+                }}
+                className="rounded-xl p-2 text-slate-400 transition hover:bg-slate-100 hover:text-slate-700"
+                aria-label={l('Cerrar confirmación', 'Close confirmation')}
+              >
+                <X size={18} />
+              </button>
+            </div>
+            <div className="space-y-4 p-5">
+              <div className="rounded-2xl border border-rose-200 bg-rose-50 p-4 text-xs font-semibold text-rose-900">
+                <p>
+                  {l(
+                    'Se eliminarán pacientes, visitas, consentimientos, dispositivos, lecturas, órdenes/activaciones, medicaciones, documentos PDF y auditoría previa de pacientes.',
+                    'Patients, visits, consents, devices, readings, orders/activations, medications, PDF documents, and previous patient audit history will be deleted.'
+                  )}
+                </p>
+                <p className="mt-2">
+                  {l(
+                    'Se conservan usuarios, roles, accesos, catálogos ICD-10, historial de importación de nomencladores y configuración general.',
+                    'Users, roles, access, ICD-10 catalogs, catalog import history, and general configuration are preserved.'
+                  )}
+                </p>
+              </div>
+              <label className="block text-xs font-extrabold text-slate-700" htmlFor="cleanup-confirm-text">
+                {l('Escriba LIMPIAR para confirmar', 'Type LIMPIAR to confirm')}
+              </label>
+              <input
+                id="cleanup-confirm-text"
+                value={cleanupConfirmText}
+                onChange={(event) => setCleanupConfirmText(event.target.value)}
+                className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm font-bold text-slate-800 focus:border-rose-500 focus:outline-none focus:ring-2 focus:ring-rose-500/20"
+                autoComplete="off"
+              />
+            </div>
+            <div className="flex items-center justify-end gap-2 border-t border-slate-200 p-5">
+              <button
+                type="button"
+                onClick={() => {
+                  setIsCleanupConfirmOpen(false);
+                  setCleanupConfirmText('');
+                }}
+                disabled={isCleaningPatientData}
+                className="rounded-xl border border-slate-300 bg-white px-4 py-2 text-xs font-bold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {l('Cancelar', 'Cancel')}
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmCleanup}
+                disabled={cleanupConfirmText !== 'LIMPIAR' || isCleaningPatientData}
+                className="inline-flex items-center rounded-xl bg-rose-600 px-4 py-2 text-xs font-extrabold text-white shadow-lg shadow-rose-600/20 transition hover:bg-rose-700 disabled:cursor-not-allowed disabled:opacity-50"
+                id="btn-confirm-cleanup-patient-data"
+              >
+                <Trash2 size={14} className="mr-1.5" />
+                {isCleaningPatientData ? l('Limpiando...', 'Cleaning...') : l('Eliminar datos', 'Delete Data')}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

@@ -87,7 +87,7 @@ export interface Patient {
   room?: string;
   provider: string;
   practice: string;
-  assignedProgram: 'CCM' | 'RPM' | 'CCM + RPM' | 'CCM + PCM' | 'CCM + RPM + PCM' | 'PCM' | 'RTM' | 'Other';
+  assignedProgram: string;
   conditions: string[];
   diagnoses?: PatientDiagnosis[];
   medications: (string | Medication)[];
@@ -143,6 +143,20 @@ export interface DiagnosisCatalog {
   source?: string;
   version?: string;
   relationship_status?: 'ACTIVE' | 'INACTIVE' | 'UNASSIGNED';
+}
+
+export interface ProgramCatalog {
+  id: string;
+  code: string;
+  display: string;
+  description?: string;
+  is_active: boolean;
+  requires_device?: boolean;
+  created_at?: string;
+  created_by?: string;
+  updated_at?: string;
+  updated_by?: string;
+  source?: string;
 }
 
 export interface CatalogImportHistory {

@@ -1,6 +1,6 @@
-import { useState, FormEvent } from 'react';
-import { Patient, User, Medication, ConditionGroupCatalog, DiagnosisCatalog } from '../types';
-import { NURSING_HOMES, PROGRAMS } from '../data';
+import { useEffect, useState, FormEvent } from 'react';
+import { Patient, User, Medication, ConditionGroupCatalog, DiagnosisCatalog, ProgramCatalog } from '../types';
+import { NURSING_HOMES } from '../data';
 import { X, UserPlus, Calendar, MapPin, HeartPulse, UserCheck, Stethoscope, CheckCheck, CheckCircle, Loader2 } from 'lucide-react';
 import { useLanguage } from '../utils/LanguageContext';
 import { POWERED_BY, PRACTICE_NAME, PRODUCT_NAME } from '../utils/branding';
@@ -13,6 +13,7 @@ interface RegisterPatientModalProps {
   users: User[];
   conditionGroups: ConditionGroupCatalog[];
   diagnoses: DiagnosisCatalog[];
+  programs: ProgramCatalog[];
 }
 
 export default function RegisterPatientModal({
@@ -22,7 +23,8 @@ export default function RegisterPatientModal({
   currentUser,
   users,
   conditionGroups,
-  diagnoses
+  diagnoses,
+  programs
 }: RegisterPatientModalProps) {
   const { language } = useLanguage();
   
@@ -371,7 +373,9 @@ export default function RegisterPatientModal({
   const [medicareId, setMedicareId] = useState('');
   const [nursingHome, setNursingHome] = useState(NURSING_HOMES[1] || NURSING_HOMES[0] || '');
   const [room, setRoom] = useState('');
-  const [assignedProgram, setAssignedProgram] = useState<Patient['assignedProgram']>('CCM + RPM');
+  const activePrograms = programs.filter(program => program.is_active);
+  const [selectedPrograms, setSelectedPrograms] = useState<string[]>(['CCM', 'RPM']);
+  const assignedProgram = selectedPrograms.join(' + ');
   const [selectedConditions, setSelectedConditions] = useState<string[]>([]);
   
   // Auto-complete inputs
@@ -404,8 +408,16 @@ export default function RegisterPatientModal({
   const nurses = users.filter(u => u.role === 'NURSE' && u.active !== false);
   const assignedNurseId = currentUser.role === 'NURSE' ? currentUser.id : (nurses[0]?.id || '');
 
-  // RTM and Other are not available during new patient registration.
-  const eligiblePrograms = PROGRAMS.filter(prog => prog !== 'RTM' && prog !== 'Other');
+  // RTM and inactive programs are not available during new patient registration.
+  const eligiblePrograms = activePrograms.filter(program => program.code !== 'RTM' && program.code !== 'Other');
+  useEffect(() => {
+    const eligibleCodes = eligiblePrograms.map(program => program.code);
+    setSelectedPrograms(previous => {
+      const retained = previous.filter(code => eligibleCodes.includes(code));
+      if (retained.length > 0) return retained;
+      return ['CCM', 'RPM'].filter(code => eligibleCodes.includes(code));
+    });
+  }, [programs]);
   const ICD10_CODE_PATTERN = /^[A-Z][0-9][0-9A-Z](?:\.[0-9A-Z]{1,4})?$/;
   const CCM_CONDITIONS_ERROR = 'CCM requires at least 2 chronic conditions with valid ICD-10 codes.';
   const assignedProgramIncludesCcm = assignedProgram
@@ -453,6 +465,9 @@ export default function RegisterPatientModal({
     if (!isLtc) {
       newErrors.isLtc = language === 'ES' ? 'El paciente debe ser Long Term Care (LTC) obligatoriamente' : 'The patient must be Long Term Care (LTC)';
     }
+    if (selectedPrograms.length === 0) {
+      newErrors.assignedProgram = language === 'ES' ? 'Seleccione al menos un programa.' : 'Select at least one program.';
+    }
     if (selectedCategoryCodes.length === 0) {
       newErrors.conditions = language === 'ES' ? 'Seleccione al menos un Condition Group.' : 'Select at least one Condition Group.';
     } else if (!selectedConditions.some(condition => condition !== 'Clinical Review Required')) {
@@ -462,6 +477,11 @@ export default function RegisterPatientModal({
     }
     if (!meetsCcmConditionsRequirement) {
       newErrors.conditions = CCM_CONDITIONS_ERROR;
+    }
+    if (medications.length === 0 && !isMedicationListPending) {
+      newErrors.medications = language === 'ES'
+        ? 'Agregue al menos un medicamento o marque que la lista no está disponible en este momento.'
+        : 'Add at least one medication or mark that the medication list is not available at this time.';
     }
 
     setErrors(newErrors);
@@ -540,7 +560,7 @@ export default function RegisterPatientModal({
         setBirthDate('');
         setMedicareId('');
         setRoom('');
-        setAssignedProgram('CCM + RPM');
+        setSelectedPrograms(['CCM', 'RPM'].filter(code => eligiblePrograms.some(program => program.code === code)));
         setSelectedConditions([]);
         setCategorySearch('');
         setSelectedCategoryCodes([]);
@@ -562,6 +582,7 @@ export default function RegisterPatientModal({
       setBirthDate('');
       setMedicareId('');
       setRoom('');
+      setSelectedPrograms(['CCM', 'RPM'].filter(code => eligiblePrograms.some(program => program.code === code)));
       setSelectedConditions([]);
       setCategorySearch('');
       setSelectedCategoryCodes([]);
@@ -743,15 +764,44 @@ export default function RegisterPatientModal({
                 <label className="block text-xs font-bold text-slate-700 mb-1">
                   {language === 'ES' ? 'Programa Asignado' : 'Assigned Program'}
                 </label>
-                <select
-                  value={assignedProgram}
-                  onChange={(e) => setAssignedProgram(e.target.value as any)}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-xl text-xs bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 text-slate-800 font-semibold"
-                >
-                  {eligiblePrograms.map(prog => (
-                    <option key={prog} value={prog}>{prog}</option>
-                  ))}
-                </select>
+                <div className="grid grid-cols-2 gap-2 rounded-xl border border-slate-300 bg-slate-50 p-2">
+                  {eligiblePrograms.map(program => {
+                    const checked = selectedPrograms.includes(program.code);
+                    return (
+                      <label
+                        key={program.id}
+                        className={`flex cursor-pointer items-center rounded-lg border px-2.5 py-2 text-xs font-extrabold transition ${
+                          checked ? 'border-blue-300 bg-blue-50 text-blue-800' : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
+                        }`}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={checked}
+                          onChange={(event) => {
+                            if (event.target.checked) {
+                              setSelectedPrograms([...selectedPrograms, program.code]);
+                            } else {
+                              setSelectedPrograms(selectedPrograms.filter(code => code !== program.code));
+                            }
+                          }}
+                          className="mr-2 h-3.5 w-3.5 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                        />
+                        {program.display}
+                      </label>
+                    );
+                  })}
+                  {eligiblePrograms.length === 0 && (
+                    <p className="col-span-2 px-2 py-1 text-xs font-semibold text-rose-600">
+                      {language === 'ES' ? 'No hay programas activos configurados.' : 'No active programs are configured.'}
+                    </p>
+                  )}
+                </div>
+                {assignedProgram && (
+                  <p className="mt-1 text-[10px] font-bold text-blue-700">
+                    {language === 'ES' ? 'Seleccionado' : 'Selected'}: {assignedProgram}
+                  </p>
+                )}
+                {errors.assignedProgram && <span className="text-[10px] text-red-500 font-semibold mt-0.5 block">{errors.assignedProgram}</span>}
               </div>
 
               <div className="flex items-end pb-1.5">
@@ -1233,6 +1283,11 @@ export default function RegisterPatientModal({
                   {language === 'ES' ? 'Lista de medicamentos no disponible en este momento' : 'Medication list not available at this time'}
                 </label>
               </div>
+              {errors.medications && (
+                <p className="text-xs font-semibold text-red-600">
+                  {errors.medications}
+                </p>
+              )}
             </div>
           </div>
 
@@ -1248,27 +1303,17 @@ export default function RegisterPatientModal({
               <X size={14} />
               {language === 'ES' ? 'Cancelar' : 'Cancel'}
             </button>
-            {/* Register & Close */}
+            {/* Register */}
             <button
               type="button"
               onClick={() => submitForm('CLOSE')}
-              disabled={isSaving || !meetsCcmConditionsRequirement}
-              className="flex items-center gap-1.5 px-4 py-2.5 border border-slate-300 rounded-xl text-xs font-bold text-slate-700 bg-white hover:bg-slate-100 transition disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
-            >
-              <CheckCheck size={14} />
-              {language === 'ES' ? 'Registrar y Cerrar' : 'Register & Close'}
-            </button>
-            {/* Register & Add Another */}
-            <button
-              type="button"
-              onClick={() => submitForm('ADD_ANOTHER')}
               disabled={isSaving || !meetsCcmConditionsRequirement}
               className="flex items-center gap-1.5 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow-lg shadow-blue-600/20 transition disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer"
             >
               {isSaving ? (
                 <><Loader2 size={14} className="animate-spin" />{language === 'ES' ? 'Guardando...' : 'Saving...'}</>
               ) : (
-                <><UserPlus size={14} />{language === 'ES' ? 'Registrar y Agregar Otro' : 'Register & Add Another'}</>
+                <><CheckCheck size={14} />{language === 'ES' ? 'Registrar' : 'Register'}</>
               )}
             </button>
           </div>
