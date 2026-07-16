@@ -41,6 +41,9 @@ export default function MedicalOrderReviewModal({
   const orderStatus = getMedicalOrderStatus(patient);
   const canReview = orderStatus === 'ORDER_PENDING_PHYSICIAN_APPROVAL';
   const isAlreadyApproved = orderStatus === 'ORDER_APPROVED';
+  const longTermCareLabel = 'Long Term Care (LTC)';
+  const isLongTermCare = patient.conditions.some(condition => condition.trim().toLowerCase() === longTermCareLabel.toLowerCase());
+  const clinicalConditions = patient.conditions.filter(condition => condition.trim().toLowerCase() !== longTermCareLabel.toLowerCase());
 
   const handleApprove = () => {
     onApprove(patient.id, approvalNotes.trim());
@@ -173,6 +176,25 @@ export default function MedicalOrderReviewModal({
             </div>
           </div>
 
+          {/* Long Term Care */}
+          <div className="bg-emerald-50 border border-emerald-100 rounded-xl p-4">
+            <div className="flex items-center space-x-2 mb-2">
+              <CheckCircle size={14} className="text-emerald-500" />
+              <h3 className="text-xs font-extrabold text-emerald-600 uppercase tracking-wider">
+                {l('Long Term Care', 'Long Term Care')}
+              </h3>
+            </div>
+            <span className={`inline-flex px-2 py-0.5 text-xs font-semibold rounded-full border ${
+              isLongTermCare
+                ? 'border-emerald-200 bg-emerald-100 text-emerald-800'
+                : 'border-amber-200 bg-amber-100 text-amber-800'
+            }`}>
+              {isLongTermCare
+                ? l('Paciente confirmado como Long Term Care (LTC)', 'Patient confirmed as Long Term Care (LTC)')
+                : l('No confirmado como Long Term Care (LTC)', 'Not confirmed as Long Term Care (LTC)')}
+            </span>
+          </div>
+
           {/* Conditions */}
           <div className="bg-blue-50 border border-blue-100 rounded-xl p-4">
             <div className="flex items-center space-x-2 mb-2">
@@ -182,8 +204,8 @@ export default function MedicalOrderReviewModal({
               </h3>
             </div>
             <div className="flex flex-wrap gap-1.5">
-              {patient.conditions.length > 0
-                ? patient.conditions.map((c, i) => (
+              {clinicalConditions.length > 0
+                ? clinicalConditions.map((c, i) => (
                   <span key={i} className="px-2 py-0.5 bg-blue-100 text-blue-800 text-xs font-semibold rounded-full border border-blue-200">
                     {c}
                   </span>
