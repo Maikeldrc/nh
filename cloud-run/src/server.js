@@ -179,7 +179,12 @@ app.put('/v1/:resource/:id', async (req, res, next) => {
     const patient = resource === 'patients'
       ? record
       : await getRecord('patients', record.patientId);
-    if (patient && !canWritePatient(req.user, patient)) {
+    if (resource === 'patients') {
+      const existingPatient = await getRecord('patients', id);
+      if (existingPatient ? !canReadPatient(req.user, existingPatient) : !canWritePatient(req.user, record)) {
+        return res.status(403).json({ error: 'forbidden' });
+      }
+    } else if (patient && !canWritePatient(req.user, patient)) {
       return res.status(403).json({ error: 'forbidden' });
     }
     if (req.user.role === 'PHYSICIAN') {
@@ -187,7 +192,7 @@ app.put('/v1/:resource/:id', async (req, res, next) => {
         return res.status(403).json({ error: 'forbidden' });
       }
       const existingPatient = await getRecord('patients', id);
-      if (!existingPatient || !isMedicalOrderOnlyUpdate(existingPatient, record)) {
+      if (!existingPatient || (!canReadPatient(req.user, existingPatient) && !isMedicalOrderOnlyUpdate(existingPatient, record))) {
         return res.status(403).json({ error: 'forbidden' });
       }
     }
