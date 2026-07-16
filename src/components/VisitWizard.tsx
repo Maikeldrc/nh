@@ -27,6 +27,7 @@ interface VisitWizardProps {
   onGenerateDeliveryPDF: (device: Device, callback: (pdfDataUrl: string) => void) => Promise<void>;
   onUpdatePatient?: (updatedPatient: Patient) => void;
   onGenerateMedicalOrder: (patientId: string, deviceType?: string) => void;
+  nursingHomes: string[];
 }
 
 const TECHNICAL_ACTIVATION_STATUS_OPTIONS: Array<{
@@ -129,7 +130,8 @@ export default function VisitWizard({
   onGenerateConsentPDF,
   onGenerateDeliveryPDF,
   onUpdatePatient,
-  onGenerateMedicalOrder
+  onGenerateMedicalOrder,
+  nursingHomes
 }: VisitWizardProps) {
   const { language, t } = useLanguage();
   const l = (es: string, en: string) => language === 'ES' ? es : en;
@@ -2837,6 +2839,7 @@ This service is not for emergencies. If you agree, we can continue with your aut
         }}
         patient={patient}
         currentUser={currentUser}
+        nursingHomes={nursingHomes}
       />
 
       {showExitDialog && (

@@ -3,6 +3,7 @@ import {
   CatalogImportHistory,
   ConditionGroupCatalog,
   DiagnosisCatalog,
+  FacilityCatalog,
   ProgramCatalog,
   Patient,
   User,
@@ -10,7 +11,6 @@ import {
   DocumentRecord,
   PatientStatus
 } from '../types';
-import { NURSING_HOMES } from '../data';
 import { 
   Search, Users, Shield, FileText, Smartphone, CheckCircle, 
   AlertTriangle, Eye, ArrowUpDown, Calendar, MapPin, Download, History, UserPlus, FileSpreadsheet,
@@ -21,6 +21,7 @@ import { getMedicalOrderStatus, patientRequiresDevice } from '../utils/medicalOr
 import UserManagement from './UserManagement';
 import ClinicalCatalogManagement from './ClinicalCatalogManagement';
 import AdminBackups from './AdminBackups';
+import FacilityManagement from './FacilityManagement';
 import TablePagination, { usePaginatedRows } from './TablePagination';
 
 interface DashboardAdminProps {
@@ -33,6 +34,7 @@ interface DashboardAdminProps {
   diagnoses: DiagnosisCatalog[];
   catalogImports: CatalogImportHistory[];
   programs: ProgramCatalog[];
+  facilities: FacilityCatalog[];
   onViewProfile: (patientId: string) => void;
   onReassignNurse: (patientId: string, nurseId: string) => void;
   onDownloadPDF: (docRecord: DocumentRecord) => void;
@@ -43,6 +45,8 @@ interface DashboardAdminProps {
   onSaveConditionGroup: (group: ConditionGroupCatalog) => void;
   onSaveDiagnosis: (diagnosis: DiagnosisCatalog) => void;
   onSaveProgram: (program: ProgramCatalog) => void;
+  onSaveFacility: (facility: FacilityCatalog) => void;
+  onDeleteFacility: (facility: FacilityCatalog) => Promise<void>;
   onUsersChanged: () => Promise<void>;
   onCleanupPatientData: () => Promise<void>;
   onNotify: (message: string, type?: 'success' | 'info') => void;
@@ -60,6 +64,7 @@ export default function DashboardAdmin({
   diagnoses,
   catalogImports,
   programs,
+  facilities,
   onViewProfile,
   onReassignNurse,
   onDownloadPDF,
@@ -70,6 +75,8 @@ export default function DashboardAdmin({
   onSaveConditionGroup,
   onSaveDiagnosis,
   onSaveProgram,
+  onSaveFacility,
+  onDeleteFacility,
   onUsersChanged,
   onCleanupPatientData,
   onNotify
@@ -87,8 +94,12 @@ export default function DashboardAdmin({
   const [cleanupProgress, setCleanupProgress] = useState(0);
   const isAdmin = currentUser.role === 'ADMIN';
   
-  // Tab control: 'patients' | 'audit_logs' | 'documents' | 'catalog' | 'users' | 'backups'
-  const [activeTab, setActiveTab] = useState<'patients' | 'audit_logs' | 'documents' | 'catalog' | 'users' | 'backups'>('patients');
+  // Tab control: 'patients' | 'audit_logs' | 'documents' | 'catalog' | 'users' | 'facilities' | 'backups'
+  const [activeTab, setActiveTab] = useState<'patients' | 'audit_logs' | 'documents' | 'catalog' | 'users' | 'facilities' | 'backups'>('patients');
+  const nursingHomes = useMemo(() => facilities
+    .filter(facility => facility.is_active !== false && facility.is_deleted !== true)
+    .map(facility => facility.display || facility.name)
+    .filter(Boolean), [facilities]);
 
   // Filter nurses list for dropdown
   const nursesList = useMemo(() => {
@@ -373,6 +384,17 @@ export default function DashboardAdmin({
         )}
         {isAdmin && (
           <button
+            onClick={() => setActiveTab('facilities')}
+            className={`flex-1 text-center py-2 text-xs font-bold rounded-xl transition cursor-pointer ${
+              activeTab === 'facilities' ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/20' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
+            }`}
+            id="tab-facilities"
+          >
+            Facilities ({facilities.filter(facility => !facility.is_deleted).length})
+          </button>
+        )}
+        {isAdmin && (
+          <button
             onClick={() => setActiveTab('backups')}
             className={`flex-1 text-center py-2 text-xs font-bold rounded-xl transition cursor-pointer ${
               activeTab === 'backups' ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/20' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
@@ -389,7 +411,18 @@ export default function DashboardAdmin({
         <UserManagement
           currentUser={currentUser}
           users={users}
+          nursingHomes={nursingHomes}
           onUsersChanged={onUsersChanged}
+          onNotify={onNotify}
+        />
+      ) : activeTab === 'facilities' ? (
+        <FacilityManagement
+          currentUser={currentUser}
+          facilities={facilities}
+          patients={patients}
+          users={users}
+          onSaveFacility={onSaveFacility}
+          onDeleteFacility={onDeleteFacility}
           onNotify={onNotify}
         />
       ) : activeTab === 'catalog' ? (
@@ -430,7 +463,7 @@ export default function DashboardAdmin({
             className="px-2.5 py-1.5 border border-slate-300 rounded-xl text-xs bg-white font-semibold text-slate-700 focus:ring-2 focus:ring-blue-500 focus:outline-none"
           >
             <option value="">{l('Residencia: Todas', 'Nursing Home: All')}</option>
-            {NURSING_HOMES.map(nh => (
+            {nursingHomes.map(nh => (
               <option key={nh} value={nh}>{nh}</option>
             ))}
           </select>

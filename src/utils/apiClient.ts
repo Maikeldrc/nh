@@ -26,6 +26,7 @@ export interface BootstrapPayload {
   readings: import('../types').BPReading[];
   documents: import('../types').DocumentRecord[];
   auditLogs: import('../types').AuditLog[];
+  facilities: import('../types').FacilityCatalog[];
   conditionGroups: import('../types').ConditionGroupCatalog[];
   diagnoses: import('../types').DiagnosisCatalog[];
   catalogImports: import('../types').CatalogImportHistory[];
@@ -165,6 +166,12 @@ export function updateUser(
   return apiRequest<import('../types').User>(`/v1/users/${encodeURIComponent(userId)}`, {
     method: 'PATCH',
     body: JSON.stringify(payload)
+  });
+}
+
+export function deleteResource(resource: string, id: string): Promise<{ ok: boolean }> {
+  return apiRequest<{ ok: boolean }>(`/v1/${resource}/${encodeURIComponent(id)}`, {
+    method: 'DELETE'
   });
 }
 

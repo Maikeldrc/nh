@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import {
   User, Patient, AuditLog, DocumentRecord, Visit, Consent, Device, BPReading,
-  ConditionGroupCatalog, DiagnosisCatalog, CatalogImportHistory, ProgramCatalog
+  ConditionGroupCatalog, DiagnosisCatalog, CatalogImportHistory, ProgramCatalog, FacilityCatalog
 } from './types';
 import { 
   getPatients, getAuditLogs, getDocuments,
@@ -10,7 +10,7 @@ import {
   getLatestVisitForPatient, getConsentByPatientId, getDeviceByPatientId, getBPReadingsByPatientId,
   getConditionGroups, getDiagnoses, getCatalogImportHistory, saveConditionCatalog,
   setConditionGroupActive, setDiagnosisActive, saveConditionGroup, saveDiagnosis, hydrateDB, getUsers,
-  getPrograms, saveProgram
+  getPrograms, saveProgram, getFacilities, saveFacility, deleteFacility
 } from './utils/db';
 import { cleanupPatientData, downloadDocument, generateDocument } from './utils/apiClient';
 import { getAuthConfigurationError, logout, observeAuthenticatedUser } from './utils/auth';
@@ -42,6 +42,7 @@ export default function App() {
   const [diagnoses, setDiagnoses] = useState<DiagnosisCatalog[]>([]);
   const [catalogImports, setCatalogImports] = useState<CatalogImportHistory[]>([]);
   const [programs, setPrograms] = useState<ProgramCatalog[]>([]);
+  const [facilities, setFacilities] = useState<FacilityCatalog[]>([]);
   const [authLoading, setAuthLoading] = useState(true);
   const [authError, setAuthError] = useState(getAuthConfigurationError());
   
@@ -106,6 +107,7 @@ export default function App() {
     setDiagnoses(getDiagnoses());
     setCatalogImports(getCatalogImportHistory());
     setPrograms(getPrograms());
+    setFacilities(getFacilities());
   };
 
   const reloadAppState = async () => {
@@ -494,6 +496,40 @@ export default function App() {
     showToast(l('Programa guardado.', 'Program saved.'));
   };
 
+  const handleSaveFacility = (facility: FacilityCatalog) => {
+    if (!currentUser || currentUser.role !== 'ADMIN') return;
+    saveFacility(facility);
+    addAuditLog(
+      currentUser.id,
+      currentUser.name,
+      currentUser.role,
+      undefined,
+      undefined,
+      facility.is_active ? 'facility_updated' : 'facility_deactivated',
+      'GENERAL',
+      facility.display || facility.name
+    );
+    refreshAppState();
+    showToast(l('Facility guardado.', 'Facility saved.'));
+  };
+
+  const handleDeleteFacility = async (facility: FacilityCatalog) => {
+    if (!currentUser || currentUser.role !== 'ADMIN') return;
+    await deleteFacility(facility, currentUser.name);
+    await reloadAppState();
+    addAuditLog(
+      currentUser.id,
+      currentUser.name,
+      currentUser.role,
+      undefined,
+      undefined,
+      'facility_deleted',
+      'GENERAL',
+      facility.display || facility.name
+    );
+    showToast(l('Facility eliminado.', 'Facility deleted.'));
+  };
+
   const handleCleanupPatientData = async () => {
     if (!currentUser || currentUser.role !== 'ADMIN') return;
     const result = await cleanupPatientData();
@@ -747,6 +783,13 @@ export default function App() {
     return getBPReadingsByPatientId(activePatientId);
   }, [activePatientId, auditLogs]);
 
+  const nursingHomes = useMemo(() => {
+    return facilities
+      .filter(facility => facility.is_active !== false && facility.is_deleted !== true)
+      .map(facility => facility.display || facility.name)
+      .filter(Boolean);
+  }, [facilities]);
+
   // If user is not logged in, force Login screen
   if (authLoading) {
     return <div className="min-h-screen grid place-items-center text-sm font-semibold text-slate-600">Loading secure session...</div>;
@@ -795,6 +838,7 @@ export default function App() {
               diagnoses={diagnoses}
               catalogImports={catalogImports}
               programs={programs}
+              facilities={facilities}
               onViewProfile={handleViewProfile}
               onReassignNurse={handleReassignNurse}
               onDownloadPDF={handleDownloadPDF}
@@ -805,6 +849,8 @@ export default function App() {
               onSaveConditionGroup={handleSaveConditionGroup}
               onSaveDiagnosis={handleSaveDiagnosis}
               onSaveProgram={handleSaveProgram}
+              onSaveFacility={handleSaveFacility}
+              onDeleteFacility={handleDeleteFacility}
               onUsersChanged={reloadAppState}
               onCleanupPatientData={handleCleanupPatientData}
               onNotify={showToast}
@@ -813,6 +859,7 @@ export default function App() {
             <DashboardNurse
               currentUser={currentUser}
               patients={patients}
+              nursingHomes={nursingHomes}
               onStartVisit={handleStartVisit}
               onViewProfile={handleViewProfile}
               onContinueVisit={handleContinueVisit}
@@ -831,6 +878,7 @@ export default function App() {
             bpReadings={patientBPReadings}
             documents={documents.filter(d => d.patientId === selectedPatient.id)}
             auditLogs={auditLogs}
+            nursingHomes={nursingHomes}
             onBack={() => {
               setCurrentView('DASHBOARD');
               setActivePatientId(null);
@@ -861,6 +909,7 @@ export default function App() {
             onGenerateDeliveryPDF={handleGenerateDeliveryPDF}
             onUpdatePatient={handleUpdatePatient}
             onGenerateMedicalOrder={handleGenerateMedicalOrder}
+            nursingHomes={nursingHomes}
           />
         )}
       </main>
@@ -875,6 +924,7 @@ export default function App() {
         conditionGroups={conditionGroups}
         diagnoses={diagnoses}
         programs={programs}
+        nursingHomes={nursingHomes}
       />
 
       <ConditionCatalogImportModal

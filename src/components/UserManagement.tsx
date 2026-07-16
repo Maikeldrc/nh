@@ -1,6 +1,5 @@
 import { useMemo, useState } from 'react';
 import { CheckCircle, Copy, Edit3, Plus, ShieldAlert, UserX, X } from 'lucide-react';
-import { NURSING_HOMES } from '../data';
 import { User, UserRole } from '../types';
 import { useLanguage } from '../utils/LanguageContext';
 import { createUser, updateUser, type UserMutationPayload } from '../utils/apiClient';
@@ -11,6 +10,7 @@ const ROLES: UserRole[] = ['ADMIN', 'NURSE', 'PHYSICIAN', 'VIEWER', 'AUDITOR'];
 interface UserManagementProps {
   currentUser: User;
   users: User[];
+  nursingHomes: string[];
   onUsersChanged: () => Promise<void>;
   onNotify: (message: string, type?: 'success' | 'info') => void;
 }
@@ -47,6 +47,7 @@ function joinValues(values?: string[]): string {
 export default function UserManagement({
   currentUser,
   users,
+  nursingHomes,
   onUsersChanged,
   onNotify
 }: UserManagementProps) {
@@ -311,7 +312,7 @@ export default function UserManagement({
                   <div className="flex gap-2">
                     <button
                       type="button"
-                      onClick={() => setForm({ ...form, nursingHomeAccess: [...NURSING_HOMES] })}
+                      onClick={() => setForm({ ...form, nursingHomeAccess: [...nursingHomes] })}
                       className="rounded-lg border border-blue-200 bg-blue-50 px-3 py-1.5 text-[10px] font-extrabold text-blue-700 transition hover:bg-blue-100"
                     >
                       Select All
@@ -326,7 +327,7 @@ export default function UserManagement({
                   </div>
                 </div>
                 <div className="grid gap-2 md:grid-cols-2">
-                  {NURSING_HOMES.map(home => (
+                  {nursingHomes.map(home => (
                     <label key={home} className="flex items-start gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-semibold text-slate-700">
                       <input
                         type="checkbox"

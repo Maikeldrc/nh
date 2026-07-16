@@ -1,4 +1,4 @@
-import { Patient, User, AuditLog, Consent, Device, BPReading, DocumentRecord, ConditionGroupCatalog, DiagnosisCatalog, ProgramCatalog } from './types';
+import { Patient, User, AuditLog, Consent, Device, BPReading, DocumentRecord, ConditionGroupCatalog, DiagnosisCatalog, ProgramCatalog, FacilityCatalog } from './types';
 import { PRACTICE_NAME } from './utils/branding';
 
 export const NURSING_HOMES = [
@@ -41,6 +41,17 @@ export const NURSING_HOMES = [
   'State Veterans - Port St. Lucie',
   'The Luxe at Wellington'
 ];
+
+const facilityIdFromName = (name: string, index: number) =>
+  `facility_${String(index + 1).padStart(3, '0')}_${name.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '').slice(0, 48)}`;
+
+export const DEFAULT_FACILITY_CATALOG: FacilityCatalog[] = NURSING_HOMES.map((name, index) => ({
+  id: facilityIdFromName(name, index),
+  name,
+  display: name,
+  is_active: true,
+  source: 'default'
+}));
 
 export const SEED_USERS: User[] = [
   {

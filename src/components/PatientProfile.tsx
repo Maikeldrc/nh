@@ -16,6 +16,7 @@ interface PatientProfileProps {
   bpReadings: BPReading[];
   documents: DocumentRecord[];
   auditLogs: AuditLog[];
+  nursingHomes: string[];
   onBack: () => void;
   onStartVisit?: (patientId: string) => void;
   onContinueVisit?: (patientId: string) => void;
@@ -35,6 +36,7 @@ export default function PatientProfile({
   bpReadings,
   documents,
   auditLogs,
+  nursingHomes,
   onBack,
   onStartVisit,
   onContinueVisit,
@@ -449,6 +451,7 @@ export default function PatientProfile({
         onSave={onUpdatePatient}
         patient={patient}
         currentUser={currentUser}
+        nursingHomes={nursingHomes}
       />
     </div>
   );

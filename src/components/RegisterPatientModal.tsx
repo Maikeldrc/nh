@@ -1,6 +1,5 @@
 import { useEffect, useState, FormEvent } from 'react';
 import { Patient, User, Medication, ConditionGroupCatalog, DiagnosisCatalog, ProgramCatalog } from '../types';
-import { NURSING_HOMES } from '../data';
 import { X, UserPlus, Calendar, MapPin, HeartPulse, UserCheck, Stethoscope, CheckCheck, CheckCircle, Loader2 } from 'lucide-react';
 import { useLanguage } from '../utils/LanguageContext';
 import { POWERED_BY, PRACTICE_NAME, PRODUCT_NAME } from '../utils/branding';
@@ -14,6 +13,7 @@ interface RegisterPatientModalProps {
   conditionGroups: ConditionGroupCatalog[];
   diagnoses: DiagnosisCatalog[];
   programs: ProgramCatalog[];
+  nursingHomes: string[];
 }
 
 export default function RegisterPatientModal({
@@ -24,7 +24,8 @@ export default function RegisterPatientModal({
   users,
   conditionGroups,
   diagnoses,
-  programs
+  programs,
+  nursingHomes
 }: RegisterPatientModalProps) {
   const { language } = useLanguage();
   
@@ -371,12 +372,15 @@ export default function RegisterPatientModal({
   const [lastName, setLastName] = useState('');
   const [birthDate, setBirthDate] = useState('');
   const [medicareId, setMedicareId] = useState('');
-  const [nursingHome, setNursingHome] = useState(NURSING_HOMES[0] || '');
+  const [nursingHome, setNursingHome] = useState(nursingHomes[0] || '');
   const [room, setRoom] = useState('');
   const activePrograms = programs.filter(program => program.is_active);
   const [selectedPrograms, setSelectedPrograms] = useState<string[]>([]);
   const assignedProgram = selectedPrograms.join(' + ');
   const [selectedConditions, setSelectedConditions] = useState<string[]>([]);
+  useEffect(() => {
+    if (!nursingHome && nursingHomes[0]) setNursingHome(nursingHomes[0]);
+  }, [nursingHome, nursingHomes]);
   
   // Auto-complete inputs
   const [categorySearch, setCategorySearch] = useState('');
@@ -557,7 +561,7 @@ export default function RegisterPatientModal({
         setLastName('');
         setBirthDate('');
         setMedicareId('');
-        setNursingHome(NURSING_HOMES[0] || '');
+        setNursingHome(nursingHomes[0] || '');
         setRoom('');
         setSelectedPrograms([]);
         setSelectedConditions([]);
@@ -580,7 +584,7 @@ export default function RegisterPatientModal({
       setLastName('');
       setBirthDate('');
       setMedicareId('');
-      setNursingHome(NURSING_HOMES[0] || '');
+      setNursingHome(nursingHomes[0] || '');
       setRoom('');
       setSelectedPrograms([]);
       setSelectedConditions([]);
@@ -738,7 +742,7 @@ export default function RegisterPatientModal({
                     errors.nursingHome ? 'border-red-500 ring-1 ring-red-500/20' : 'border-slate-300'
                   }`}
                 >
-                  {NURSING_HOMES.map(nh => (
+                  {nursingHomes.map(nh => (
                     <option key={nh} value={nh}>{nh}</option>
                   ))}
                 </select>

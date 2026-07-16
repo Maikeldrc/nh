@@ -187,6 +187,46 @@ export async function upsertRecord(resourceName, id, record) {
   return normalized;
 }
 
+export async function deleteRecord(resourceName, id) {
+  const resource = resources[resourceName];
+  if (!resource) throw new Error('Unknown resource.');
+  recordsCache.delete(resourceName);
+  const headers = await ensureSheet(resource);
+  const response = await withSheetsRetry(() => sheets.spreadsheets.values.get({
+    spreadsheetId: config.spreadsheetId,
+    range: `${quoteTab(resource.tab)}!A2:ZZ`
+  }));
+  const rows = response.data.values || [];
+  const keyIndex = headers.indexOf(resource.key);
+  const rowIndex = rows.findIndex(row => String(row[keyIndex] || '') === String(id));
+  if (rowIndex < 0) return false;
+
+  const metadata = await withSheetsRetry(() => sheets.spreadsheets.get({
+    spreadsheetId: config.spreadsheetId,
+    fields: 'sheets.properties'
+  }));
+  const sheet = metadata.data.sheets?.find(item => item.properties?.title === resource.tab);
+  const sheetId = sheet?.properties?.sheetId;
+  if (sheetId === undefined) throw new Error('sheet_not_found');
+
+  await withSheetsRetry(() => sheets.spreadsheets.batchUpdate({
+    spreadsheetId: config.spreadsheetId,
+    requestBody: {
+      requests: [{
+        deleteDimension: {
+          range: {
+            sheetId,
+            dimension: 'ROWS',
+            startIndex: rowIndex + 1,
+            endIndex: rowIndex + 2
+          }
+        }
+      }]
+    }
+  }));
+  return true;
+}
+
 export async function appendActivity(activity) {
   return upsertRecord('activity-log', activity.activity_id, activity);
 }

@@ -7,15 +7,17 @@ import {
   Device,
   DiagnosisCatalog,
   DocumentRecord,
+  FacilityCatalog,
   Patient,
   ProgramCatalog,
   User,
   UserRole,
   Visit
 } from '../types';
-import { DEFAULT_CONDITION_GROUP_CATALOG, DEFAULT_DIAGNOSIS_CATALOG, DEFAULT_PROGRAM_CATALOG } from '../data';
+import { DEFAULT_CONDITION_GROUP_CATALOG, DEFAULT_DIAGNOSIS_CATALOG, DEFAULT_FACILITY_CATALOG, DEFAULT_PROGRAM_CATALOG } from '../data';
 import {
   createActivity,
+  deleteResource,
   getBootstrap,
   saveResource,
   type BootstrapPayload
@@ -30,6 +32,7 @@ interface MemoryDatabase {
   readings: BPReading[];
   auditLogs: AuditLog[];
   documents: DocumentRecord[];
+  facilities: FacilityCatalog[];
   conditionGroups: ConditionGroupCatalog[];
   diagnoses: DiagnosisCatalog[];
   catalogImports: CatalogImportHistory[];
@@ -46,6 +49,7 @@ const emptyDatabase = (): MemoryDatabase => ({
   readings: [],
   auditLogs: [],
   documents: [],
+  facilities: [],
   conditionGroups: [],
   diagnoses: [],
   catalogImports: [],
@@ -79,6 +83,13 @@ export function initDB(forceReset = false): void {
 
 export async function hydrateDB(): Promise<User> {
   const payload: BootstrapPayload = await getBootstrapWithRetry();
+  const persistedFacilities = payload.facilities || [];
+  const persistedFacilityIds = new Set(persistedFacilities.map(facility => facility.id));
+  const mergedFacilities = [
+    ...persistedFacilities,
+    ...DEFAULT_FACILITY_CATALOG.filter(facility => !persistedFacilityIds.has(facility.id))
+  ].filter(facility => !facility.is_deleted);
+
   db = {
     users: payload.users || [],
     patients: payload.patients || [],
@@ -88,6 +99,7 @@ export async function hydrateDB(): Promise<User> {
     readings: payload.readings || [],
     documents: payload.documents || [],
     auditLogs: payload.auditLogs || [],
+    facilities: mergedFacilities,
     conditionGroups: payload.conditionGroups?.length ? payload.conditionGroups : DEFAULT_CONDITION_GROUP_CATALOG,
     diagnoses: payload.diagnoses?.length ? payload.diagnoses : DEFAULT_DIAGNOSIS_CATALOG,
     catalogImports: payload.catalogImports || [],
@@ -134,6 +146,39 @@ export function getPrograms(): ProgramCatalog[] {
 export function saveProgram(program: ProgramCatalog): void {
   db.programs = replaceById(db.programs, program);
   remote(saveResource('programs', program));
+}
+
+export function getFacilities(): FacilityCatalog[] {
+  return [...db.facilities];
+}
+
+export function saveFacility(facility: FacilityCatalog): void {
+  db.facilities = replaceById(db.facilities, facility).filter(item => !item.is_deleted);
+  remote(saveResource('facilities', facility));
+}
+
+export async function deleteFacility(facility: FacilityCatalog, currentUserName: string): Promise<void> {
+  const hasPatientReferences = db.patients.some(patient => patient.nursingHome === facility.name || patient.nursingHome === facility.display);
+  const hasUserReferences = db.users.some(user => (user.nursingHomeAccess || []).includes(facility.name) || (user.nursingHomeAccess || []).includes(facility.display));
+  if (hasPatientReferences || hasUserReferences) throw new Error('facility_in_use');
+
+  if (facility.source === 'default') {
+    const tombstone = {
+      ...facility,
+      is_active: false,
+      is_deleted: true,
+      deleted_at: new Date().toISOString(),
+      deleted_by: currentUserName,
+      updated_at: new Date().toISOString(),
+      updated_by: currentUserName
+    };
+    db.facilities = db.facilities.filter(item => item.id !== facility.id);
+    await saveResource('facilities', tombstone);
+    return;
+  }
+
+  db.facilities = db.facilities.filter(item => item.id !== facility.id);
+  await deleteResource('facilities', facility.id);
 }
 
 export function saveConditionCatalog(

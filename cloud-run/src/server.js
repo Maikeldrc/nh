@@ -7,6 +7,7 @@ import { config } from './config.js';
 import {
   appendActivity,
   clearRecords,
+  deleteRecord,
   getRecord,
   listRecords,
   resources,
@@ -38,6 +39,7 @@ const ADMIN_ONLY_RESOURCES = new Set([
   'catalog-imports',
   'condition-groups',
   'diagnoses',
+  'facilities',
   'programs'
 ]);
 app.disable('x-powered-by');
@@ -50,7 +52,7 @@ app.use(cors({
     }
     return callback(new Error('Origin not allowed.'));
   },
-  methods: ['GET', 'POST', 'PUT', 'PATCH', 'OPTIONS'],
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Authorization', 'Content-Type', 'X-Request-Id'],
   exposedHeaders: ['X-Request-Id'],
   maxAge: 3600
@@ -86,13 +88,14 @@ app.get('/v1/bootstrap', async (req, res, next) => {
     const patientIds = new Set(patients.map(patient => patient.id));
     const related = async resource => (await listRecords(resource))
       .filter(record => !record.patientId || patientIds.has(record.patientId));
-    const [visits, consents, devices, readings, documents, conditionGroups,
+    const [visits, consents, devices, readings, documents, facilities, conditionGroups,
       diagnoses, catalogImports, programs, auditLogs, users] = await Promise.all([
       related('visits'),
       related('consents'),
       related('devices'),
       related('readings'),
       related('documents'),
+      listRecords('facilities'),
       listRecords('condition-groups'),
       listRecords('diagnoses'),
       listRecords('catalog-imports'),
@@ -125,6 +128,9 @@ app.get('/v1/bootstrap', async (req, res, next) => {
       readings,
       documents,
       auditLogs,
+      facilities: req.user.role === 'ADMIN'
+        ? facilities
+        : facilities.filter(facility => facility.is_active !== false && facility.is_deleted !== true),
       conditionGroups,
       diagnoses,
       catalogImports,
@@ -203,7 +209,8 @@ app.put('/v1/:resource/:id', async (req, res, next) => {
       validateDiagnosis(record, await listRecords('diagnoses'), await listRecords('condition-groups'), id);
     }
     if (resource === 'programs') validateProgram(record, await listRecords('programs'), id);
-    const existing = ['condition-groups', 'diagnoses', 'programs'].includes(resource)
+    if (resource === 'facilities') validateFacility(record, await listRecords('facilities'), id);
+    const existing = ['condition-groups', 'diagnoses', 'programs', 'facilities'].includes(resource)
       ? await getRecord(resource, id)
       : undefined;
     const saved = await upsertRecord(resource, id, record);
@@ -227,6 +234,29 @@ app.post('/v1/activity-log', async (req, res, next) => {
       safe.result || 'success'
     );
     return res.status(204).end();
+  } catch (error) {
+    return next(error);
+  }
+});
+
+app.delete('/v1/:resource/:id', requireRoles('ADMIN'), async (req, res, next) => {
+  try {
+    const { resource, id } = req.params;
+    if (!resources[resource]) return res.status(404).json({ error: 'not_found' });
+    if (resource !== 'facilities') return res.status(405).json({ error: 'method_not_allowed' });
+
+    const facility = await getRecord('facilities', id);
+    if (!facility) return res.status(404).json({ error: 'not_found' });
+    const names = new Set([facility.name, facility.display].filter(Boolean).map(value => String(value).trim()));
+    const [patients, users] = await Promise.all([listRecords('patients'), listRecords('users')]);
+    const inPatients = patients.some(patient => names.has(String(patient.nursingHome || '').trim()));
+    const inUsers = users.some(user => arrayValue(user.nursingHomeAccess).some(home => names.has(String(home).trim())));
+    if (inPatients || inUsers) return res.status(409).json({ error: 'facility_in_use' });
+
+    const deleted = await deleteRecord('facilities', id);
+    if (!deleted) return res.status(404).json({ error: 'not_found' });
+    await activity(req, 'facility_deleted', 'FACILITY', id);
+    return res.json({ ok: true });
   } catch (error) {
     return next(error);
   }
@@ -611,6 +641,11 @@ function actionFor(resource, record, existing) {
     if (existing.is_active !== record.is_active) return record.is_active ? 'program_activated' : 'program_deactivated';
     return 'program_updated';
   }
+  if (resource === 'facilities') {
+    if (!existing) return 'facility_created';
+    if (existing.is_active !== record.is_active) return record.is_active ? 'facility_activated' : 'facility_deactivated';
+    return 'facility_updated';
+  }
   if (resource === 'medications') return 'added_medication';
   if (resource === 'medical-orders') return 'created_medical_order';
   if (resource === 'devices') return 'assigned_device';
@@ -651,6 +686,17 @@ function validateDiagnosis(diagnosis, allDiagnoses, allGroups, id) {
     && String(item.icd10_code || '').trim().toUpperCase() === code
   );
   if (duplicate) throw httpError(422, 'duplicate_icd10_in_condition_group');
+}
+
+function validateFacility(facility, allFacilities, id) {
+  const name = String(facility.name || facility.display || '').trim();
+  if (!name) throw httpError(422, 'facility_name_required');
+  const duplicate = allFacilities.find(item =>
+    String(item.id) !== String(id)
+    && String(item.name || item.display || '').trim().toLowerCase() === name.toLowerCase()
+    && item.is_deleted !== true
+  );
+  if (duplicate) throw httpError(422, 'duplicate_facility_name');
 }
 
 function validateProgram(program, allPrograms, id) {

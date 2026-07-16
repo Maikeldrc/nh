@@ -1,6 +1,6 @@
 import { useState, FormEvent, useEffect } from 'react';
 import { Patient, User } from '../types';
-import { NURSING_HOMES, PROGRAMS } from '../data';
+import { PROGRAMS } from '../data';
 import { X, Edit3, Calendar, MapPin, HeartPulse, Save } from 'lucide-react';
 import { useLanguage } from '../utils/LanguageContext';
 import { MEDICAL_ORDER_VERSION } from '../utils/medicalOrders';
@@ -11,6 +11,7 @@ interface EditPatientModalProps {
   onSave: (updatedPatient: Patient) => void;
   patient: Patient;
   currentUser: User;
+  nursingHomes: string[];
 }
 
 export default function EditPatientModal({
@@ -18,7 +19,8 @@ export default function EditPatientModal({
   onClose,
   onSave,
   patient,
-  currentUser
+  currentUser,
+  nursingHomes
 }: EditPatientModalProps) {
   const { language } = useLanguage();
   
@@ -42,7 +44,7 @@ export default function EditPatientModal({
       setLastName(patient.lastName || '');
       setBirthDate(patient.birthDate || '');
       setMedicareId(patient.medicareId || '');
-      setNursingHome(patient.nursingHome || NURSING_HOMES[1] || NURSING_HOMES[0] || '');
+      setNursingHome(patient.nursingHome || nursingHomes[0] || '');
       setRoom(patient.room || '');
       setAssignedProgram(patient.assignedProgram || 'RPM');
       setRequiredDevice(patient.requiredDevice || 'BP Monitor');
@@ -61,7 +63,7 @@ export default function EditPatientModal({
       );
       setIsLtc(hasLtc);
     }
-  }, [patient, isOpen]);
+  }, [patient, isOpen, nursingHomes]);
 
   // Filter programs to exclude RTM
   const eligiblePrograms = PROGRAMS.filter(prog => prog !== 'RTM');
@@ -278,7 +280,7 @@ export default function EditPatientModal({
                     errors.nursingHome ? 'border-red-500 ring-1 ring-red-500/20' : 'border-slate-300'
                   }`}
                 >
-                  {NURSING_HOMES.map(nh => (
+                  {nursingHomes.map(nh => (
                     <option key={nh} value={nh}>{nh}</option>
                   ))}
                 </select>

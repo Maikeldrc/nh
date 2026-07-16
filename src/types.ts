@@ -159,6 +159,21 @@ export interface ProgramCatalog {
   source?: string;
 }
 
+export interface FacilityCatalog {
+  id: string;
+  name: string;
+  display: string;
+  is_active: boolean;
+  created_at?: string;
+  created_by?: string;
+  updated_at?: string;
+  updated_by?: string;
+  source?: string;
+  is_deleted?: boolean;
+  deleted_at?: string;
+  deleted_by?: string;
+}
+
 export interface CatalogImportHistory {
   id: string;
   filename: string;

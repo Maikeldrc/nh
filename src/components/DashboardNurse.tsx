@@ -1,6 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
 import { Patient, User, PatientStatus } from '../types';
-import { NURSING_HOMES } from '../data';
 import { 
   Search, Users, FileText, Smartphone, CheckCircle, 
   AlertTriangle, ArrowRight, Play, RefreshCw, Eye, MapPin, Calendar, UserPlus,
@@ -15,6 +14,7 @@ interface DashboardNurseProps {
   onViewProfile: (patientId: string) => void;
   onContinueVisit: (patientId: string) => void;
   patients: Patient[];
+  nursingHomes: string[];
   onRegisterPatientClick: () => void;
   onGenerateMedicalOrder: (patientId: string) => void;
 }
@@ -24,6 +24,7 @@ const PATIENTS_PER_PAGE = 10;
 export default function DashboardNurse({ 
   currentUser, 
   patients, 
+  nursingHomes,
   onStartVisit, 
   onViewProfile, 
   onContinueVisit,
@@ -155,7 +156,7 @@ export default function DashboardNurse({
           <div className="flex space-x-2 text-xs font-semibold text-slate-500 bg-slate-50 py-1.5 px-3 rounded-xl border border-slate-200">
             <MapPin size={14} className="text-slate-400 shrink-0" />
             <span>
-              Nursing Homes: {currentUser.nursingHomeAccess?.length === NURSING_HOMES.length 
+                Nursing Homes: {currentUser.nursingHomeAccess?.length === nursingHomes.length 
                 ? (language === 'ES' ? 'Todos' : 'All') 
                 : `${currentUser.nursingHomeAccess?.length || 0} ${l('asignados', 'assigned')}`}
             </span>
@@ -273,7 +274,7 @@ export default function DashboardNurse({
               className="px-2.5 py-1.5 border border-slate-300 rounded-xl text-xs bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 font-semibold text-slate-700"
             >
               <option value="">{language === 'ES' ? 'Todos los Nursing Homes' : 'All Nursing Homes'}</option>
-              {NURSING_HOMES.map(nh => (
+              {nursingHomes.map(nh => (
                 <option key={nh} value={nh}>{nh}</option>
               ))}
             </select>
