@@ -668,6 +668,22 @@ export default function App() {
           `Proceso abortado. El paciente declinó firmar el consentimiento.`
         );
         showToast(l(`${PRODUCT_NAME}: proceso cancelado porque el paciente declinó el consentimiento.`, `${PRODUCT_NAME}: process canceled because the patient declined consent.`), 'info');
+      } else if (visit.status === 'COMPLETED') {
+        patientObj.status = 'ENROLLMENT_COMPLETED_PENDING_ACTIVATION';
+        patientObj.activationBlocker = patientRequiresDevice(patientObj) && !isMedicalOrderApproved(patientObj)
+          ? 'AWAITING_MEDICAL_ORDER_APPROVAL'
+          : undefined;
+        addAuditLog(
+          currentUser.id,
+          currentUser.name,
+          currentUser.role,
+          visit.patientId,
+          `${patientObj.firstName} ${patientObj.lastName}`,
+          `${PRODUCT_NAME} - Enrollment Completed`,
+          'PATIENT',
+          `Enrollment completed. Technical activation may remain pending for RPM.`
+        );
+        showToast(l(`${PRODUCT_NAME}: inscripción completada.`, `${PRODUCT_NAME}: enrollment completed.`), 'success');
       } else {
         patientObj.status = 'INCOMPLETE';
         addAuditLog(

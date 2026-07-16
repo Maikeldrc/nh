@@ -144,6 +144,7 @@ export default function VisitWizard({
   const savedBool = (key: string, fallback = false) => typeof savedForm[key] === 'boolean' ? Boolean(savedForm[key]) : fallback;
   const savedString = (key: string, fallback = '') => typeof savedForm[key] === 'string' ? String(savedForm[key]) : fallback;
   const savedChoice = <T extends string>(key: string, fallback: T): T => typeof savedForm[key] === 'string' ? savedForm[key] as T : fallback;
+  const normalizedInitialStep = existingVisit?.currentStep ? Math.min(existingVisit.currentStep, 3) : 1;
 
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [alertMessage, setAlertMessage] = useState<string | null>(null);
@@ -153,7 +154,7 @@ export default function VisitWizard({
   // ----------------------------------------------------
   
   // Current active step (1 to 5)
-  const [step, setStep] = useState(existingVisit?.currentStep || 1);
+  const [step, setStep] = useState(normalizedInitialStep);
 
 
   // STEP 1: IDENTITY CONFIRMATION
@@ -169,6 +170,7 @@ export default function VisitWizard({
   const [readinessRepEmail, setReadinessRepEmail] = useState(savedString('readinessRepEmail'));
   const [representativeContactMode, setRepresentativeContactMode] = useState<'IN_PERSON' | 'PHONE' | 'VIDEO'>(savedChoice('representativeContactMode', 'IN_PERSON'));
   const [preferredExplanationLanguage, setPreferredExplanationLanguage] = useState<'English' | 'Spanish' | 'Other'>(savedChoice('preferredExplanationLanguage', language === 'ES' ? 'Spanish' : 'English'));
+  const [decisionMaker, setDecisionMaker] = useState<'PATIENT' | 'REPRESENTATIVE'>(savedChoice('decisionMaker', 'PATIENT'));
 
   // STEP 2: SERVICE EXPLANATION
   const [explainedService, setExplainedService] = useState(savedBool('explainedService'));
@@ -184,6 +186,8 @@ export default function VisitWizard({
   const [explanationLanguage, setExplanationLanguage] = useState<'English' | 'Spanish' | 'Other'>(savedChoice('explanationLanguage', language === 'ES' ? 'Spanish' : 'English'));
   const [interpreterUsed, setInterpreterUsed] = useState(savedBool('interpreterUsed'));
   const [interpreterName, setInterpreterName] = useState(savedString('interpreterName'));
+  const [showDetailedEnrollmentGuide, setShowDetailedEnrollmentGuide] = useState(savedBool('showDetailedEnrollmentGuide'));
+  const [wantsPatientAppInfo, setWantsPatientAppInfo] = useState<'YES' | 'NO' | ''>(savedChoice('wantsPatientAppInfo', ''));
 
   // STEP 3: PATIENT CONSENT
   const [consentDecision, setConsentDecision] = useState<'ACCEPT' | 'DECLINE' | null>(savedChoice<'ACCEPT' | 'DECLINE' | ''>('consentDecision', '') || null);
@@ -212,6 +216,10 @@ export default function VisitWizard({
   const [attestationVoluntary, setAttestationVoluntary] = useState(savedBool('attestationVoluntary'));
   const [attestationCosts, setAttestationCosts] = useState(savedBool('attestationCosts'));
   const [attestationWitnessed, setAttestationWitnessed] = useState(savedBool('attestationWitnessed'));
+  const [staffAttestationConfirmed, setStaffAttestationConfirmed] = useState(savedBool('staffAttestationConfirmed'));
+  const [markWitnessName, setMarkWitnessName] = useState(savedString('markWitnessName'));
+  const [markWitnessRole, setMarkWitnessRole] = useState(savedString('markWitnessRole'));
+  const [markWitnessAttested, setMarkWitnessAttested] = useState(savedBool('markWitnessAttested'));
   const [consentPdfUrl, setConsentPdfUrl] = useState('');
   const [consentPdfGenerated, setConsentPdfGenerated] = useState(false);
   const [isGeneratingConsentPdf, setIsGeneratingConsentPdf] = useState(false);
@@ -229,15 +237,16 @@ export default function VisitWizard({
   const typedSignatureComplete = Boolean(typedSignatureName.trim() && typedSignatureAgreed && typedSignatureConfirmed);
   const unableConsentComplete = signatureMethod !== 'UNABLE' || Boolean(
     unableSignMethod &&
-    unableToSignReason.trim() &&
+    (isVerbalConsent || unableToSignReason.trim()) &&
     (!isMarkXConsent || patientSignature) &&
+    (!isMarkXConsent || (markWitnessName.trim() && markWitnessRole.trim() && markWitnessAttested)) &&
     unableConsentConfirmed
   );
   const patientEvidenceComplete =
     signatureMethod === 'DRAW' ? Boolean(patientSignature) :
     signatureMethod === 'TYPE' ? typedSignatureComplete :
     unableConsentComplete;
-  const nurseAttestationComplete = Boolean(nurseSignature);
+  const nurseAttestationComplete = Boolean(nurseSignature || staffAttestationConfirmed);
   const consentRecordComplete = consentDecision === 'ACCEPT' &&
     representativeComplete &&
     Boolean(signerName.trim()) &&
@@ -264,6 +273,7 @@ export default function VisitWizard({
   const [isGeneratingDeliveryPdf, setIsGeneratingDeliveryPdf] = useState(false);
   const [deliveryPdfProgress, setDeliveryPdfProgress] = useState(0);
   const [deliveryPdfProgressLabel, setDeliveryPdfProgressLabel] = useState('');
+  const [educationRecipient, setEducationRecipient] = useState<'PATIENT' | 'FACILITY_STAFF' | 'CAREGIVER' | 'AUTHORIZED_REPRESENTATIVE'>(savedChoice('educationRecipient', 'PATIENT'));
 
   // Additional Device States
   const [hasAdditionalDevice, setHasAdditionalDevice] = useState(savedBool('hasAdditionalDevice'));
@@ -379,11 +389,14 @@ This service is not for emergencies. If you agree, we can continue with your aut
   const localizedConsentText = (language === 'ES' ? DEFAULT_CONSENT_TEXT_ES : DEFAULT_CONSENT_TEXT)
     .replace('{SERVICE}', selectedServiceName);
 
-  const representativeRequired = !patientAvailable || !patientCanDecide;
+  const representativeRequired = decisionMaker === 'REPRESENTATIVE' || !patientCanDecide;
   const readinessRepresentativeComplete = representativeAvailability !== 'NONE' &&
     Boolean(readinessRepName.trim() && readinessRepRelationship.trim() && readinessRepAuthority && readinessRepPhone.trim());
-  const step1Complete = idConfirmed && (patientAvailable || readinessRepresentativeComplete) &&
-    (patientCanDecide || readinessRepresentativeComplete);
+  const step1Complete = idConfirmed && (
+    decisionMaker === 'PATIENT'
+      ? patientCanDecide
+      : readinessRepresentativeComplete
+  );
 
   // CHECKLIST COMPLETION
   const isAllStep2Selected = explainedService &&
@@ -404,8 +417,7 @@ This service is not for emergencies. If you agree, we can continue with your aut
     Boolean(serialNumber.trim()) &&
     devDeliveredToPatient &&
     devInstructionsGiven &&
-    devUnderstandingDemonstrated &&
-    firstReadingComplete
+    devUnderstandingDemonstrated
   );
   const step4Complete = !isRpmApplicable || deviceRequirementsReadyForPdf;
   const isEnrollmentComplete = step1Complete && step2Complete && step3Complete && step4Complete && !consentDeclined;
@@ -424,13 +436,12 @@ This service is not for emergencies. If you agree, we can continue with your aut
     !step4Complete && isRpmApplicable && 'Approved medical order, device delivery, first reading, or PDF'
   ].filter(Boolean) as string[];
 
-  const workflowProgress = Math.round((step / 5) * 100);
+  const workflowProgress = Math.round((step / 3) * 100);
 
   const canAdvanceCurrentStep =
     (step === 1 && step1Complete) ||
     (step === 2 && step2Complete) ||
-    (step === 3 && step3Complete) ||
-    (step === 4 && step4Complete);
+    (step === 3 && (step3Complete || consentDeclined));
 
   const getStepState = (stepNumber: number) => {
     if (stepNumber === 4 && !isRpmApplicable) return 'NOT_APPLICABLE';
@@ -642,12 +653,13 @@ This service is not for emergencies. If you agree, we can continue with your aut
   // ----------------------------------------------------
   // DOCUMENT GENERATION TRIGGERS
   // ----------------------------------------------------
-  const triggerConsentPDFGeneration = async (isAutomatic = false) => {
+  const triggerConsentPDFGeneration = async (isAutomatic = false): Promise<boolean> => {
     if (!consentRecordComplete) {
       setAlertMessage(l('Complete la identificación del firmante, la evidencia de consentimiento y la atestación del personal de inscripción antes de generar el PDF.', 'Complete signer identification, consent evidence, and the enrollment personnel attestation before generating the PDF.'));
-      return;
+      return false;
     }
-    if (isGeneratingConsentPdf || consentPdfGenerated) return;
+    if (isGeneratingConsentPdf) return false;
+    if (consentPdfGenerated) return true;
     if (isAutomatic) setAutoConsentPdfAttempted(true);
 
     setIsGeneratingConsentPdf(true);
@@ -722,6 +734,7 @@ This service is not for emergencies. If you agree, we can continue with your aut
         setConsentPdfUrl(dataUrl);
         setConsentPdfGenerated(true);
       });
+      return true;
     } catch (error) {
       window.clearInterval(progressTimer);
       setConsentPdfGenerated(false);
@@ -729,6 +742,7 @@ This service is not for emergencies. If you agree, we can continue with your aut
       setConsentPdfProgress(0);
       setConsentPdfProgressLabel('');
       setAlertMessage(formatPdfGenerationError(error, 'consent'));
+      return false;
     } finally {
       window.clearInterval(progressTimer);
       setIsGeneratingConsentPdf(false);
@@ -754,9 +768,9 @@ This service is not for emergencies. If you agree, we can continue with your aut
       return;
     }
 
-    const activeNurseSig = deliveryNurseSignature || nurseSignature;
+    const activeNurseSig = deliveryNurseSignature || nurseSignature || currentUser.name;
     if (!activeNurseSig) {
-      setAlertMessage('Se requiere la firma de la enfermera para certificar la entrega.');
+      setAlertMessage('Staff attestation is required to certify delivery.');
       return;
     }
 
@@ -890,6 +904,7 @@ This service is not for emergencies. If you agree, we can continue with your aut
       readinessRepEmail,
       representativeContactMode,
       preferredExplanationLanguage,
+      decisionMaker,
       explainedService,
       explainedVoluntary,
       explainedStopAnytime,
@@ -903,6 +918,8 @@ This service is not for emergencies. If you agree, we can continue with your aut
       explanationLanguage,
       interpreterUsed,
       interpreterName,
+      showDetailedEnrollmentGuide,
+      wantsPatientAppInfo,
       consentDecision: consentDecision || '',
       consentSignerType,
       signerName,
@@ -928,6 +945,10 @@ This service is not for emergencies. If you agree, we can continue with your aut
       attestationVoluntary,
       attestationCosts,
       attestationWitnessed,
+      staffAttestationConfirmed,
+      markWitnessName,
+      markWitnessRole,
+      markWitnessAttested,
       consentPdfGenerated,
       deviceType,
       brand,
@@ -944,6 +965,7 @@ This service is not for emergencies. If you agree, we can continue with your aut
       recipientSignature,
       deliveryNurseSignature,
       deliveryPdfGenerated,
+      educationRecipient,
       hasAdditionalDevice,
       additionalDeviceType,
       additionalSerialNumber,
@@ -1089,7 +1111,7 @@ This service is not for emergencies. If you agree, we can continue with your aut
 
     // Device Object (if delivery has some details inputted or patient program needs it)
     let deviceObj: Device | undefined = undefined;
-    if (deviceType || deviceId || devDeliveredToPatient) {
+    if (isRpmApplicable && (deviceType || deviceId || devDeliveredToPatient)) {
       deviceObj = {
         id: `dev_${patient.id}`,
         patientId: patient.id,
@@ -1328,6 +1350,571 @@ This service is not for emergencies. If you agree, we can continue with your aut
       </div>
     );
   };
+
+  const staffRoleLabel = currentUser.role === 'NURSE' ? 'Nurse' : 'Enrollment staff';
+  const selectedServices = patient.assignedProgram || 'Not selected';
+  const deviceSetupReady = isRpmApplicable && medicalOrderApproved && Boolean(serialNumber.trim()) && devDeliveredToPatient && devInstructionsGiven && devUnderstandingDemonstrated;
+  const consentMethodSelected = consentDecision === 'DECLINE' || (
+    signatureMethod === 'DRAW' ||
+    signatureMethod === 'TYPE' ||
+    (signatureMethod === 'UNABLE' && Boolean(unableSignMethod))
+  );
+  const simplifiedStep2Ready = consentDecision === 'DECLINE' || (serviceExplanationConfirmed && consentRecordComplete && consentPdfGenerated);
+  const canCompleteSimplifiedEnrollment = consentDecision === 'ACCEPT' && consentPdfGenerated;
+  const rpmActivationLabel = !isRpmApplicable
+    ? 'Not applicable'
+    : firstReadingComplete && deviceSetupReady
+      ? 'Active'
+      : firstReadingComplete
+        ? 'First reading captured'
+        : 'Awaiting first reading';
+
+  const setConsentMethod = (method: 'DRAW' | 'TYPE' | 'VERBAL' | 'MARK_X' | 'REPRESENTATIVE_SIGNATURE') => {
+    setConsentPdfGenerated(false);
+    setConsentPdfUrl('');
+    setAutoConsentPdfAttempted(false);
+    if (method === 'DRAW') {
+      setSignatureMethod('DRAW');
+      setUnableSignMethod('');
+      setUnableConsentConfirmed(false);
+    } else if (method === 'TYPE') {
+      setSignatureMethod('TYPE');
+      setUnableSignMethod('');
+      setUnableConsentConfirmed(false);
+    } else {
+      setSignatureMethod('UNABLE');
+      setUnableSignMethod(method);
+      if (method === 'VERBAL') {
+        setUnableToSignReason('');
+      }
+      if (method === 'REPRESENTATIVE_SIGNATURE') {
+        setConsentSignerType('REPRESENTATIVE');
+        setDecisionMaker('REPRESENTATIVE');
+      }
+    }
+  };
+
+  const handleSimplifiedContinueFromStep1 = () => {
+    if (!idConfirmed) {
+      setAlertMessage('Verify identity before continuing.');
+      return;
+    }
+    if (decisionMaker === 'PATIENT' && !patientCanDecide) {
+      setAlertMessage('The patient pathway requires decision-making ability. Select authorized representative or save for later.');
+      return;
+    }
+    if (decisionMaker === 'REPRESENTATIVE' && !readinessRepresentativeComplete) {
+      setAlertMessage('Complete authorized representative identity and authority before continuing.');
+      return;
+    }
+    setStep(2);
+  };
+
+  const handleSimplifiedConsentContinue = async () => {
+    if (!serviceExplanationConfirmed) {
+      setAlertMessage('Confirm the explanation before documenting consent.');
+      return;
+    }
+    if (!consentDecision) {
+      setAlertMessage('Select the participation decision.');
+      return;
+    }
+    if (consentDecision === 'DECLINE') {
+      handleSaveAndExitLocal();
+      return;
+    }
+    if (!consentMethodSelected || !consentRecordComplete) {
+      setAlertMessage('Complete the consent method, signer information, and staff attestation.');
+      return;
+    }
+    let pdfReady = consentPdfGenerated;
+    if (!pdfReady && !isGeneratingConsentPdf) {
+      pdfReady = await triggerConsentPDFGeneration(true);
+    }
+    if (pdfReady) {
+      setStep(3);
+    }
+  };
+
+  const handleSimplifiedCompleteEnrollment = async () => {
+    if (!canCompleteSimplifiedEnrollment) {
+      setAlertMessage('Consent must be completed before enrollment can be finished.');
+      return;
+    }
+    if (isRpmApplicable && deviceSetupReady && !deliveryPdfGenerated && !isGeneratingDeliveryPdf) {
+      await triggerDeliveryPDFGeneration();
+    }
+    const shouldActivate = !isRpmApplicable || (isRpmApplicable && deviceSetupReady && firstReadingComplete);
+    const { visitObj, consentObj, deviceObj, readingObj } = createStateBundles(false);
+    visitObj.status = 'COMPLETED';
+    visitObj.endTime = new Date().toISOString();
+    visitObj.currentStep = 3;
+    onSaveAndExit(visitObj, consentObj, deviceObj, readingObj, shouldActivate);
+  };
+
+  const ThreeStepProgress = () => {
+    const steps = ['Confirm patient', 'Explain & obtain consent', 'Complete enrollment'];
+    return (
+      <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm" id="wizard-progress">
+        <div className="mb-4 flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <p className="text-xs font-extrabold uppercase tracking-[0.18em] text-blue-700">{PRODUCT_NAME}</p>
+            <h1 className="text-2xl font-black text-slate-950">On-site enrollment</h1>
+          </div>
+          <p className="text-sm font-semibold text-slate-500">Estimated time: 4-7 minutes</p>
+        </div>
+        <div className="grid gap-2 sm:grid-cols-3">
+          {steps.map((name, index) => {
+            const stepNumber = index + 1;
+            const isCurrent = step === stepNumber;
+            const isDone = step > stepNumber;
+            const canNavigateToStep = stepNumber === 1 || (stepNumber === 2 && step1Complete) || (stepNumber === 3 && consentPdfGenerated);
+            return (
+              <button
+                key={name}
+                type="button"
+                onClick={() => {
+                  if (canNavigateToStep) {
+                    setStep(stepNumber);
+                  }
+                }}
+                disabled={!canNavigateToStep}
+                className={`min-h-14 rounded-xl border px-4 text-left transition focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 ${
+                  isCurrent ? 'border-blue-500 bg-blue-50 text-blue-950' : isDone ? 'border-emerald-200 bg-emerald-50 text-emerald-900' : canNavigateToStep ? 'border-slate-200 bg-white text-slate-500 hover:border-blue-300' : 'cursor-not-allowed border-slate-200 bg-slate-50 text-slate-300'
+                }`}
+                aria-current={isCurrent ? 'step' : undefined}
+              >
+                <span className="block text-xs font-black uppercase tracking-wide">Step {stepNumber}</span>
+                <span className="block text-base font-extrabold">{name}</span>
+              </button>
+            );
+          })}
+        </div>
+        <div className="mt-4 h-2 overflow-hidden rounded-full bg-slate-100">
+          <div className="h-full rounded-full bg-blue-600 transition-all" style={{ width: `${workflowProgress}%` }} />
+        </div>
+      </div>
+    );
+  };
+
+  const DecisionCard = ({ active, title, helper, onClick }: { active: boolean; title: string; helper?: string; onClick: () => void }) => (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`min-h-24 rounded-2xl border-2 p-5 text-left transition focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 ${
+        active ? 'border-blue-600 bg-blue-50 shadow-sm' : 'border-slate-200 bg-white hover:border-blue-300 hover:bg-blue-50/40'
+      }`}
+    >
+      <span className="block text-lg font-extrabold text-slate-950">{title}</span>
+      {helper && <span className="mt-1 block text-sm leading-relaxed text-slate-600">{helper}</span>}
+    </button>
+  );
+
+  return (
+    <div className="space-y-6 text-slate-900" id="wizard-container">
+      <ThreeStepProgress />
+
+      {alertMessage && (
+        <div className="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm font-bold text-red-800">
+          {alertMessage}
+        </div>
+      )}
+
+      <main className="mx-auto w-full max-w-5xl rounded-2xl border border-slate-200 bg-white shadow-sm" id="wizard-body">
+        {step === 1 && (
+          <section className="space-y-7 p-6 sm:p-8">
+            <div className="max-w-3xl">
+              <h2 className="text-3xl font-black text-slate-950">Confirm patient</h2>
+              <p className="mt-2 text-lg text-slate-600">Verify the patient and determine who will make the participation decision.</p>
+            </div>
+
+            <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5">
+              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                {[
+                  ['Patient name', `${patient.firstName} ${patient.lastName}`],
+                  ['Date of birth', patient.birthDate],
+                  ['Facility', patient.nursingHome],
+                  ['Room', patient.room || 'Not provided'],
+                  ['Ordering provider', patient.provider],
+                  ['Selected services', selectedServices]
+                ].map(([label, value]) => (
+                  <div key={label}>
+                    <p className="text-xs font-black uppercase tracking-wide text-slate-400">{label}</p>
+                    <p className="mt-1 text-base font-extrabold text-slate-900">{value}</p>
+                  </div>
+                ))}
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsEditModalOpen(true)}
+                className="mt-5 inline-flex min-h-11 items-center rounded-xl border border-blue-200 bg-white px-4 text-sm font-extrabold text-blue-700 hover:bg-blue-50"
+              >
+                <Edit3 size={16} className="mr-2" /> Edit patient
+              </button>
+            </div>
+
+            <label className="flex cursor-pointer items-start gap-4 rounded-2xl border border-blue-200 bg-blue-50/50 p-5">
+              <input
+                type="checkbox"
+                checked={idConfirmed}
+                onChange={(event) => setIdConfirmed(event.target.checked)}
+                className="mt-1 h-6 w-6 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+              />
+              <span className="text-lg font-extrabold text-slate-900">I verified the patient's identity using at least two identifiers.</span>
+            </label>
+
+            <div className="space-y-4">
+              <h3 className="text-xl font-black">Who will make the participation decision?</h3>
+              <div className="grid gap-4 md:grid-cols-2">
+                <DecisionCard
+                  active={decisionMaker === 'PATIENT'}
+                  title="Patient"
+                  helper="Use when the patient can understand the explanation and make a participation decision."
+                  onClick={() => {
+                    setDecisionMaker('PATIENT');
+                    setConsentSignerType('PATIENT');
+                    setRepresentativeAvailability('NONE');
+                    setPatientAvailable(true);
+                  }}
+                />
+                <DecisionCard
+                  active={decisionMaker === 'REPRESENTATIVE'}
+                  title="Authorized representative"
+                  helper="Use when a legally authorized person will decide or provide consent."
+                  onClick={() => {
+                    setDecisionMaker('REPRESENTATIVE');
+                    setConsentSignerType('REPRESENTATIVE');
+                    setRepresentativeAvailability(representativeAvailability === 'NONE' ? 'LEGAL' : representativeAvailability);
+                    setPatientCanDecide(false);
+                  }}
+                />
+              </div>
+            </div>
+
+            {decisionMaker === 'PATIENT' && (
+              <div className="space-y-4 rounded-2xl border border-slate-200 p-5">
+                <h3 className="text-xl font-black">Can the patient understand the explanation and make a participation decision?</h3>
+                <div className="grid gap-4 md:grid-cols-2">
+                  <DecisionCard active={patientCanDecide} title="Yes" onClick={() => setPatientCanDecide(true)} />
+                  <DecisionCard
+                    active={!patientCanDecide}
+                    title="No - authorized representative required"
+                    onClick={() => {
+                      setPatientCanDecide(false);
+                      setDecisionMaker('REPRESENTATIVE');
+                      setConsentSignerType('REPRESENTATIVE');
+                      setRepresentativeAvailability(representativeAvailability === 'NONE' ? 'LEGAL' : representativeAvailability);
+                    }}
+                  />
+                </div>
+                {!patientCanDecide && (
+                  <p className="rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm font-bold text-blue-900">An authorized representative is required to continue.</p>
+                )}
+              </div>
+            )}
+
+            {decisionMaker === 'REPRESENTATIVE' && (
+              <div className="grid gap-4 rounded-2xl border border-slate-200 bg-slate-50 p-5 md:grid-cols-2">
+                <div>
+                  <label className="mb-1 block text-sm font-bold">Full legal name</label>
+                  <input value={readinessRepName} onChange={(e) => { setReadinessRepName(e.target.value); setSignerName(e.target.value); }} className="min-h-12 w-full rounded-xl border border-slate-300 px-3 text-base" />
+                </div>
+                <div>
+                  <label className="mb-1 block text-sm font-bold">Relationship to patient</label>
+                  <input value={readinessRepRelationship} onChange={(e) => { setReadinessRepRelationship(e.target.value); setRepRelationship(e.target.value); }} className="min-h-12 w-full rounded-xl border border-slate-300 px-3 text-base" />
+                </div>
+                <div>
+                  <label className="mb-1 block text-sm font-bold">Authority basis</label>
+                  <select value={readinessRepAuthority} onChange={(e) => { setReadinessRepAuthority(e.target.value as typeof readinessRepAuthority); setAuthorityType(e.target.value as typeof authorityType); }} className="min-h-12 w-full rounded-xl border border-slate-300 bg-white px-3 text-base">
+                    <option value="">Select</option>
+                    <option value="HEALTH_CARE_PROXY">Health care surrogate</option>
+                    <option value="POWER_OF_ATTORNEY">Health care power of attorney</option>
+                    <option value="GUARDIAN">Legal guardian</option>
+                    <option value="OTHER">Other authorized representative</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="mb-1 block text-sm font-bold">Phone number</label>
+                  <input value={readinessRepPhone} onChange={(e) => { setReadinessRepPhone(e.target.value); setRepresentativePhone(e.target.value); }} className="min-h-12 w-full rounded-xl border border-slate-300 px-3 text-base" />
+                </div>
+                <div className="md:col-span-2">
+                  <label className="mb-1 block text-sm font-bold">Email, optional</label>
+                  <input type="email" value={readinessRepEmail} onChange={(e) => { setReadinessRepEmail(e.target.value); setRepresentativeEmail(e.target.value); }} className="min-h-12 w-full rounded-xl border border-slate-300 px-3 text-base" />
+                </div>
+              </div>
+            )}
+          </section>
+        )}
+
+        {step === 2 && (
+          <section className="space-y-7 p-6 sm:p-8">
+            <div className="max-w-3xl">
+              <h2 className="text-3xl font-black text-slate-950">Explain & obtain consent</h2>
+              <p className="mt-2 text-lg text-slate-600">Explain the selected services, record the decision, and document consent.</p>
+            </div>
+
+            <section className="rounded-2xl border border-blue-200 bg-blue-50 p-5">
+              <p className="text-xs font-black uppercase tracking-[0.18em] text-blue-700">Enrollment guide</p>
+              <div className="mt-4 max-w-3xl space-y-4 text-lg leading-relaxed text-slate-900">
+                <p>Dr. {patient.provider || '[Provider Name]'} would like our care team to help monitor and coordinate your care between visits.</p>
+                <p>A Care Manager may contact you to review your health, medications, symptoms, and care needs.</p>
+                {isRpmApplicable && <p>If remote monitoring is included, you will receive a connected device that securely sends your readings to the care team.</p>}
+                <p>Participation is voluntary. You may stop the service at any time.</p>
+                <p>Medicare may cover the service, but cost-sharing may apply depending on your coverage.</p>
+                <p>Only one practitioner may provide and bill for the same service during the applicable billing period.</p>
+                <p>This service is not for emergencies.</p>
+              </div>
+              <button type="button" onClick={() => setShowDetailedEnrollmentGuide(!showDetailedEnrollmentGuide)} className="mt-5 min-h-11 rounded-xl border border-blue-200 bg-white px-4 text-sm font-extrabold text-blue-700 hover:bg-blue-50">
+                {showDetailedEnrollmentGuide ? 'Hide detailed script' : 'View detailed script'}
+              </button>
+              {showDetailedEnrollmentGuide && (
+                <div className="mt-4 max-w-3xl rounded-xl border border-blue-100 bg-white p-4 text-base leading-relaxed text-slate-700">
+                  {step2GuideScript.split('\n\n').map((paragraph, index) => <p key={index} className="mb-3 last:mb-0">{paragraph}</p>)}
+                </div>
+              )}
+            </section>
+
+            <section className="rounded-2xl border border-slate-200 p-5">
+              <h3 className="text-xl font-black">Optional patient app</h3>
+              <p className="mt-1 text-base text-slate-600">Would the patient or caregiver like information about the mobile app?</p>
+              <div className="mt-4 grid gap-4 md:grid-cols-2">
+                <DecisionCard active={wantsPatientAppInfo === 'YES'} title="Yes" onClick={() => setWantsPatientAppInfo('YES')} />
+                <DecisionCard active={wantsPatientAppInfo === 'NO'} title="No" onClick={() => setWantsPatientAppInfo('NO')} />
+              </div>
+            </section>
+
+            <label className="flex cursor-pointer items-start gap-4 rounded-2xl border border-blue-200 bg-blue-50/40 p-5">
+              <input type="checkbox" checked={serviceExplanationConfirmed} onChange={(e) => setServiceExplanationConfirmed(e.target.checked)} className="mt-1 h-6 w-6 rounded text-blue-600" />
+              <span className="text-lg font-extrabold text-slate-900">I explained the selected services, answered questions, and confirmed understanding.</span>
+            </label>
+
+            <section className="space-y-4 rounded-2xl border border-slate-200 p-5">
+              <h3 className="text-xl font-black">What is the participation decision?</h3>
+              <div className="grid gap-4 md:grid-cols-2">
+                <DecisionCard active={consentDecision === 'ACCEPT'} title="Accept services" onClick={() => setConsentDecision('ACCEPT')} />
+                <DecisionCard active={consentDecision === 'DECLINE'} title="Decline services" onClick={() => setConsentDecision('DECLINE')} />
+              </div>
+              {consentDecision === 'DECLINE' && (
+                <div>
+                  <label className="mb-1 block text-sm font-bold">Reason, optional</label>
+                  <textarea value={declineReason} onChange={(e) => setDeclineReason(e.target.value)} rows={3} className="w-full rounded-xl border border-slate-300 p-3 text-base" />
+                </div>
+              )}
+            </section>
+
+            {consentDecision === 'ACCEPT' && (
+              <>
+                <section className="rounded-2xl border border-slate-200 p-5">
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                      <p className="text-sm font-bold text-slate-500">Consent provided by</p>
+                      <p className="text-xl font-black">{decisionMaker === 'REPRESENTATIVE' ? 'Authorized representative' : 'Patient'}</p>
+                    </div>
+                    <button type="button" onClick={() => setStep(1)} className="min-h-11 rounded-xl border border-slate-300 px-4 text-sm font-extrabold text-slate-700 hover:bg-slate-50">Edit</button>
+                  </div>
+                </section>
+
+                {decisionMaker === 'REPRESENTATIVE' && (
+                  <section className="grid gap-4 rounded-2xl border border-slate-200 bg-slate-50 p-5 md:grid-cols-2">
+                    <div><label className="mb-1 block text-sm font-bold">Full legal name</label><input value={signerName} onChange={(e) => setSignerName(e.target.value)} className="min-h-12 w-full rounded-xl border border-slate-300 px-3 text-base" /></div>
+                    <div><label className="mb-1 block text-sm font-bold">Relationship to patient</label><input value={repRelationship} onChange={(e) => setRepRelationship(e.target.value)} className="min-h-12 w-full rounded-xl border border-slate-300 px-3 text-base" /></div>
+                    <div><label className="mb-1 block text-sm font-bold">Authority basis</label><select value={authorityType} onChange={(e) => setAuthorityType(e.target.value as typeof authorityType)} className="min-h-12 w-full rounded-xl border border-slate-300 bg-white px-3 text-base"><option value="">Select</option><option value="HEALTH_CARE_PROXY">Health care surrogate</option><option value="POWER_OF_ATTORNEY">Health care power of attorney</option><option value="GUARDIAN">Legal guardian</option><option value="OTHER">Other authorized representative</option></select></div>
+                    <div><label className="mb-1 block text-sm font-bold">Phone number</label><input value={representativePhone} onChange={(e) => setRepresentativePhone(e.target.value)} className="min-h-12 w-full rounded-xl border border-slate-300 px-3 text-base" /></div>
+                    <div className="md:col-span-2"><label className="mb-1 block text-sm font-bold">Email, optional</label><input type="email" value={representativeEmail} onChange={(e) => setRepresentativeEmail(e.target.value)} className="min-h-12 w-full rounded-xl border border-slate-300 px-3 text-base" /></div>
+                  </section>
+                )}
+
+                <section className="space-y-4 rounded-2xl border border-slate-200 p-5">
+                  <h3 className="text-xl font-black">How will consent be documented?</h3>
+                  <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+                    <DecisionCard active={signatureMethod === 'DRAW'} title="Draw signature" onClick={() => setConsentMethod('DRAW')} />
+                    <DecisionCard active={signatureMethod === 'TYPE'} title="Type full legal name" onClick={() => setConsentMethod('TYPE')} />
+                    <DecisionCard active={isVerbalConsent} title="Verbal consent" onClick={() => setConsentMethod('VERBAL')} />
+                    <DecisionCard active={isMarkXConsent} title="Mark or X" onClick={() => setConsentMethod('MARK_X')} />
+                    <DecisionCard active={unableSignMethod === 'REPRESENTATIVE_SIGNATURE'} title="Representative signature" onClick={() => setConsentMethod('REPRESENTATIVE_SIGNATURE')} />
+                  </div>
+
+                  {signatureMethod === 'DRAW' && (
+                    <div className="rounded-2xl border border-slate-200 p-4">
+                      <label className="mb-2 block text-sm font-bold">Signer name</label>
+                      <input value={signerName} onChange={(e) => setSignerName(e.target.value)} className="mb-4 min-h-12 w-full rounded-xl border border-slate-300 px-3 text-base" />
+                      <SignaturePad id="simplified-draw-signature" label={decisionMaker === 'REPRESENTATIVE' ? 'Authorized Representative Signature' : 'Patient Signature'} onSave={handleSavePatientSignature} onClear={() => setPatientSignature('')} savedDataUrl={patientSignature} signerName={signerName} confirmLabel="Confirm signature" />
+                    </div>
+                  )}
+
+                  {signatureMethod === 'TYPE' && (
+                    <div className="space-y-4 rounded-2xl border border-slate-200 bg-slate-50 p-5">
+                      <div><label className="mb-1 block text-sm font-bold">Full legal name</label><input value={typedSignatureName} onChange={(e) => setTypedSignatureName(e.target.value)} className="min-h-12 w-full rounded-xl border border-slate-300 px-3 text-base" /></div>
+                      <label className="flex cursor-pointer items-start gap-3 rounded-xl bg-white p-4"><input type="checkbox" checked={typedSignatureAgreed} onChange={(e) => setTypedSignatureAgreed(e.target.checked)} className="mt-1 h-5 w-5 rounded text-blue-600" /><span className="text-base font-bold">I confirm that typing my full legal name represents my signature.</span></label>
+                      <button type="button" onClick={() => { setSignerName(typedSignatureName.trim()); setTypedSignatureConfirmed(true); }} disabled={!typedSignatureName.trim() || !typedSignatureAgreed} className="min-h-11 rounded-xl bg-blue-600 px-4 text-sm font-extrabold text-white disabled:opacity-50">Confirm typed signature</button>
+                    </div>
+                  )}
+
+                  {isVerbalConsent && (
+                    <div className="grid gap-4 rounded-2xl border border-slate-200 bg-slate-50 p-5 md:grid-cols-2">
+                      <div><p className="text-sm font-bold text-slate-500">Consent obtained by</p><p className="text-lg font-black">{currentUser.name}</p></div>
+                      <div><p className="text-sm font-bold text-slate-500">Staff role/title</p><p className="text-lg font-black">{staffRoleLabel}</p></div>
+                      <div><p className="text-sm font-bold text-slate-500">Facility</p><p className="text-lg font-black">{patient.nursingHome}</p></div>
+                      <div><p className="text-sm font-bold text-slate-500">Date and time</p><p className="text-lg font-black">{new Date().toLocaleString()}</p></div>
+                      <div className="md:col-span-2"><label className="mb-1 block text-sm font-bold">Consent documentation note, optional</label><textarea value={verbalConsentNurseNote} onChange={(e) => setVerbalConsentNurseNote(e.target.value)} rows={3} className="w-full rounded-xl border border-slate-300 p-3 text-base" /></div>
+                      <button type="button" onClick={() => setUnableConsentConfirmed(true)} className="min-h-11 rounded-xl bg-blue-600 px-4 text-sm font-extrabold text-white">Confirm verbal consent</button>
+                    </div>
+                  )}
+
+                  {isMarkXConsent && (
+                    <div className="space-y-4 rounded-2xl border border-slate-200 bg-slate-50 p-5">
+                      <SignaturePad id="simplified-mark-x" label="Mark/X signature area" onSave={handleSavePatientSignature} onClear={() => setPatientSignature('')} savedDataUrl={patientSignature} signerName={signerName} confirmLabel="Save Mark/X" />
+                      <div><label className="mb-1 block text-sm font-bold">Reason full signature could not be provided</label><textarea value={unableToSignReason} onChange={(e) => setUnableToSignReason(e.target.value)} rows={3} className="w-full rounded-xl border border-slate-300 p-3 text-base" /></div>
+                      <div className="grid gap-4 md:grid-cols-2"><div><label className="mb-1 block text-sm font-bold">Witness name</label><input value={markWitnessName} onChange={(e) => setMarkWitnessName(e.target.value)} className="min-h-12 w-full rounded-xl border border-slate-300 px-3 text-base" /></div><div><label className="mb-1 block text-sm font-bold">Witness role/title</label><input value={markWitnessRole} onChange={(e) => setMarkWitnessRole(e.target.value)} className="min-h-12 w-full rounded-xl border border-slate-300 px-3 text-base" /></div></div>
+                      <label className="flex cursor-pointer items-start gap-3 rounded-xl bg-white p-4"><input type="checkbox" checked={markWitnessAttested} onChange={(e) => setMarkWitnessAttested(e.target.checked)} className="mt-1 h-5 w-5 rounded text-blue-600" /><span className="text-base font-bold">Witness attestation completed.</span></label>
+                      <button type="button" onClick={() => setUnableConsentConfirmed(true)} disabled={!patientSignature || !unableToSignReason.trim() || !markWitnessName.trim() || !markWitnessRole.trim() || !markWitnessAttested} className="min-h-11 rounded-xl bg-blue-600 px-4 text-sm font-extrabold text-white disabled:opacity-50">Confirm Mark/X</button>
+                    </div>
+                  )}
+                </section>
+
+                <label className="flex cursor-pointer items-start gap-4 rounded-2xl border border-blue-200 bg-blue-50/40 p-5">
+                  <input type="checkbox" checked={staffAttestationConfirmed} onChange={(e) => setStaffAttestationConfirmed(e.target.checked)} className="mt-1 h-6 w-6 rounded text-blue-600" />
+                  <span className="text-base font-bold leading-relaxed">I confirm that I verified the signer’s identity and role, explained the selected services, answered questions, and accurately documented the patient’s or authorized representative’s decision.</span>
+                </label>
+
+                <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                  <p className="text-sm font-bold text-slate-500">Consent PDF</p>
+                  <p className={`mt-1 text-lg font-black ${consentPdfGenerated ? 'text-emerald-700' : 'text-slate-800'}`}>{isGeneratingConsentPdf ? 'Generating automatically...' : consentPdfGenerated ? 'Generated and attached' : 'Will generate automatically after consent is confirmed'}</p>
+                </div>
+              </>
+            )}
+          </section>
+        )}
+
+        {step === 3 && (
+          <section className="space-y-7 p-6 sm:p-8">
+            <div className="max-w-3xl">
+              <h2 className="text-3xl font-black text-slate-950">Complete enrollment</h2>
+              <p className="mt-2 text-lg text-slate-600">{isRpmApplicable ? 'Complete RPM setup if available, then finish enrollment.' : 'Review the CCM enrollment summary and finish.'}</p>
+            </div>
+
+            {!isRpmApplicable ? (
+              <section className="rounded-2xl border border-slate-200 p-5">
+                <h3 className="text-2xl font-black">Enrollment summary</h3>
+                <div className="mt-5 grid gap-3 md:grid-cols-2">
+                  {[['Identity verified', idConfirmed], ['Service explanation completed', serviceExplanationConfirmed], ['Consent recorded', consentDecision === 'ACCEPT'], ['Consent PDF generated', consentPdfGenerated], ['CCM enrollment ready', true]].map(([label, ready]) => (
+                    <div key={String(label)} className="flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 p-4">
+                      <CheckCircle size={20} className={ready ? 'text-emerald-600' : 'text-slate-300'} />
+                      <span className="text-base font-extrabold">{label as string}</span>
+                    </div>
+                  ))}
+                </div>
+              </section>
+            ) : (
+              <section className="space-y-5">
+                <div className="rounded-2xl border border-slate-200 p-5">
+                  <h3 className="text-2xl font-black">RPM device setup</h3>
+                  <div className="mt-4">
+                    {medicalOrderApproved ? (
+                      <p className="text-base font-extrabold text-emerald-700">✓ RPM order approved</p>
+                    ) : (
+                      <p className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-base font-bold text-amber-900">RPM device assignment requires an approved medical order.</p>
+                    )}
+                  </div>
+                </div>
+
+                {medicalOrderApproved && (
+                  <>
+                    <div className="rounded-2xl border border-slate-200 p-5">
+                      <h4 className="text-xl font-black">Device information</h4>
+                      <div className="mt-4 grid gap-4 md:grid-cols-3">
+                        <div><label className="mb-1 block text-sm font-bold">Device type</label><select value={deviceType} onChange={(e) => setDeviceType(e.target.value as typeof deviceType)} className="min-h-12 w-full rounded-xl border border-slate-300 bg-white px-3 text-base"><option value="BP Monitor">BP Monitor</option><option value="Scale">Scale</option><option value="Other">Other</option></select></div>
+                        <div className="md:col-span-2"><label className="mb-1 block text-sm font-bold">Scan device barcode or enter serial manually</label><input value={serialNumber} onChange={(e) => setSerialNumber(e.target.value)} className="min-h-12 w-full rounded-xl border border-slate-300 px-3 text-base" placeholder="Serial number" /></div>
+                      </div>
+                      <button type="button" onClick={() => setHasAdditionalDevice(!hasAdditionalDevice)} className="mt-4 min-h-11 rounded-xl border border-blue-200 px-4 text-sm font-extrabold text-blue-700 hover:bg-blue-50">Add second device</button>
+                      <details className="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-4">
+                        <summary className="cursor-pointer text-sm font-extrabold">Additional device details</summary>
+                        <div className="mt-4 grid gap-4 md:grid-cols-2"><input value={deviceId} onChange={(e) => setDeviceId(e.target.value)} className="min-h-12 rounded-xl border border-slate-300 px-3 text-base" placeholder="SIM ID" /><input value={kitId} onChange={(e) => setKitId(e.target.value)} className="min-h-12 rounded-xl border border-slate-300 px-3 text-base" placeholder="Kit ID" /></div>
+                      </details>
+                    </div>
+
+                    <div className="rounded-2xl border border-slate-200 p-5">
+                      <h4 className="text-xl font-black">Delivery and education</h4>
+                      <div className="mt-4 space-y-3">
+                        {[['Device delivered to the patient or responsible staff', devDeliveredToPatient, setDevDeliveredToPatient], ['Device use and measurement technique explained', devInstructionsGiven, setDevInstructionsGiven], ['Patient or responsible staff demonstrated understanding', devUnderstandingDemonstrated, setDevUnderstandingDemonstrated]].map(([label, checked, setter]) => (
+                          <label key={String(label)} className="flex cursor-pointer items-start gap-4 rounded-xl border border-slate-200 p-4">
+                            <input type="checkbox" checked={Boolean(checked)} onChange={(e) => (setter as React.Dispatch<React.SetStateAction<boolean>>)(e.target.checked)} className="mt-1 h-5 w-5 rounded text-blue-600" />
+                            <span className="text-base font-bold">{label as string}</span>
+                          </label>
+                        ))}
+                      </div>
+                      <div className="mt-4"><label className="mb-1 block text-sm font-bold">Who received the education?</label><select value={educationRecipient} onChange={(e) => setEducationRecipient(e.target.value as typeof educationRecipient)} className="min-h-12 w-full rounded-xl border border-slate-300 bg-white px-3 text-base"><option value="PATIENT">Patient</option><option value="FACILITY_STAFF">Facility staff</option><option value="CAREGIVER">Caregiver</option><option value="AUTHORIZED_REPRESENTATIVE">Authorized representative</option></select></div>
+                    </div>
+
+                    <div className="rounded-2xl border border-slate-200 p-5">
+                      <h4 className="text-xl font-black">First reading</h4>
+                      <p className="mt-1 text-sm font-semibold text-slate-600">The first reading is helpful, but enrollment can be completed while activation is pending.</p>
+                      <div className="mt-4 grid gap-4 md:grid-cols-3">
+                        <div><label className="mb-1 block text-sm font-bold">Systolic</label><input inputMode="numeric" value={systolic} onChange={(e) => setSystolic(e.target.value)} className="min-h-12 w-full rounded-xl border border-slate-300 px-3 text-base" /></div>
+                        <div><label className="mb-1 block text-sm font-bold">Diastolic</label><input inputMode="numeric" value={diastolic} onChange={(e) => setDiastolic(e.target.value)} className="min-h-12 w-full rounded-xl border border-slate-300 px-3 text-base" /></div>
+                        <div><label className="mb-1 block text-sm font-bold">Pulse</label><input inputMode="numeric" value={pulse} onChange={(e) => setPulse(e.target.value)} className="min-h-12 w-full rounded-xl border border-slate-300 px-3 text-base" /></div>
+                      </div>
+                    </div>
+                  </>
+                )}
+              </section>
+            )}
+
+            <section className="rounded-2xl border border-slate-200 bg-slate-50 p-5">
+              <h3 className="text-2xl font-black">Enrollment completed</h3>
+              <p className="mt-1 text-base font-semibold text-slate-600">{patient.firstName} {patient.lastName} is ready to finish enrollment.</p>
+              <div className="mt-5 grid gap-3 md:grid-cols-2">
+                <div className="rounded-xl bg-white p-4"><p className="text-sm font-bold text-slate-500">Consent</p><p className="text-lg font-black text-emerald-700">Completed</p></div>
+                <div className="rounded-xl bg-white p-4"><p className="text-sm font-bold text-slate-500">CCM</p><p className="text-lg font-black">{patient.assignedProgram.includes('CCM') ? 'Enrolled' : 'Not selected'}</p></div>
+                {isRpmApplicable && <div className="rounded-xl bg-white p-4"><p className="text-sm font-bold text-slate-500">RPM device</p><p className="text-lg font-black">{deviceSetupReady ? 'Assigned' : 'Pending'}</p></div>}
+                {isRpmApplicable && <div className="rounded-xl bg-white p-4"><p className="text-sm font-bold text-slate-500">RPM activation</p><p className="text-lg font-black">{rpmActivationLabel}</p></div>}
+              </div>
+            </section>
+          </section>
+        )}
+
+        <footer className="sticky bottom-0 z-20 flex flex-col gap-3 border-t border-slate-200 bg-white/95 p-4 backdrop-blur sm:flex-row sm:items-center sm:justify-between">
+          <button type="button" onClick={() => setShowExitDialog(true)} className="min-h-11 rounded-xl px-4 text-sm font-extrabold text-slate-600 hover:bg-slate-50">Exit enrollment</button>
+          <div className="flex flex-col gap-2 sm:flex-row">
+            <button type="button" onClick={handleSaveAndExitLocal} className="min-h-12 rounded-xl border border-blue-200 bg-blue-50 px-5 text-sm font-extrabold text-blue-700 hover:bg-blue-100"><Save size={16} className="mr-2 inline" />Save & continue later</button>
+            {step > 1 && <button type="button" onClick={() => setStep(step - 1)} className="min-h-12 rounded-xl border border-slate-300 px-5 text-sm font-extrabold text-slate-700 hover:bg-slate-50"><ArrowLeft size={16} className="mr-2 inline" />Back</button>}
+            {step === 1 && <button type="button" onClick={handleSimplifiedContinueFromStep1} disabled={!step1Complete} className="min-h-12 rounded-xl bg-blue-600 px-6 text-sm font-black text-white shadow-lg shadow-blue-600/20 hover:bg-blue-700 disabled:opacity-50">Continue<ArrowRight size={16} className="ml-2 inline" /></button>}
+            {step === 2 && <button type="button" onClick={handleSimplifiedConsentContinue} disabled={isGeneratingConsentPdf || (consentDecision === 'ACCEPT' && !consentRecordComplete)} className="min-h-12 rounded-xl bg-blue-600 px-6 text-sm font-black text-white shadow-lg shadow-blue-600/20 hover:bg-blue-700 disabled:opacity-50">{isGeneratingConsentPdf ? 'Generating PDF...' : consentDecision === 'DECLINE' ? 'Finish decline' : 'Confirm consent & continue'}</button>}
+            {step === 3 && <button type="button" onClick={handleSimplifiedCompleteEnrollment} disabled={!canCompleteSimplifiedEnrollment || isGeneratingDeliveryPdf} className="min-h-12 rounded-xl bg-emerald-600 px-6 text-sm font-black text-white shadow-lg shadow-emerald-600/20 hover:bg-emerald-700 disabled:opacity-50">{isGeneratingDeliveryPdf ? 'Saving device record...' : 'Complete enrollment'}</button>}
+          </div>
+        </footer>
+      </main>
+
+      <EditPatientModal
+        isOpen={isEditModalOpen}
+        onClose={() => setIsEditModalOpen(false)}
+        onSave={(updatedPatient) => {
+          if (onUpdatePatient) {
+            onUpdatePatient(updatedPatient);
+          }
+        }}
+        patient={patient}
+        currentUser={currentUser}
+        nursingHomes={nursingHomes}
+        conditionGroups={conditionGroups}
+        diagnoses={diagnoses}
+      />
+
+      {showExitDialog && (
+        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-slate-950/55 p-4 backdrop-blur-sm">
+          <div role="dialog" aria-modal="true" aria-labelledby="exit-enrollment-title" className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl">
+            <h2 id="exit-enrollment-title" className="text-xl font-extrabold text-slate-900">Exit enrollment?</h2>
+            <p className="mt-2 text-sm leading-relaxed text-slate-600">Do you want to save this enrollment as a draft or discard it?</p>
+            <div className="mt-6 flex flex-col gap-3">
+              <button type="button" onClick={() => { setShowExitDialog(false); handleSaveAndExitLocal(); }} className="min-h-12 rounded-xl bg-blue-600 px-5 text-sm font-extrabold text-white hover:bg-blue-700">Save Draft & Exit</button>
+              <button type="button" onClick={() => { setShowExitDialog(false); onCancel(); }} className="min-h-11 rounded-xl border border-rose-200 bg-rose-50 px-5 text-sm font-bold text-rose-700 hover:bg-rose-100">Discard Enrollment</button>
+              <button type="button" onClick={() => setShowExitDialog(false)} className="min-h-11 rounded-xl border border-slate-300 px-5 text-sm font-bold text-slate-700 hover:bg-slate-50">Continue Editing</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
 
   return (
     <div className="space-y-6" id="wizard-container">
