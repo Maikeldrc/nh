@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Patient, User, Consent, Device, BPReading, DocumentRecord, AuditLog } from '../types';
+import { Patient, User, Consent, Device, BPReading, DocumentRecord, AuditLog, ConditionGroupCatalog, DiagnosisCatalog } from '../types';
 import { 
   ArrowLeft, FileText, Smartphone, Activity, CheckCircle, 
   AlertTriangle, Play, RefreshCw, Calendar, MapPin, Download, History, List, ShieldAlert, Edit3
@@ -18,6 +18,8 @@ interface PatientProfileProps {
   documents: DocumentRecord[];
   auditLogs: AuditLog[];
   nursingHomes: string[];
+  conditionGroups: ConditionGroupCatalog[];
+  diagnoses: DiagnosisCatalog[];
   onBack: () => void;
   onStartVisit?: (patientId: string) => void;
   onContinueVisit?: (patientId: string) => void;
@@ -38,6 +40,8 @@ export default function PatientProfile({
   documents,
   auditLogs,
   nursingHomes,
+  conditionGroups,
+  diagnoses,
   onBack,
   onStartVisit,
   onContinueVisit,
@@ -455,6 +459,8 @@ export default function PatientProfile({
         patient={patient}
         currentUser={currentUser}
         nursingHomes={nursingHomes}
+        conditionGroups={conditionGroups}
+        diagnoses={diagnoses}
       />
     </div>
   );

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Patient, Visit, Consent, Device, BPReading, User, DocumentRecord, TechnicalActivationStatus } from '../types';
+import { Patient, Visit, Consent, Device, BPReading, User, DocumentRecord, TechnicalActivationStatus, ConditionGroupCatalog, DiagnosisCatalog } from '../types';
 import SignaturePad from './SignaturePad';
 import { 
   Check, ArrowRight, ArrowLeft, Save, AlertTriangle, ShieldAlert,
@@ -28,6 +28,8 @@ interface VisitWizardProps {
   onUpdatePatient?: (updatedPatient: Patient) => void;
   onGenerateMedicalOrder: (patientId: string, deviceType?: string) => void;
   nursingHomes: string[];
+  conditionGroups: ConditionGroupCatalog[];
+  diagnoses: DiagnosisCatalog[];
 }
 
 const TECHNICAL_ACTIVATION_STATUS_OPTIONS: Array<{
@@ -131,7 +133,9 @@ export default function VisitWizard({
   onGenerateDeliveryPDF,
   onUpdatePatient,
   onGenerateMedicalOrder,
-  nursingHomes
+  nursingHomes,
+  conditionGroups,
+  diagnoses
 }: VisitWizardProps) {
   const { language, t } = useLanguage();
   const l = (es: string, en: string) => language === 'ES' ? es : en;
@@ -2844,6 +2848,8 @@ This service is not for emergencies. If you agree, we can continue with your aut
         patient={patient}
         currentUser={currentUser}
         nursingHomes={nursingHomes}
+        conditionGroups={conditionGroups}
+        diagnoses={diagnoses}
       />
 
       {showExitDialog && (

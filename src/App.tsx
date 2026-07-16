@@ -880,6 +880,8 @@ export default function App() {
             documents={documents.filter(d => d.patientId === selectedPatient.id)}
             auditLogs={auditLogs}
             nursingHomes={nursingHomes}
+            conditionGroups={conditionGroups}
+            diagnoses={diagnoses}
             onBack={() => {
               setCurrentView('DASHBOARD');
               setActivePatientId(null);
@@ -911,6 +913,8 @@ export default function App() {
             onUpdatePatient={handleUpdatePatient}
             onGenerateMedicalOrder={handleGenerateMedicalOrder}
             nursingHomes={nursingHomes}
+            conditionGroups={conditionGroups}
+            diagnoses={diagnoses}
           />
         )}
       </main>
