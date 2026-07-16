@@ -55,6 +55,36 @@ export interface CleanupPatientDataResponse {
   failedPdfFiles: number;
 }
 
+export interface BackupConfigPayload {
+  id: string;
+  enabled: boolean;
+  driveFolderId: string;
+  everyHours: number;
+  lastBackupAt?: string;
+  lastBackupId?: string;
+  nextScheduledAt?: string;
+  updatedAt?: string;
+  updatedBy?: string;
+}
+
+export interface BackupRecordPayload {
+  id: string;
+  fileId: string;
+  fileName: string;
+  driveUrl: string;
+  status: 'AVAILABLE' | 'RESTORED' | 'FAILED';
+  createdAt: string;
+  createdBy: string;
+  notes?: string;
+  lastRestoredAt?: string;
+  lastRestoredBy?: string;
+}
+
+export interface BackupOverviewPayload {
+  config: BackupConfigPayload;
+  backups: BackupRecordPayload[];
+}
+
 function requireApiBaseUrl(): string {
   if (!API_BASE_URL) throw new Error('Cloud Run API URL is not configured.');
   return API_BASE_URL;
@@ -142,6 +172,33 @@ export function cleanupPatientData(): Promise<CleanupPatientDataResponse> {
   return apiRequest<CleanupPatientDataResponse>('/v1/admin/cleanup-patient-data', {
     method: 'POST'
   });
+}
+
+export function getBackupOverview(): Promise<BackupOverviewPayload> {
+  return apiRequest<BackupOverviewPayload>('/v1/admin/backups');
+}
+
+export function saveBackupConfig(
+  payload: Pick<BackupConfigPayload, 'enabled' | 'driveFolderId' | 'everyHours'>
+): Promise<BackupConfigPayload> {
+  return apiRequest<BackupConfigPayload>('/v1/admin/backups/config', {
+    method: 'PATCH',
+    body: JSON.stringify(payload)
+  });
+}
+
+export function createBackupNow(payload: { driveFolderId?: string; notes?: string } = {}): Promise<BackupRecordPayload> {
+  return apiRequest<BackupRecordPayload>('/v1/admin/backups', {
+    method: 'POST',
+    body: JSON.stringify(payload)
+  });
+}
+
+export function restoreBackup(backupId: string): Promise<{ restoredBackup: BackupRecordPayload; safetyBackup: BackupRecordPayload }> {
+  return apiRequest<{ restoredBackup: BackupRecordPayload; safetyBackup: BackupRecordPayload }>(
+    `/v1/admin/backups/${encodeURIComponent(backupId)}/restore`,
+    { method: 'POST' }
+  );
 }
 
 export async function downloadDocument(documentId: string): Promise<Blob> {

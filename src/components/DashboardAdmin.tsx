@@ -20,6 +20,7 @@ import { useLanguage } from '../utils/LanguageContext';
 import { getMedicalOrderStatus, patientRequiresDevice } from '../utils/medicalOrders';
 import UserManagement from './UserManagement';
 import ClinicalCatalogManagement from './ClinicalCatalogManagement';
+import AdminBackups from './AdminBackups';
 
 interface DashboardAdminProps {
   currentUser: User;
@@ -85,8 +86,8 @@ export default function DashboardAdmin({
   const [isCleaningPatientData, setIsCleaningPatientData] = useState(false);
   const isAdmin = currentUser.role === 'ADMIN';
   
-  // Tab control: 'patients' | 'audit_logs' | 'documents' | 'catalog' | 'users'
-  const [activeTab, setActiveTab] = useState<'patients' | 'audit_logs' | 'documents' | 'catalog' | 'users'>('patients');
+  // Tab control: 'patients' | 'audit_logs' | 'documents' | 'catalog' | 'users' | 'backups'
+  const [activeTab, setActiveTab] = useState<'patients' | 'audit_logs' | 'documents' | 'catalog' | 'users' | 'backups'>('patients');
 
   // Filter nurses list for dropdown
   const nursesList = useMemo(() => {
@@ -204,7 +205,7 @@ export default function DashboardAdmin({
   };
 
   const handleConfirmCleanup = async () => {
-    if (cleanupConfirmText !== 'LIMPIAR') return;
+    if (cleanupConfirmText !== 'CLEAR OPERATIONAL DATA') return;
     setIsCleaningPatientData(true);
     try {
       await onCleanupPatientData();
@@ -314,7 +315,7 @@ export default function DashboardAdmin({
       </div>
 
       {/* Tabs navigation */}
-      <div className="flex border-b border-slate-200 bg-white p-1 rounded-xl border max-w-4xl" id="admin-tabs">
+      <div className="flex flex-wrap border-b border-slate-200 bg-white p-1 rounded-xl border max-w-6xl" id="admin-tabs">
         <button
           onClick={() => setActiveTab('patients')}
           className={`flex-1 text-center py-2 text-xs font-bold rounded-xl transition cursor-pointer ${
@@ -364,6 +365,17 @@ export default function DashboardAdmin({
             {l('Usuarios y Roles', 'Users & Roles')} ({users.length})
           </button>
         )}
+        {isAdmin && (
+          <button
+            onClick={() => setActiveTab('backups')}
+            className={`flex-1 text-center py-2 text-xs font-bold rounded-xl transition cursor-pointer ${
+              activeTab === 'backups' ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/20' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
+            }`}
+            id="tab-backups"
+          >
+            {l('Backups', 'Backups')}
+          </button>
+        )}
       </div>
 
       {/* Primary Tab View Content */}
@@ -387,6 +399,8 @@ export default function DashboardAdmin({
           onSaveProgram={onSaveProgram}
           onNotify={onNotify}
         />
+      ) : activeTab === 'backups' ? (
+        <AdminBackups onNotify={onNotify} />
       ) : (
       <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
         
@@ -744,7 +758,7 @@ export default function DashboardAdmin({
                 </p>
               </div>
               <label className="block text-xs font-extrabold text-slate-700" htmlFor="cleanup-confirm-text">
-                {l('Escriba LIMPIAR para confirmar', 'Type LIMPIAR to confirm')}
+                {l('Escriba CLEAR OPERATIONAL DATA para confirmar', 'Type CLEAR OPERATIONAL DATA to confirm')}
               </label>
               <input
                 id="cleanup-confirm-text"
@@ -769,7 +783,7 @@ export default function DashboardAdmin({
               <button
                 type="button"
                 onClick={handleConfirmCleanup}
-                disabled={cleanupConfirmText !== 'LIMPIAR' || isCleaningPatientData}
+                disabled={cleanupConfirmText !== 'CLEAR OPERATIONAL DATA' || isCleaningPatientData}
                 className="inline-flex items-center rounded-xl bg-rose-600 px-4 py-2 text-xs font-extrabold text-white shadow-lg shadow-rose-600/20 transition hover:bg-rose-700 disabled:cursor-not-allowed disabled:opacity-50"
                 id="btn-confirm-cleanup-patient-data"
               >

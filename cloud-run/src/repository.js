@@ -21,7 +21,9 @@ export const resources = Object.freeze({
   'device-activation': { tab: 'Device Activation', key: 'activation_id' },
   medications: { tab: 'Medications', key: 'medication_id' },
   users: { tab: 'Users', key: 'user_id' },
-  'activity-log': { tab: 'Activity Log', key: 'activity_id' }
+  'activity-log': { tab: 'Activity Log', key: 'activity_id' },
+  backups: { tab: 'Backups', key: 'backup_id' },
+  'backup-config': { tab: 'Backup Config', key: 'config_id' }
 });
 
 const backendHeaders = ['record_json', 'patient_id', 'facility_id', 'updated_at'];
@@ -201,4 +203,9 @@ export async function clearRecords(resourceName) {
   }));
   recordsCache.set(resourceName, { records: [], expiresAt: Date.now() + CACHE_TTL_MS });
   return existingRecords.length;
+}
+
+export function invalidateRepositoryCache() {
+  recordsCache.clear();
+  headerCache.clear();
 }

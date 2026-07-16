@@ -23,9 +23,23 @@ import {
 } from './security.js';
 import { validateConsent, validateDevice, validatePatient } from './validation.js';
 import { createPdf, deletePdfFile, getPdfBuffer } from './pdf.js';
+import {
+  createSpreadsheetBackup,
+  getBackupOverview,
+  restoreSpreadsheetBackup,
+  saveBackupConfig
+} from './backups.js';
 
 const app = express();
 const USER_ROLES = new Set(['ADMIN', 'NURSE', 'PHYSICIAN', 'VIEWER', 'AUDITOR']);
+const ADMIN_ONLY_RESOURCES = new Set([
+  'backups',
+  'backup-config',
+  'catalog-imports',
+  'condition-groups',
+  'diagnoses',
+  'programs'
+]);
 app.disable('x-powered-by');
 app.use(helmet({ contentSecurityPolicy: false }));
 app.use(requestContext);
@@ -125,6 +139,9 @@ app.get('/v1/:resource', async (req, res, next) => {
   try {
     const resource = req.params.resource;
     if (!resources[resource]) return res.status(404).json({ error: 'not_found' });
+    if (ADMIN_ONLY_RESOURCES.has(resource) && req.user.role !== 'ADMIN') {
+      return res.status(403).json({ error: 'forbidden' });
+    }
     let records = await listRecords(resource);
     if (resource === 'patients') {
       records = records.filter(record => canReadPatient(req.user, record));
@@ -150,7 +167,7 @@ app.put('/v1/:resource/:id', async (req, res, next) => {
       return res.status(405).json({ error: 'method_not_allowed' });
     }
     const record = { ...req.body, id };
-    if (['condition-groups', 'diagnoses', 'catalog-imports', 'programs'].includes(resource) && req.user.role !== 'ADMIN') {
+    if (ADMIN_ONLY_RESOURCES.has(resource) && req.user.role !== 'ADMIN') {
       return res.status(403).json({ error: 'forbidden' });
     }
     const patient = resource === 'patients'
@@ -267,6 +284,48 @@ app.post('/v1/admin/cleanup-patient-data', requireRoles('ADMIN'), async (req, re
       missingPdfFiles,
       failedPdfFiles
     });
+  } catch (error) {
+    return next(error);
+  }
+});
+
+app.get('/v1/admin/backups', requireRoles('ADMIN'), async (_req, res, next) => {
+  try {
+    res.set('Cache-Control', 'no-store');
+    return res.json(await getBackupOverview());
+  } catch (error) {
+    return next(error);
+  }
+});
+
+app.patch('/v1/admin/backups/config', requireRoles('ADMIN'), async (req, res, next) => {
+  try {
+    const saved = await saveBackupConfig(req.body || {}, req.user);
+    await activity(req, 'backup_config_updated', 'ADMIN', saved.id);
+    return res.json(saved);
+  } catch (error) {
+    return next(error);
+  }
+});
+
+app.post('/v1/admin/backups', requireRoles('ADMIN'), async (req, res, next) => {
+  try {
+    const backup = await createSpreadsheetBackup(req.user, {
+      notes: req.body?.notes,
+      driveFolderId: req.body?.driveFolderId
+    });
+    await activity(req, 'backup_created', 'ADMIN', backup.id);
+    return res.status(201).json(backup);
+  } catch (error) {
+    return next(error);
+  }
+});
+
+app.post('/v1/admin/backups/:id/restore', requireRoles('ADMIN'), async (req, res, next) => {
+  try {
+    const result = await restoreSpreadsheetBackup(req.params.id, req.user);
+    await activity(req, 'backup_restored', 'ADMIN', result.restoredBackup.id);
+    return res.json(result);
   } catch (error) {
     return next(error);
   }
