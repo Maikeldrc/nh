@@ -371,10 +371,10 @@ export default function RegisterPatientModal({
   const [lastName, setLastName] = useState('');
   const [birthDate, setBirthDate] = useState('');
   const [medicareId, setMedicareId] = useState('');
-  const [nursingHome, setNursingHome] = useState(NURSING_HOMES[1] || NURSING_HOMES[0] || '');
+  const [nursingHome, setNursingHome] = useState(NURSING_HOMES[0] || '');
   const [room, setRoom] = useState('');
   const activePrograms = programs.filter(program => program.is_active);
-  const [selectedPrograms, setSelectedPrograms] = useState<string[]>(['CCM', 'RPM']);
+  const [selectedPrograms, setSelectedPrograms] = useState<string[]>([]);
   const assignedProgram = selectedPrograms.join(' + ');
   const [selectedConditions, setSelectedConditions] = useState<string[]>([]);
   
@@ -413,9 +413,7 @@ export default function RegisterPatientModal({
   useEffect(() => {
     const eligibleCodes = eligiblePrograms.map(program => program.code);
     setSelectedPrograms(previous => {
-      const retained = previous.filter(code => eligibleCodes.includes(code));
-      if (retained.length > 0) return retained;
-      return ['CCM', 'RPM'].filter(code => eligibleCodes.includes(code));
+      return previous.filter(code => eligibleCodes.includes(code));
     });
   }, [programs]);
   const ICD10_CODE_PATTERN = /^[A-Z][0-9][0-9A-Z](?:\.[0-9A-Z]{1,4})?$/;
@@ -559,8 +557,9 @@ export default function RegisterPatientModal({
         setLastName('');
         setBirthDate('');
         setMedicareId('');
+        setNursingHome(NURSING_HOMES[0] || '');
         setRoom('');
-        setSelectedPrograms(['CCM', 'RPM'].filter(code => eligiblePrograms.some(program => program.code === code)));
+        setSelectedPrograms([]);
         setSelectedConditions([]);
         setCategorySearch('');
         setSelectedCategoryCodes([]);
@@ -581,8 +580,9 @@ export default function RegisterPatientModal({
       setLastName('');
       setBirthDate('');
       setMedicareId('');
+      setNursingHome(NURSING_HOMES[0] || '');
       setRoom('');
-      setSelectedPrograms(['CCM', 'RPM'].filter(code => eligiblePrograms.some(program => program.code === code)));
+      setSelectedPrograms([]);
       setSelectedConditions([]);
       setCategorySearch('');
       setSelectedCategoryCodes([]);
@@ -759,54 +759,48 @@ export default function RegisterPatientModal({
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">
-                  {language === 'ES' ? 'Programa Asignado' : 'Assigned Program'}
-                </label>
-                <div className="grid grid-cols-2 gap-2 rounded-xl border border-slate-300 bg-slate-50 p-2">
-                  {eligiblePrograms.map(program => {
-                    const checked = selectedPrograms.includes(program.code);
-                    return (
-                      <label
-                        key={program.id}
-                        className={`flex cursor-pointer items-center rounded-lg border px-2.5 py-2 text-xs font-extrabold transition ${
-                          checked ? 'border-blue-300 bg-blue-50 text-blue-800' : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
-                        }`}
-                      >
-                        <input
-                          type="checkbox"
-                          checked={checked}
-                          onChange={(event) => {
-                            if (event.target.checked) {
-                              setSelectedPrograms([...selectedPrograms, program.code]);
-                            } else {
-                              setSelectedPrograms(selectedPrograms.filter(code => code !== program.code));
-                            }
-                          }}
-                          className="mr-2 h-3.5 w-3.5 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
-                        />
-                        {program.display}
-                      </label>
-                    );
-                  })}
-                  {eligiblePrograms.length === 0 && (
-                    <p className="col-span-2 px-2 py-1 text-xs font-semibold text-rose-600">
-                      {language === 'ES' ? 'No hay programas activos configurados.' : 'No active programs are configured.'}
-                    </p>
-                  )}
-                </div>
-                {assignedProgram && (
-                  <p className="mt-1 text-[10px] font-bold text-blue-700">
-                    {language === 'ES' ? 'Seleccionado' : 'Selected'}: {assignedProgram}
+            <div>
+              <label className="block text-xs font-bold text-slate-700 mb-1">
+                {language === 'ES' ? 'Programa Asignado' : 'Assigned Program'}
+              </label>
+              <div className="grid grid-cols-1 gap-2 rounded-xl border border-slate-300 bg-slate-50 p-2 sm:grid-cols-2 lg:grid-cols-3">
+                {eligiblePrograms.map(program => {
+                  const checked = selectedPrograms.includes(program.code);
+                  return (
+                    <label
+                      key={program.id}
+                      className={`flex cursor-pointer items-center rounded-lg border px-2.5 py-2 text-xs font-extrabold transition ${
+                        checked ? 'border-blue-300 bg-blue-50 text-blue-800' : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
+                      }`}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={checked}
+                        onChange={(event) => {
+                          if (event.target.checked) {
+                            setSelectedPrograms([...selectedPrograms, program.code]);
+                          } else {
+                            setSelectedPrograms(selectedPrograms.filter(code => code !== program.code));
+                          }
+                        }}
+                        className="mr-2 h-3.5 w-3.5 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                      />
+                      {program.display}
+                    </label>
+                  );
+                })}
+                {eligiblePrograms.length === 0 && (
+                  <p className="px-2 py-1 text-xs font-semibold text-rose-600 sm:col-span-2 lg:col-span-3">
+                    {language === 'ES' ? 'No hay programas activos configurados.' : 'No active programs are configured.'}
                   </p>
                 )}
-                {errors.assignedProgram && <span className="text-[10px] text-red-500 font-semibold mt-0.5 block">{errors.assignedProgram}</span>}
               </div>
-
-              <div className="flex items-end pb-1.5">
-                {/* placeholder */}
-              </div>
+              {assignedProgram && (
+                <p className="mt-1 text-[10px] font-bold text-blue-700">
+                  {language === 'ES' ? 'Seleccionado' : 'Selected'}: {assignedProgram}
+                </p>
+              )}
+              {errors.assignedProgram && <span className="text-[10px] text-red-500 font-semibold mt-0.5 block">{errors.assignedProgram}</span>}
             </div>
 
             {/* RPM Auto-order banner */}
