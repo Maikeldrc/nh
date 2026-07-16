@@ -1823,8 +1823,9 @@ This service is not for emergencies. If you agree, we can continue with your aut
                     <div className="rounded-2xl border border-slate-200 p-5">
                       <h4 className="text-xl font-black">Device information</h4>
                       <div className="mt-4 grid gap-4 md:grid-cols-3">
-                        <div><label className="mb-1 block text-sm font-bold">Device type</label><select value={deviceType} onChange={(e) => setDeviceType(e.target.value as typeof deviceType)} className="min-h-12 w-full rounded-xl border border-slate-300 bg-white px-3 text-base"><option value="BP Monitor">BP Monitor</option><option value="Scale">Scale</option><option value="Other">Other</option></select></div>
-                        <div className="md:col-span-2"><label className="mb-1 block text-sm font-bold">Scan device barcode or enter serial manually</label><input value={serialNumber} onChange={(e) => setSerialNumber(e.target.value)} className="min-h-12 w-full rounded-xl border border-slate-300 px-3 text-base" placeholder="Serial number" /></div>
+                        <div><label className="mb-1 block text-sm font-bold">Device</label><select value={deviceType} onChange={(e) => setDeviceType(e.target.value as typeof deviceType)} className="min-h-12 w-full rounded-xl border border-slate-300 bg-white px-3 text-base"><option value="BP Monitor">BP Monitor</option><option value="Scale">Scale</option><option value="Other">Other</option></select></div>
+                        <div><label className="mb-1 block text-sm font-bold">Model</label><input value={model} onChange={(e) => setModel(e.target.value)} className="min-h-12 w-full rounded-xl border border-slate-300 px-3 text-base" placeholder="Device model" /></div>
+                        <div><label className="mb-1 block text-sm font-bold">Device ID</label><input value={serialNumber} onChange={(e) => setSerialNumber(e.target.value)} className="min-h-12 w-full rounded-xl border border-slate-300 px-3 text-base" placeholder="Device ID" /></div>
                       </div>
                       <div className="mt-4 flex flex-wrap gap-3">
                         <button
@@ -1834,13 +1835,6 @@ This service is not for emergencies. If you agree, we can continue with your aut
                         >
                           {hasAdditionalDevice ? 'Remove second device' : 'Add second device'}
                         </button>
-                      </div>
-                      <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-4">
-                        <p className="text-sm font-extrabold text-slate-900">Primary device details</p>
-                        <div className="mt-4 grid gap-4 md:grid-cols-2">
-                          <input value={deviceId} onChange={(e) => setDeviceId(e.target.value)} className="min-h-12 rounded-xl border border-slate-300 px-3 text-base" placeholder="SIM ID" />
-                          <input value={kitId} onChange={(e) => setKitId(e.target.value)} className="min-h-12 rounded-xl border border-slate-300 px-3 text-base" placeholder="Kit ID" />
-                        </div>
                       </div>
                       {hasAdditionalDevice && (
                         <div className="mt-4 rounded-xl border border-blue-200 bg-blue-50 p-4">
@@ -1857,11 +1851,9 @@ This service is not for emergencies. If you agree, we can continue with your aut
                               </select>
                             </div>
                             <div>
-                              <label className="mb-1 block text-sm font-bold">Serial number</label>
-                              <input value={additionalSerialNumber} onChange={(e) => setAdditionalSerialNumber(e.target.value)} className="min-h-12 w-full rounded-xl border border-slate-300 px-3 text-base" placeholder="Second device serial number" />
+                              <label className="mb-1 block text-sm font-bold">Device ID</label>
+                              <input value={additionalSerialNumber} onChange={(e) => setAdditionalSerialNumber(e.target.value)} className="min-h-12 w-full rounded-xl border border-slate-300 px-3 text-base" placeholder="Second device ID" />
                             </div>
-                            <input value={additionalDeviceId} onChange={(e) => setAdditionalDeviceId(e.target.value)} className="min-h-12 rounded-xl border border-slate-300 px-3 text-base" placeholder="Second device SIM ID" />
-                            <input value={additionalKitId} onChange={(e) => setAdditionalKitId(e.target.value)} className="min-h-12 rounded-xl border border-slate-300 px-3 text-base" placeholder="Second device Kit ID" />
                           </div>
                         </div>
                       )}
@@ -2863,7 +2855,7 @@ This service is not for emergencies. If you agree, we can continue with your aut
               <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider">{l('Dispositivo Principal', 'Primary Device')}</h3>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 uppercase">{l('Tipo de Dispositivo', 'Device Type')}</label>
+                  <label className="block text-xs font-bold text-slate-700 uppercase">{l('Dispositivo', 'Device')}</label>
                   <select
                     value={deviceType}
                     onChange={(e) => setDeviceType(e.target.value as any)}
@@ -2877,19 +2869,26 @@ This service is not for emergencies. If you agree, we can continue with your aut
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 uppercase">{l('Numero de Serie / Device ID *', 'Device Serial Number / Device ID *')}</label>
+                  <label className="block text-xs font-bold text-slate-700 uppercase">{l('Modelo', 'Model')}</label>
+                  <input
+                    type="text"
+                    value={model}
+                    onChange={(e) => setModel(e.target.value)}
+                    disabled={deviceActionsBlocked}
+                    className="mt-1 block w-full px-3 py-1.5 border border-slate-300 rounded text-xs font-semibold disabled:bg-slate-100 disabled:text-slate-400"
+                    placeholder={l('Modelo del dispositivo', 'Device model')}
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 uppercase">{l('Device ID *', 'Device ID *')}</label>
                   <input
                     type="text"
                     value={serialNumber}
                     onChange={(e) => setSerialNumber(e.target.value)}
                     disabled={deviceActionsBlocked}
                     className="mt-1 block w-full px-3 py-1.5 border border-slate-300 rounded text-xs font-semibold disabled:bg-slate-100 disabled:text-slate-400"
-                    placeholder="S/N"
+                    placeholder="Device ID"
                   />
-                </div>
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 uppercase">SIM ID ({l('Opcional', 'Optional')})</label>
-                  <input type="text" value={deviceId} onChange={(e) => setDeviceId(e.target.value)} disabled={deviceActionsBlocked} className="mt-1 block w-full px-3 py-1.5 border border-slate-300 rounded text-xs font-semibold disabled:bg-slate-100 disabled:text-slate-400" />
                 </div>
               </div>
 
@@ -2930,9 +2929,9 @@ This service is not for emergencies. If you agree, we can continue with your aut
                         : l('Nueva orden pendiente de aprobación', 'New order pending approval')}
                     </span>
                   </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-xs font-bold text-slate-700 uppercase">{l('Tipo de Dispositivo', 'Device Type')}</label>
+                      <label className="block text-xs font-bold text-slate-700 uppercase">{l('Dispositivo', 'Device')}</label>
                       <select
                         value={additionalDeviceType}
                         onChange={(e) => {
@@ -2950,19 +2949,15 @@ This service is not for emergencies. If you agree, we can continue with your aut
                     </div>
 
                     <div>
-                      <label className="block text-xs font-bold text-slate-700 uppercase">{l('Numero de Serie / Device ID *', 'Device Serial Number / Device ID *')}</label>
+                      <label className="block text-xs font-bold text-slate-700 uppercase">{l('Device ID *', 'Device ID *')}</label>
                       <input
                         type="text"
                         value={additionalSerialNumber}
                         onChange={(e) => setAdditionalSerialNumber(e.target.value)}
                         disabled={deviceActionsBlocked}
                         className="mt-1 block w-full px-3 py-1.5 border border-slate-300 rounded text-xs font-semibold disabled:bg-slate-100 disabled:text-slate-400"
-                        placeholder="S/N Adicional"
+                        placeholder={l('Device ID adicional', 'Additional device ID')}
                       />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-bold text-slate-700 uppercase">SIM ID ({l('Opcional', 'Optional')})</label>
-                      <input type="text" value={additionalDeviceId} onChange={(e) => setAdditionalDeviceId(e.target.value)} disabled={deviceActionsBlocked} className="mt-1 block w-full px-3 py-1.5 border border-slate-300 rounded text-xs font-semibold disabled:bg-slate-100 disabled:text-slate-400" />
                     </div>
                   </div>
                 </div>
