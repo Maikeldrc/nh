@@ -4,6 +4,7 @@ import { NURSING_HOMES } from '../data';
 import { User, UserRole } from '../types';
 import { useLanguage } from '../utils/LanguageContext';
 import { createUser, updateUser, type UserMutationPayload } from '../utils/apiClient';
+import TablePagination, { usePaginatedRows } from './TablePagination';
 
 const ROLES: UserRole[] = ['ADMIN', 'NURSE', 'PHYSICIAN', 'VIEWER', 'AUDITOR'];
 
@@ -61,6 +62,13 @@ export default function UserManagement({
   const sortedUsers = useMemo(() => {
     return [...users].sort((a, b) => a.name.localeCompare(b.name));
   }, [users]);
+  const userPagination = usePaginatedRows(sortedUsers);
+  const paginationLabels = {
+    showing: l('Mostrando', 'Showing'),
+    of: l('de', 'of'),
+    previous: l('Anterior', 'Previous'),
+    next: l('Siguiente', 'Next')
+  };
 
   if (currentUser.role !== 'ADMIN') {
     return (
@@ -193,7 +201,7 @@ export default function UserManagement({
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {sortedUsers.map(user => (
+              {userPagination.pageRows.map(user => (
                 <tr key={user.id} className="hover:bg-slate-50/60">
                   <td className="px-5 py-4">
                     <div className="font-extrabold text-slate-900">{user.name}</div>
@@ -244,6 +252,16 @@ export default function UserManagement({
             </tbody>
           </table>
         </div>
+        <TablePagination
+          totalCount={sortedUsers.length}
+          page={userPagination.page}
+          pageSize={userPagination.pageSize}
+          totalPages={userPagination.totalPages}
+          startIndex={userPagination.startIndex}
+          endIndex={userPagination.endIndex}
+          onPageChange={userPagination.setPage}
+          labels={paginationLabels}
+        />
       </div>
 
       {isModalOpen && (

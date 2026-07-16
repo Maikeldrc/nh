@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import {
   CatalogImportHistory,
   ConditionGroupCatalog,
@@ -14,13 +14,14 @@ import { NURSING_HOMES } from '../data';
 import { 
   Search, Users, Shield, FileText, Smartphone, CheckCircle, 
   AlertTriangle, Eye, ArrowUpDown, Calendar, MapPin, Download, History, UserPlus, FileSpreadsheet,
-  Trash2, ChevronLeft, ChevronRight, X
+  Trash2, X
 } from 'lucide-react';
 import { useLanguage } from '../utils/LanguageContext';
 import { getMedicalOrderStatus, patientRequiresDevice } from '../utils/medicalOrders';
 import UserManagement from './UserManagement';
 import ClinicalCatalogManagement from './ClinicalCatalogManagement';
 import AdminBackups from './AdminBackups';
+import TablePagination, { usePaginatedRows } from './TablePagination';
 
 interface DashboardAdminProps {
   currentUser: User;
@@ -80,7 +81,6 @@ export default function DashboardAdmin({
   const [selectedNurse, setSelectedNurse] = useState('');
   const [selectedProgram, setSelectedProgram] = useState('');
   const [selectedStatus, setSelectedStatus] = useState<string>('ALL');
-  const [patientPage, setPatientPage] = useState(1);
   const [isCleanupConfirmOpen, setIsCleanupConfirmOpen] = useState(false);
   const [cleanupConfirmText, setCleanupConfirmText] = useState('');
   const [isCleaningPatientData, setIsCleaningPatientData] = useState(false);
@@ -135,23 +135,6 @@ export default function DashboardAdmin({
     });
   }, [patients, search, selectedNH, selectedNurse, selectedProgram, selectedStatus]);
 
-  const patientTotalPages = Math.max(1, Math.ceil(filteredPatients.length / PATIENTS_PER_PAGE));
-  const safePatientPage = Math.min(patientPage, patientTotalPages);
-  const patientStartIndex = filteredPatients.length === 0 ? 0 : (safePatientPage - 1) * PATIENTS_PER_PAGE + 1;
-  const patientEndIndex = Math.min(safePatientPage * PATIENTS_PER_PAGE, filteredPatients.length);
-  const paginatedPatients = filteredPatients.slice(
-    (safePatientPage - 1) * PATIENTS_PER_PAGE,
-    safePatientPage * PATIENTS_PER_PAGE
-  );
-
-  useEffect(() => {
-    setPatientPage(1);
-  }, [search, selectedNH, selectedNurse, selectedProgram, selectedStatus, activeTab]);
-
-  useEffect(() => {
-    if (patientPage > patientTotalPages) setPatientPage(patientTotalPages);
-  }, [patientPage, patientTotalPages]);
-
   // Filtered Documents
   const filteredDocuments = useMemo(() => {
     return documents.filter(d => {
@@ -161,6 +144,16 @@ export default function DashboardAdmin({
       return matchSearch && matchNH;
     });
   }, [documents, search, selectedNH, patients]);
+
+  const patientPagination = usePaginatedRows(filteredPatients, PATIENTS_PER_PAGE);
+  const documentPagination = usePaginatedRows(filteredDocuments, PATIENTS_PER_PAGE);
+  const auditPagination = usePaginatedRows(auditLogs, PATIENTS_PER_PAGE);
+  const paginationLabels = {
+    showing: l('Mostrando', 'Showing'),
+    of: l('de', 'of'),
+    previous: l('Anterior', 'Previous'),
+    next: l('Siguiente', 'Next')
+  };
 
   // Status Badge helper
   const getStatusBadge = (status: PatientStatus) => {
@@ -521,7 +514,7 @@ export default function DashboardAdmin({
                     </td>
                   </tr>
                 ) : (
-                  paginatedPatients.map((patient) => (
+                  patientPagination.pageRows.map((patient) => (
                     <tr key={patient.id} className="hover:bg-slate-50/20 transition">
                       {/* Name & DOB */}
                       <td className="px-6 py-4 whitespace-nowrap">
@@ -607,36 +600,16 @@ export default function DashboardAdmin({
                 )}
               </tbody>
             </table>
-            {filteredPatients.length > PATIENTS_PER_PAGE && (
-              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 px-6 py-4 border-t border-slate-200 bg-slate-50/60">
-                <p className="text-xs font-semibold text-slate-500">
-                  {l('Mostrando', 'Showing')} {patientStartIndex}-{patientEndIndex} {l('de', 'of')} {filteredPatients.length}
-                </p>
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setPatientPage(page => Math.max(1, page - 1))}
-                    disabled={safePatientPage === 1}
-                    className="inline-flex h-8 items-center rounded-xl border border-slate-300 bg-white px-3 text-xs font-bold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
-                  >
-                    <ChevronLeft size={14} className="mr-1" />
-                    {l('Anterior', 'Previous')}
-                  </button>
-                  <span className="min-w-[4.5rem] text-center text-xs font-extrabold text-slate-700">
-                    {safePatientPage} / {patientTotalPages}
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => setPatientPage(page => Math.min(patientTotalPages, page + 1))}
-                    disabled={safePatientPage === patientTotalPages}
-                    className="inline-flex h-8 items-center rounded-xl border border-slate-300 bg-white px-3 text-xs font-bold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
-                  >
-                    {l('Siguiente', 'Next')}
-                    <ChevronRight size={14} className="ml-1" />
-                  </button>
-                </div>
-              </div>
-            )}
+            <TablePagination
+              totalCount={filteredPatients.length}
+              page={patientPagination.page}
+              pageSize={patientPagination.pageSize}
+              totalPages={patientPagination.totalPages}
+              startIndex={patientPagination.startIndex}
+              endIndex={patientPagination.endIndex}
+              onPageChange={patientPagination.setPage}
+              labels={paginationLabels}
+            />
           </div>
         )}
 
@@ -653,7 +626,7 @@ export default function DashboardAdmin({
               </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4" id="admin-documents-grid">
-                {filteredDocuments.map((doc) => (
+                {documentPagination.pageRows.map((doc) => (
                   <div key={doc.id} className="p-4 rounded-2xl border border-slate-200 bg-slate-50/50 flex items-start justify-between space-x-4 hover:shadow-sm transition-shadow">
                     <div className="space-y-1">
                       <div className="flex items-center space-x-2">
@@ -676,6 +649,16 @@ export default function DashboardAdmin({
                 ))}
               </div>
             )}
+            <TablePagination
+              totalCount={filteredDocuments.length}
+              page={documentPagination.page}
+              pageSize={documentPagination.pageSize}
+              totalPages={documentPagination.totalPages}
+              startIndex={documentPagination.startIndex}
+              endIndex={documentPagination.endIndex}
+              onPageChange={documentPagination.setPage}
+              labels={paginationLabels}
+            />
           </div>
         )}
 
@@ -703,7 +686,7 @@ export default function DashboardAdmin({
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-slate-100 text-[11px] font-semibold text-slate-600">
-                  {auditLogs.map((log) => (
+                  {auditPagination.pageRows.map((log) => (
                     <tr key={log.id} className="hover:bg-slate-50/20">
                       <td className="px-4 py-2 whitespace-nowrap text-slate-400 font-mono text-[10px]">
                         {new Date(log.dateTime).toLocaleString()}
@@ -726,6 +709,16 @@ export default function DashboardAdmin({
                 </tbody>
               </table>
             </div>
+            <TablePagination
+              totalCount={auditLogs.length}
+              page={auditPagination.page}
+              pageSize={auditPagination.pageSize}
+              totalPages={auditPagination.totalPages}
+              startIndex={auditPagination.startIndex}
+              endIndex={auditPagination.endIndex}
+              onPageChange={auditPagination.setPage}
+              labels={paginationLabels}
+            />
           </div>
         )}
       </div>

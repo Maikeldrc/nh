@@ -9,6 +9,7 @@ import {
   type BackupRecordPayload
 } from '../utils/apiClient';
 import { useLanguage } from '../utils/LanguageContext';
+import TablePagination, { usePaginatedRows } from './TablePagination';
 
 interface Props {
   onNotify: (message: string, type?: 'success' | 'info') => void;
@@ -32,6 +33,13 @@ export default function AdminBackups({ onNotify }: Props) {
   const [restoreTarget, setRestoreTarget] = useState<BackupRecordPayload | null>(null);
   const [restoreConfirmText, setRestoreConfirmText] = useState('');
   const [isRestoring, setIsRestoring] = useState(false);
+  const backupPagination = usePaginatedRows(backups);
+  const paginationLabels = {
+    showing: l('Mostrando', 'Showing'),
+    of: l('de', 'of'),
+    previous: l('Anterior', 'Previous'),
+    next: l('Siguiente', 'Next')
+  };
 
   const loadBackups = async () => {
     setIsLoading(true);
@@ -217,7 +225,7 @@ export default function AdminBackups({ onNotify }: Props) {
                     {isLoading ? l('Cargando backups...', 'Loading backups...') : l('No hay backups disponibles.', 'No backups available.')}
                   </td>
                 </tr>
-              ) : backups.map(backup => (
+              ) : backupPagination.pageRows.map(backup => (
                 <tr key={backup.id}>
                   <td className="px-5 py-4 font-semibold text-slate-600">{formatDate(backup.createdAt)}</td>
                   <td className="px-5 py-4">
@@ -255,6 +263,16 @@ export default function AdminBackups({ onNotify }: Props) {
             </tbody>
           </table>
         </div>
+        <TablePagination
+          totalCount={backups.length}
+          page={backupPagination.page}
+          pageSize={backupPagination.pageSize}
+          totalPages={backupPagination.totalPages}
+          startIndex={backupPagination.startIndex}
+          endIndex={backupPagination.endIndex}
+          onPageChange={backupPagination.setPage}
+          labels={paginationLabels}
+        />
       </div>
 
       {restoreTarget && (

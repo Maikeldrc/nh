@@ -18,6 +18,7 @@ import {
   User
 } from '../types';
 import { useLanguage } from '../utils/LanguageContext';
+import TablePagination, { usePaginatedRows } from './TablePagination';
 
 type CatalogTab = 'overview' | 'programs' | 'groups' | 'diagnoses' | 'relationships' | 'history';
 
@@ -137,6 +138,15 @@ export default function ClinicalCatalogManagement({
   const selectedGroupDiagnoses = selectedGroup
     ? diagnoses.filter(diagnosis => diagnosis.condition_group_id === selectedGroup.id)
     : [];
+  const programPagination = usePaginatedRows(filteredPrograms);
+  const groupPagination = usePaginatedRows(filteredGroups);
+  const diagnosisPagination = usePaginatedRows(filteredDiagnoses);
+  const paginationLabels = {
+    showing: l('Mostrando', 'Showing'),
+    of: l('de', 'of'),
+    previous: l('Anterior', 'Previous'),
+    next: l('Siguiente', 'Next')
+  };
 
   if (currentUser.role !== 'ADMIN') {
     return (
@@ -452,7 +462,7 @@ export default function ClinicalCatalogManagement({
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {filteredPrograms.map(program => (
+                {programPagination.pageRows.map(program => (
                   <tr key={program.id}>
                     <td className="px-5 py-4"><strong className="text-slate-900">{program.display}</strong><p className="mt-1 text-slate-500">{program.description || '-'}</p></td>
                     <td className="px-5 py-4 font-mono font-bold text-slate-600">{program.code}</td>
@@ -472,6 +482,16 @@ export default function ClinicalCatalogManagement({
               </tbody>
             </table>
           </div>
+          <TablePagination
+            totalCount={filteredPrograms.length}
+            page={programPagination.page}
+            pageSize={programPagination.pageSize}
+            totalPages={programPagination.totalPages}
+            startIndex={programPagination.startIndex}
+            endIndex={programPagination.endIndex}
+            onPageChange={programPagination.setPage}
+            labels={paginationLabels}
+          />
         </div>
       )}
 
@@ -491,7 +511,7 @@ export default function ClinicalCatalogManagement({
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {filteredGroups.map(group => (
+                {groupPagination.pageRows.map(group => (
                   <tr key={group.id}>
                     <td className="px-5 py-4"><strong className="text-slate-900">{group.display}</strong><p className="mt-1 text-slate-500">{group.description || '-'}</p></td>
                     <td className="px-5 py-4 font-mono font-bold text-slate-600">{group.code}</td>
@@ -512,6 +532,16 @@ export default function ClinicalCatalogManagement({
               </tbody>
             </table>
           </div>
+          <TablePagination
+            totalCount={filteredGroups.length}
+            page={groupPagination.page}
+            pageSize={groupPagination.pageSize}
+            totalPages={groupPagination.totalPages}
+            startIndex={groupPagination.startIndex}
+            endIndex={groupPagination.endIndex}
+            onPageChange={groupPagination.setPage}
+            labels={paginationLabels}
+          />
         </div>
       )}
 
@@ -544,7 +574,7 @@ export default function ClinicalCatalogManagement({
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {filteredDiagnoses.map(diagnosis => (
+                {diagnosisPagination.pageRows.map(diagnosis => (
                   <tr key={diagnosis.id}>
                     <td className="px-5 py-4"><span className="rounded-lg bg-blue-50 px-2 py-1 font-mono font-extrabold text-blue-700">{diagnosis.icd10_code}</span></td>
                     <td className="px-5 py-4"><strong className="text-slate-900">{diagnosis.icd10_display}</strong><p className="mt-1 text-slate-500">{diagnosis.icd10_description}</p></td>
@@ -563,6 +593,16 @@ export default function ClinicalCatalogManagement({
               </tbody>
             </table>
           </div>
+          <TablePagination
+            totalCount={filteredDiagnoses.length}
+            page={diagnosisPagination.page}
+            pageSize={diagnosisPagination.pageSize}
+            totalPages={diagnosisPagination.totalPages}
+            startIndex={diagnosisPagination.startIndex}
+            endIndex={diagnosisPagination.endIndex}
+            onPageChange={diagnosisPagination.setPage}
+            labels={paginationLabels}
+          />
         </div>
       )}
 
