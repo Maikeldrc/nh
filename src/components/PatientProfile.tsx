@@ -70,9 +70,13 @@ export default function PatientProfile({
   // Is the visit resumable?
   const isResumable = patient.status === 'INCOMPLETE';
   const medicalOrderStatus = getMedicalOrderStatus(patient);
-  const visibleDeviceStatus = device?.status === 'PENDING_ORDER_APPROVAL' && medicalOrderStatus === 'ORDER_APPROVED'
-    ? 'DELIVERED_ASSIGNED'
-    : device?.status;
+  const visibleDeviceStatus = patient.status === 'ACTIVE'
+    ? 'ACTIVE'
+    : device?.status === 'PENDING_ORDER_APPROVAL' && medicalOrderStatus === 'ORDER_APPROVED'
+      ? 'DELIVERED_ASSIGNED'
+      : device?.status === 'NOT_STARTED' && (device.deliveredToPatient || device.assignedToPatient)
+        ? 'DELIVERED_ASSIGNED'
+        : device?.status;
 
   // Helper to format status badges
   const getStatusBadge = (status: string) => {

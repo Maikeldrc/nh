@@ -1095,7 +1095,11 @@ This service is not for emergencies. If you agree, we can continue with your aut
         serialNumber: serialNumber || deviceId || 'N/A',
         kitId: kitId || deviceId || 'N/A',
         deviceId,
-        status: activationStatus,
+        status: isFinalActivation
+          ? 'ACTIVE'
+          : activationStatus === 'NOT_STARTED' && (devDeliveredToPatient || devAssignedToPatient)
+            ? 'DELIVERED_ASSIGNED'
+            : activationStatus,
         deliveryDate: new Date().toISOString(),
         activationDate: activationStatus === 'ACTIVE' ? new Date().toISOString() : undefined,
         deliveredBy: currentUser.name,
