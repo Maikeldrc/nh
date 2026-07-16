@@ -57,6 +57,9 @@ export default function PatientProfile({
   // Is the visit resumable?
   const isResumable = patient.status === 'INCOMPLETE';
   const medicalOrderStatus = getMedicalOrderStatus(patient);
+  const visibleDeviceStatus = device?.status === 'PENDING_ORDER_APPROVAL' && medicalOrderStatus === 'ORDER_APPROVED'
+    ? 'DELIVERED_ASSIGNED'
+    : device?.status;
 
   // Helper to format status badges
   const getStatusBadge = (status: string) => {
@@ -269,8 +272,8 @@ export default function PatientProfile({
                 <div className="pt-1.5 flex justify-between items-center text-[10px] font-semibold">
                   <span className="text-slate-500">{l('Estado de Envío', 'Delivery Status')}:</span>
                   <span className={`font-bold uppercase ${
-                    device.status === 'ACTIVE' ? 'text-emerald-600' : device.status === 'NEEDS_SUPPORT' ? 'text-rose-600' : 'text-amber-600'
-                  }`}>{device.status.replace(/_/g, ' ')}</span>
+                    visibleDeviceStatus === 'ACTIVE' ? 'text-emerald-600' : visibleDeviceStatus === 'NEEDS_SUPPORT' ? 'text-rose-600' : 'text-amber-600'
+                  }`}>{(visibleDeviceStatus || device.status).replace(/_/g, ' ')}</span>
                 </div>
               </div>
             ) : (

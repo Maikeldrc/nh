@@ -370,6 +370,20 @@ export default function App() {
     patient.medicalOrder = order;
     savePatient(patient);
 
+    const existingDevice = getDeviceByPatientId(patient.id);
+    if (existingDevice?.status === 'PENDING_ORDER_APPROVAL') {
+      saveDevice({
+        ...existingDevice,
+        status: existingDevice.deliveredToPatient || existingDevice.assignedToPatient
+          ? 'DELIVERED_ASSIGNED'
+          : 'NOT_STARTED',
+        providerOrderStatus: 'YES',
+        providerOrderDate: order.approvedAt,
+        providerOrderReference: order.id,
+        providerOrderNotes: `Medical order status: ${order.status}; version: ${order.orderVersion}`
+      });
+    }
+
     addAuditLog(
       currentUser.id,
       currentUser.name,
