@@ -197,7 +197,6 @@ export default function UserManagement({
                 <th className="px-5 py-3 text-left">{l('Estado', 'Status')}</th>
                 <th className="px-5 py-3 text-left">MFA</th>
                 <th className="px-5 py-3 text-left">{l('Facility IDs', 'Facility IDs')}</th>
-                <th className="px-5 py-3 text-left">{l('Nursing homes', 'Nursing Homes')}</th>
                 <th className="px-5 py-3 text-left">{l('Creado', 'Created')}</th>
                 <th className="px-5 py-3 text-right">{l('Acciones', 'Actions')}</th>
               </tr>
@@ -218,9 +217,6 @@ export default function UserManagement({
                   </td>
                   <td className="max-w-[190px] px-5 py-4 font-semibold text-slate-600">
                     {(user.facilityIds || []).length ? user.facilityIds?.join(', ') : '-'}
-                  </td>
-                  <td className="max-w-[260px] px-5 py-4 font-semibold text-slate-600">
-                    {(user.nursingHomeAccess || []).length ? user.nursingHomeAccess?.join(', ') : '-'}
                   </td>
                   <td className="px-5 py-4 font-mono text-[10px] text-slate-500">
                     {user.createdAt ? new Date(user.createdAt).toLocaleDateString() : '-'}
