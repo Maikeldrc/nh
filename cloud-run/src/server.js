@@ -89,7 +89,7 @@ app.get('/v1/bootstrap', async (req, res, next) => {
     const related = async resource => (await listRecords(resource))
       .filter(record => !record.patientId || patientIds.has(record.patientId));
     const [visits, consents, devices, readings, documents, facilities, conditionGroups,
-      diagnoses, catalogImports, programs, auditLogs, users] = await Promise.all([
+      diagnoses, catalogImports, programs, auditLogs, allUsers] = await Promise.all([
       related('visits'),
       related('consents'),
       related('devices'),
@@ -103,10 +103,14 @@ app.get('/v1/bootstrap', async (req, res, next) => {
       ['ADMIN', 'AUDITOR'].includes(req.user.role)
         ? related('activity-log')
         : Promise.resolve([]),
-      req.user.role === 'ADMIN'
-        ? listRecords('users').then(rows => rows.map(normalizeUser))
-        : Promise.resolve([req.user])
+      listRecords('users').then(rows => rows.map(normalizeUser))
     ]);
+    const users = req.user.role === 'ADMIN'
+      ? allUsers
+      : [
+          req.user,
+          ...allUsers.filter(user => user.role === 'PHYSICIAN' && user.active && user.id !== req.user.id)
+        ];
     activity(req, 'login_success', 'AUTH', req.user.id, undefined).catch(error => {
       console.error(JSON.stringify({
         severity: 'ERROR',
