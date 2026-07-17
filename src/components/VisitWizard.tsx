@@ -1619,21 +1619,33 @@ This service is not for emergencies. If you agree, we can continue with your aut
     setConsentPdfGenerated(false);
     setConsentPdfUrl('');
     setAutoConsentPdfAttempted(false);
+    const restoreStep1Signer = () => {
+      const step1RequiresRepresentative = participationDecisionPath === 'REPRESENTATIVE';
+      setDecisionMaker(step1RequiresRepresentative ? 'REPRESENTATIVE' : 'PATIENT');
+      setConsentSignerType(step1RequiresRepresentative ? 'REPRESENTATIVE' : 'PATIENT');
+    };
     if (method === 'DRAW') {
+      restoreStep1Signer();
       setSignatureMethod('DRAW');
       setUnableSignMethod('');
       setUnableConsentConfirmed(false);
     } else if (method === 'TYPE') {
+      restoreStep1Signer();
       setSignatureMethod('TYPE');
       setUnableSignMethod('');
       setUnableConsentConfirmed(false);
-    } else {
+    } else if (method === 'VERBAL' || method === 'MARK_X') {
+      restoreStep1Signer();
       setSignatureMethod('UNABLE');
       setUnableSignMethod(method);
       setUnableConsentConfirmed(false);
       if (method === 'VERBAL') {
         setUnableToSignReason('');
       }
+    } else {
+      setSignatureMethod('UNABLE');
+      setUnableSignMethod(method);
+      setUnableConsentConfirmed(false);
       if (method === 'REPRESENTATIVE_SIGNATURE') {
         setConsentSignerType('REPRESENTATIVE');
         setDecisionMaker('REPRESENTATIVE');
