@@ -1934,9 +1934,8 @@ This service is not for emergencies. If you agree, we can continue with your aut
                   <>
                     <div className="enrollment-subcard">
                       <h4 className="enrollment-question-title"><ScanBarcode size={20} aria-hidden="true" /> Device information</h4>
-                      <div className="mt-4 grid gap-4 md:grid-cols-3">
+                      <div className="mt-4 grid gap-4 md:grid-cols-2">
                         <div><label className="mb-1 block text-sm font-bold">Device</label><select value={deviceType} onChange={(e) => setDeviceType(e.target.value as typeof deviceType)} className="min-h-12 w-full rounded-xl border border-slate-300 bg-white px-3 text-base"><option value="BP Monitor">BP Monitor</option><option value="Scale">Scale</option><option value="Other">Other</option></select></div>
-                        <div><label className="mb-1 block text-sm font-bold">Model</label><input value={model} onChange={(e) => setModel(e.target.value)} className="min-h-12 w-full rounded-xl border border-slate-300 px-3 text-base" placeholder="Device model" /></div>
                         <div><label className="mb-1 block text-sm font-bold">Device ID</label><input value={serialNumber} onChange={(e) => setSerialNumber(e.target.value)} className="min-h-12 w-full rounded-xl border border-slate-300 px-3 text-base" placeholder="Device ID" /></div>
                       </div>
                       <div className="mt-4 flex flex-wrap gap-3">
@@ -1981,17 +1980,35 @@ This service is not for emergencies. If you agree, we can continue with your aut
                           </label>
                         ))}
                       </div>
-                      <div className="mt-4"><label className="mb-1 block text-sm font-bold">Who received the education?</label><select value={educationRecipient} onChange={(e) => setEducationRecipient(e.target.value as typeof educationRecipient)} className="min-h-12 w-full rounded-xl border border-slate-300 bg-white px-3 text-base"><option value="PATIENT">Patient</option><option value="FACILITY_STAFF">Facility staff</option><option value="CAREGIVER">Caregiver</option><option value="AUTHORIZED_REPRESENTATIVE">Authorized representative</option></select></div>
                     </div>
 
                     <div className="enrollment-subcard">
                       <h4 className="enrollment-question-title"><HeartPulse size={20} aria-hidden="true" /> First reading</h4>
                       <p className="mt-1 text-sm font-semibold text-slate-600">The first reading is helpful, but enrollment can be completed while activation is pending.</p>
-                      <div className="mt-4 grid gap-4 md:grid-cols-3">
-                        <div><label className="mb-1 block text-sm font-bold">Systolic</label><input inputMode="numeric" value={systolic} onChange={(e) => setSystolic(e.target.value)} className="min-h-12 w-full rounded-xl border border-slate-300 px-3 text-base" /></div>
-                        <div><label className="mb-1 block text-sm font-bold">Diastolic</label><input inputMode="numeric" value={diastolic} onChange={(e) => setDiastolic(e.target.value)} className="min-h-12 w-full rounded-xl border border-slate-300 px-3 text-base" /></div>
-                        <div><label className="mb-1 block text-sm font-bold">Pulse</label><input inputMode="numeric" value={pulse} onChange={(e) => setPulse(e.target.value)} className="min-h-12 w-full rounded-xl border border-slate-300 px-3 text-base" /></div>
-                      </div>
+                      {selectedMonitoringDeviceTypes.length === 0 ? (
+                        <p className="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm font-bold text-slate-600">No first reading is required for the selected device type.</p>
+                      ) : (
+                        <div className="mt-4 space-y-4">
+                          {requiresBpReading && (
+                            <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+                              <p className="mb-3 text-sm font-extrabold text-slate-800">BP Monitor reading</p>
+                              <div className="grid gap-4 md:grid-cols-3">
+                                <div><label className="mb-1 block text-sm font-bold">Systolic</label><input inputMode="numeric" value={systolic} onChange={(e) => setSystolic(e.target.value)} className="min-h-12 w-full rounded-xl border border-slate-300 bg-white px-3 text-base" /></div>
+                                <div><label className="mb-1 block text-sm font-bold">Diastolic</label><input inputMode="numeric" value={diastolic} onChange={(e) => setDiastolic(e.target.value)} className="min-h-12 w-full rounded-xl border border-slate-300 bg-white px-3 text-base" /></div>
+                                <div><label className="mb-1 block text-sm font-bold">Pulse</label><input inputMode="numeric" value={pulse} onChange={(e) => setPulse(e.target.value)} className="min-h-12 w-full rounded-xl border border-slate-300 bg-white px-3 text-base" /></div>
+                              </div>
+                            </div>
+                          )}
+                          {requiresScaleReading && (
+                            <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+                              <p className="mb-3 text-sm font-extrabold text-slate-800">Scale reading</p>
+                              <div className="grid gap-4 md:grid-cols-2">
+                                <div><label className="mb-1 block text-sm font-bold">Weight</label><div className="relative"><input inputMode="decimal" value={scaleWeight} onChange={(e) => setScaleWeight(e.target.value)} className="min-h-12 w-full rounded-xl border border-slate-300 bg-white px-3 pr-12 text-base" /><span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-sm font-bold text-slate-500">lb</span></div></div>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      )}
                     </div>
                   </>
                 )}
