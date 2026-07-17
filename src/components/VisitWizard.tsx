@@ -1440,7 +1440,37 @@ This service is not for emergencies. If you agree, we can continue with your aut
       handleSaveAndExitLocal();
       return;
     }
-    if (!consentMethodSelected || !consentRecordComplete) {
+    if (!consentMethodSelected) {
+      setAlertMessage('Select how consent will be documented.');
+      return;
+    }
+    if (!representativeComplete) {
+      setAlertMessage('Complete the authorized representative identity and authority fields.');
+      return;
+    }
+    if (!signerName.trim()) {
+      setAlertMessage('Enter the signer name before continuing.');
+      return;
+    }
+    if (!patientEvidenceComplete) {
+      if (signatureMethod === 'DRAW') {
+        setAlertMessage('Capture and save the signature before continuing.');
+      } else if (signatureMethod === 'TYPE') {
+        setAlertMessage('Complete and confirm the typed signature before continuing.');
+      } else if (isVerbalConsent) {
+        setAlertMessage('Confirm verbal consent before continuing.');
+      } else if (isMarkXConsent) {
+        setAlertMessage('Capture the Mark/X signature and complete witness attestation before continuing.');
+      } else {
+        setAlertMessage('Complete the selected consent evidence before continuing.');
+      }
+      return;
+    }
+    if (!nurseAttestationComplete) {
+      setAlertMessage('Confirm the enrollment personnel attestation before continuing.');
+      return;
+    }
+    if (!consentRecordComplete) {
       setAlertMessage('Complete the consent method, signer information, and staff attestation.');
       return;
     }
@@ -2018,7 +2048,7 @@ This service is not for emergencies. If you agree, we can continue with your aut
             <button type="button" onClick={handleSaveAndExitLocal} className="enrollment-secondary-action"><Bookmark size={16} className="mr-2" />Save & continue later</button>
             {step > 1 && <button type="button" onClick={() => setStep(step - 1)} className="enrollment-secondary-action"><ArrowLeft size={16} className="mr-2" />Back</button>}
             {step === 1 && <button type="button" onClick={handleSimplifiedContinueFromStep1} disabled={!step1Complete} className="enrollment-primary-action">Continue<ArrowRight size={16} className="ml-2" /></button>}
-            {step === 2 && <button type="button" onClick={handleSimplifiedConsentContinue} disabled={isGeneratingConsentPdf || (consentDecision === 'ACCEPT' && !consentRecordComplete)} className="enrollment-primary-action">{isGeneratingConsentPdf ? 'Generating PDF...' : consentDecision === 'DECLINE' ? 'Record decline & finish' : 'Continue to document consent'}<ArrowRight size={16} className="ml-2" /></button>}
+            {step === 2 && <button type="button" onClick={handleSimplifiedConsentContinue} disabled={isGeneratingConsentPdf} className="enrollment-primary-action">{isGeneratingConsentPdf ? 'Generating PDF...' : consentDecision === 'DECLINE' ? 'Record decline & finish' : 'Continue to document consent'}<ArrowRight size={16} className="ml-2" /></button>}
             {step === 3 && <button type="button" onClick={handleSimplifiedCompleteEnrollment} disabled={!canCompleteSimplifiedEnrollment || isGeneratingDeliveryPdf} className="enrollment-complete-action">{isGeneratingDeliveryPdf ? 'Saving device record...' : 'Complete enrollment'}<CheckCircle size={16} className="ml-2" /></button>}
           </div>
         </footer>
