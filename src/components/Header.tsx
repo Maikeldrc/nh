@@ -15,7 +15,7 @@ export default function Header({ currentUser, onLogout }: HeaderProps) {
   const roleMeta = getRoleMeta(currentUser.role, t);
 
   return (
-    <header className="bg-white border-b border-slate-200" id="app-header">
+    <header className="sticky top-0 z-50 bg-white border-b border-slate-200" id="app-header">
       <div className="max-w-full mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
           {/* Logo Brand Section */}

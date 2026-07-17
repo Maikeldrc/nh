@@ -1572,11 +1572,8 @@ This service is not for emergencies. If you agree, we can continue with your aut
     return (
       <div className="enrollment-topbar" id="wizard-progress">
         <div className="enrollment-header">
-          <div className="enrollment-brand">
-            <div>
-              <p className="enrollment-brand-kicker">{PRODUCT_NAME}</p>
-              <h1>On-site enrollment</h1>
-            </div>
+          <div className="enrollment-page-title">
+            <h1>On-site enrollment</h1>
           </div>
           <div className="enrollment-time">
             <Clock3 size={18} aria-hidden="true" />

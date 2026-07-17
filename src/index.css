@@ -229,7 +229,7 @@
   #app-header {
     position: sticky;
     top: 0;
-    z-index: 40;
+    z-index: 60;
     min-height: 68px;
     border-bottom-color: var(--color-border-default);
     background: rgba(255, 255, 255, 0.92);
@@ -590,11 +590,10 @@
       linear-gradient(180deg, #ffffff 0%, var(--enrollment-canvas) 42%, #eef3f8 100%);
   }
 
-  #main-application-frame:has(#wizard-container) #app-header {
-    display: none;
-  }
-
   #main-application-frame:has(#wizard-container) > main {
+    width: 100%;
+    max-width: none;
+    margin-inline: 0;
     padding: 0 0 7rem;
   }
 
@@ -607,7 +606,7 @@
 
   #wizard-progress {
     position: sticky;
-    top: 0;
+    top: 68px;
     z-index: 30;
     width: 100%;
     border-width: 0 0 1px;
@@ -965,7 +964,7 @@
 
   .enrollment-topbar {
     position: sticky;
-    top: 0;
+    top: 68px;
     z-index: 40;
     border-bottom: 1px solid var(--enrollment-border);
     background: rgba(255, 255, 255, 0.94);
@@ -996,29 +995,19 @@
     padding-inline: 0;
   }
 
-  #wizard-progress.enrollment-topbar > .enrollment-header > .enrollment-brand {
+  #wizard-progress.enrollment-topbar > .enrollment-header > .enrollment-page-title {
     display: flex;
     grid-template-columns: none;
   }
 
-  #wizard-progress.enrollment-topbar > .enrollment-header > .enrollment-brand::before {
+  #wizard-progress.enrollment-topbar > .enrollment-header > .enrollment-page-title::before {
     content: none;
   }
 
-  .enrollment-brand {
+  .enrollment-page-title {
     display: flex;
     min-width: 0;
     align-items: center;
-    gap: 1.25rem;
-  }
-
-  .enrollment-brand-kicker {
-    margin: 0;
-    font-size: 0.68rem;
-    font-weight: 800;
-    letter-spacing: 0.14em;
-    text-transform: uppercase;
-    color: var(--enrollment-primary);
   }
 
   .enrollment-header h1 {
