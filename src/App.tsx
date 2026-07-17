@@ -259,9 +259,9 @@ export default function App() {
       currentUser.role,
       patientId,
       `${patient.firstName} ${patient.lastName}`,
-      'Visita Iniciada',
+      'Visit Started',
       'VISIT',
-      `Inicio de visita en ${PRODUCT_NAME} en la habitación ${patient.room || 'N/A'}. ${POWERED_BY}.`
+      `Started ${PRODUCT_NAME} visit in room ${patient.room || 'N/A'}. ${POWERED_BY}.`
     );
 
     setActivePatientId(patientId);
@@ -289,9 +289,9 @@ export default function App() {
         currentUser.role,
         patientId,
         `${patient.firstName} ${patient.lastName}`,
-        'Visita Reanudada',
+        'Visit Resumed',
         'VISIT',
-        `Reanudación del proceso de activación. Iniciando en Paso ${incompleteVisit.currentStep}`
+        `Activation process resumed at Step ${incompleteVisit.currentStep}.`
       );
     } else {
       // Fallback
@@ -326,9 +326,9 @@ export default function App() {
         currentUser.role,
         patientId,
         `${patient.firstName} ${patient.lastName}`,
-        'Enfermera Reasignada',
+        'Enrollment Personnel Reassigned',
         'PATIENT',
-        `Cambio de personal asignado de "${oldNurseName}" a "${nurse.name}".`
+        `Assigned enrollment personnel changed from "${oldNurseName}" to "${nurse.name}".`
       );
 
       refreshAppState();
@@ -362,9 +362,9 @@ export default function App() {
       currentUser.role,
       patient.id,
       `${patient.firstName} ${patient.lastName}`,
-      latestOrderAction === 'RESENT' ? 'Orden Médica Re-enviada' : 'Orden Médica Generada',
+      latestOrderAction === 'RESENT' ? 'Medical Order Resent' : 'Medical Order Generated',
       'DEVICE',
-      `Orden ${order.id} para ${order.deviceType || patient.requiredDevice}, versión ${order.orderVersion}, enviada a ${order.assignedPhysician}. Estado: ${order.status}. Creada por: ${order.createdBy || currentUser.name}.`
+      `Order ${order.id} for ${order.deviceType || patient.requiredDevice}, version ${order.orderVersion}, sent to ${order.assignedPhysician}. Status: ${order.status}. Created by: ${order.createdBy || currentUser.name}.`
     );
 
     refreshAppState();
@@ -404,9 +404,9 @@ export default function App() {
       currentUser.role,
       patient.id,
       `${patient.firstName} ${patient.lastName}`,
-      'Orden Medica Aprobada',
+      'Medical Order Approved',
       'DEVICE',
-      `Orden ${order.id} aprobada por ${currentUser.name}. Medico asignado: ${order.assignedPhysician}. Fecha: ${order.approvedAt}. Version: ${order.orderVersion}.`
+      `Order ${order.id} approved by ${currentUser.name}. Assigned physician: ${order.assignedPhysician}. Date: ${order.approvedAt}. Version: ${order.orderVersion}.`
     );
 
     void generateDocument('MEDICAL_ORDER', patient.id, { order }).then(({ document }) => {
@@ -419,9 +419,9 @@ export default function App() {
       currentUser.role,
       patient.id,
       `${patient.firstName} ${patient.lastName}`,
-      `${PRODUCT_NAME} - Orden Medica PDF Generado`,
+      `${PRODUCT_NAME} - Medical Order PDF Generated`,
       'DEVICE',
-      `PDF de evidencia generado para orden ${order.id}.`
+      `Evidence PDF generated for order ${order.id}.`
     );
 
     refreshAppState();
@@ -448,9 +448,9 @@ export default function App() {
       currentUser.role,
       patient.id,
       `${patient.firstName} ${patient.lastName}`,
-      'Orden Medica Requiere Revision',
+      'Medical Order Needs Revision',
       'DEVICE',
-      `Orden ${order.id} rechazada/needs revision por ${currentUser.name}. Nota: ${resolvedNotes}`
+      `Order ${order.id} marked as needs revision by ${currentUser.name}. Note: ${resolvedNotes}`
     );
 
     refreshAppState();
@@ -479,9 +479,9 @@ export default function App() {
       currentUser.role,
       docRecord.patientId,
       docRecord.patientName,
-      'PDF Descargado',
+      'PDF Downloaded',
       'GENERAL',
-      `Descarga local del documento "${docRecord.title}" (ID: ${docRecord.id}).`
+      `Local download of document "${docRecord.title}" (ID: ${docRecord.id}).`
     );
   };
 
@@ -589,9 +589,9 @@ export default function App() {
         currentUser.role,
         visit.patientId,
         `${patientObj.firstName} ${patientObj.lastName}`,
-        'Activación Bloqueada',
+        'Activation Blocked',
         'DEVICE',
-        'Intento de activar paciente con dispositivo sin orden médica aprobada.'
+        'Attempted to activate a device patient without an approved medical order.'
       );
       showToast(l('Activación bloqueada: falta orden médica aprobada.', 'Activation blocked: approved medical order is required.'), 'info');
       refreshAppState();
@@ -610,9 +610,9 @@ export default function App() {
         currentUser.role,
         visit.patientId,
         `${patientObj.firstName} ${patientObj.lastName}`,
-        'Consentimiento Guardado',
+        'Consent Saved',
         'CONSENT',
-        `Acuerdo firmado registrado para ${consent.signerName}. Estado: ${consent.status}`
+        `Signed agreement recorded for ${consent.signerName}. Status: ${consent.status}.`
       );
     }
 
@@ -624,9 +624,9 @@ export default function App() {
         currentUser.role,
         visit.patientId,
         `${patientObj.firstName} ${patientObj.lastName}`,
-        'Device Entregado/Actualizado',
+        'Device Delivered/Updated',
         'DEVICE',
-        `Dispositivo registrado: ${device.brand} (${device.serialNumber}). Conectividad: ${device.status}`
+        `Device recorded: ${device.brand} (${device.serialNumber}). Connectivity: ${device.status}.`
       );
     }
 
@@ -640,11 +640,11 @@ export default function App() {
         currentUser.role,
         visit.patientId,
         `${patientObj.firstName} ${patientObj.lastName}`,
-        isWeightReading ? 'Peso Registrado' : 'Presión Arterial Registrada',
+        isWeightReading ? 'Weight Recorded' : 'Blood Pressure Recorded',
         'BP_READING',
         isWeightReading
-          ? `Lectura basal de báscula: ${currentReading.weightLbs} lb.`
-          : `Lectura basal: ${currentReading.systolic}/${currentReading.diastolic} mmHg. Pulso: ${currentReading.pulse} bpm.`
+          ? `Baseline scale reading: ${currentReading.weightLbs} lb.`
+          : `Baseline reading: ${currentReading.systolic}/${currentReading.diastolic} mmHg. Pulse: ${currentReading.pulse} bpm.`
       );
     });
 
@@ -662,9 +662,9 @@ export default function App() {
         currentUser.role,
         visit.patientId,
         `${patientObj.firstName} ${patientObj.lastName}`,
-        'Paciente Activado',
+        'Patient Activated',
         'PATIENT',
-        `El paciente ha completado el flujo de ${PRODUCT_NAME} y ha quedado activo en el programa ${patientObj.assignedProgram}.`
+        `Patient completed the ${PRODUCT_NAME} flow and is active in program ${patientObj.assignedProgram}.`
       );
 
       showToast(l(`¡Paciente ${patientObj.firstName} ${patientObj.lastName} activado con éxito!`, `Patient ${patientObj.firstName} ${patientObj.lastName} activated successfully!`));
@@ -678,9 +678,9 @@ export default function App() {
           currentUser.role,
           visit.patientId,
           `${patientObj.firstName} ${patientObj.lastName}`,
-          `${PRODUCT_NAME} - Proceso Cancelado`,
+          `${PRODUCT_NAME} - Process Canceled`,
           'PATIENT',
-          `Proceso abortado. El paciente declinó firmar el consentimiento.`
+          `Process stopped. The patient declined consent.`
         );
         showToast(l(`${PRODUCT_NAME}: proceso cancelado porque el paciente declinó el consentimiento.`, `${PRODUCT_NAME}: process canceled because the patient declined consent.`), 'info');
       } else if (visit.status === 'COMPLETED') {
@@ -710,9 +710,9 @@ export default function App() {
           currentUser.role,
           visit.patientId,
           `${patientObj.firstName} ${patientObj.lastName}`,
-          `${PRODUCT_NAME} - Proceso Pausado`,
+          `${PRODUCT_NAME} - Process Paused`,
           'VISIT',
-          `Proceso guardado localmente para continuar en otro momento (Paso ${visit.currentStep}).`
+          `Process saved locally to continue later (Step ${visit.currentStep}).`
         );
         showToast(l('Proceso guardado. Puede continuar la visita más tarde.', 'Progress saved. You can continue the visit later.'), 'info');
       }
@@ -746,11 +746,11 @@ export default function App() {
       currentUser.role,
       newPatient.id,
       `${newPatient.firstName} ${newPatient.lastName}`,
-      isDraftRegistration ? 'Borrador de Paciente Guardado' : 'Paciente Registrado',
+      isDraftRegistration ? 'Patient Draft Saved' : 'Patient Registered',
       'PATIENT',
       isDraftRegistration
-        ? `Borrador de paciente guardado en ${newPatient.nursingHome} (habitacion ${newPatient.room || 'N/A'}). Pendiente completar registro.`
-        : `Nuevo paciente registrado en ${newPatient.nursingHome} (habitacion ${newPatient.room || 'N/A'}) bajo el programa ${newPatient.assignedProgram}.`
+        ? `Patient draft saved at ${newPatient.nursingHome} (room ${newPatient.room || 'N/A'}). Registration remains incomplete.`
+        : `New patient registered at ${newPatient.nursingHome} (room ${newPatient.room || 'N/A'}) under program ${newPatient.assignedProgram}.`
     );
 
     if (autoOrder) {
@@ -760,9 +760,9 @@ export default function App() {
         currentUser.role,
         newPatient.id,
         `${newPatient.firstName} ${newPatient.lastName}`,
-        'Orden Medica Auto-Generada',
+        'Medical Order Auto-Generated',
         'DEVICE',
-        `Orden ${autoOrder.id} generada automaticamente al registrar paciente RPM. Estado: ${autoOrder.status}.`
+        `Order ${autoOrder.id} generated automatically during RPM patient registration. Status: ${autoOrder.status}.`
       );
     }
 
@@ -792,9 +792,9 @@ export default function App() {
       currentUser.role,
       updatedPatient.id,
       `${updatedPatient.firstName} ${updatedPatient.lastName}`,
-      'Paciente Actualizado',
+      'Patient Updated',
       'PATIENT',
-      `Información del paciente actualizada: Residencia: ${updatedPatient.nursingHome}, Habitación: ${updatedPatient.room || 'N/A'}, Programa: ${updatedPatient.assignedProgram}.`
+      `Patient information updated: facility: ${updatedPatient.nursingHome}, room: ${updatedPatient.room || 'N/A'}, program: ${updatedPatient.assignedProgram}.`
     );
 
     refreshAppState();

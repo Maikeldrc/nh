@@ -1603,7 +1603,8 @@ This service is not for emergencies. If you agree, we can continue with your aut
     (signatureMethod === 'UNABLE' && Boolean(unableSignMethod))
   );
   const simplifiedStep2Ready = consentDecision === 'DECLINE' || (serviceExplanationConfirmed && consentRecordComplete && consentPdfGenerated);
-  const canCompleteSimplifiedEnrollment = consentDecision === 'ACCEPT' && consentPdfGenerated;
+  const patientAppPreferenceComplete = wantsPatientAppInfo === 'YES' || wantsPatientAppInfo === 'NO';
+  const canCompleteSimplifiedEnrollment = consentDecision === 'ACCEPT' && consentPdfGenerated && patientAppPreferenceComplete;
   const rpmActivationLabel = !isRpmApplicable
     ? 'Not applicable'
     : firstReadingComplete && deviceSetupReady
@@ -1721,6 +1722,10 @@ This service is not for emergencies. If you agree, we can continue with your aut
   };
 
   const handleSimplifiedCompleteEnrollment = async () => {
+    if (!patientAppPreferenceComplete) {
+      setAlertMessage('Select whether the patient wants information about the optional patient app.');
+      return;
+    }
     if (!canCompleteSimplifiedEnrollment) {
       setAlertMessage('Consent must be completed before enrollment can be finished.');
       return;
@@ -2170,7 +2175,7 @@ This service is not for emergencies. If you agree, we can continue with your aut
                     )}
                   </div>
                   {consentPdfGenerated && (
-                    <div className="flex flex-col gap-2 sm:flex-row">
+                    <div className="enrollment-pdf-actions">
                       <button
                         type="button"
                         onClick={() => {
@@ -2357,7 +2362,6 @@ This service is not for emergencies. If you agree, we can continue with your aut
               <p className="mt-1 text-base font-semibold text-slate-600">{patient.firstName} {patient.lastName} is ready to finish enrollment.</p>
               <div className="enrollment-status-grid">
                 <div className="enrollment-status-tile success"><p>Consent</p><strong>Completed</strong></div>
-                <div className="enrollment-status-tile neutral"><p>CCM</p><strong>{patient.assignedProgram.includes('CCM') ? 'Enrolled' : 'Not selected'}</strong></div>
                 {isRpmApplicable && <div className={`enrollment-status-tile ${deviceSetupReady ? 'success' : 'warning'}`}><p>RPM device</p><strong>{deviceSetupReady ? 'Assigned' : 'Pending'}</strong></div>}
                 {isRpmApplicable && <div className="enrollment-status-tile info"><p>RPM activation</p><strong>{rpmActivationLabel}</strong></div>}
               </div>
@@ -2367,7 +2371,7 @@ This service is not for emergencies. If you agree, we can continue with your aut
               <div className="enrollment-row-heading">
                 <span className="enrollment-section-icon" aria-hidden="true"><Smartphone size={20} /></span>
                 <div>
-                  <h3>Optional patient app</h3>
+                  <h3>Optional patient app <span className="enrollment-required-badge">Required</span></h3>
                   <p>Would the patient or caregiver like information about the mobile app?</p>
                 </div>
               </div>
