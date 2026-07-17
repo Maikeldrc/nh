@@ -1583,8 +1583,6 @@ This service is not for emergencies. If you agree, we can continue with your aut
                 {[
                   ['Patient name', `${patient.firstName} ${patient.lastName}`],
                   ['Date of birth', patient.birthDate],
-                  ['Room', patient.room || 'Not provided'],
-                  ['Facility', patient.nursingHome],
                   ['Ordering provider', patient.provider],
                   ['Selected services', selectedServices]
                 ].map(([label, value]) => (
