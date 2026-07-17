@@ -35,6 +35,52 @@ interface VisitWizardProps {
   diagnoses: DiagnosisCatalog[];
 }
 
+type RepresentativeRelationship =
+  | 'Spouse'
+  | 'Son'
+  | 'Daughter'
+  | 'Parent'
+  | 'Sibling'
+  | 'Grandchild'
+  | 'Other family member'
+  | 'Caregiver'
+  | 'Friend'
+  | 'Facility representative'
+  | 'Other / non-relative';
+
+type RepresentativeAuthority =
+  | 'DESIGNATED_HEALTH_CARE_SURROGATE'
+  | 'HEALTH_CARE_POWER_OF_ATTORNEY'
+  | 'COURT_APPOINTED_LEGAL_GUARDIAN'
+  | 'STATUTORY_HEALTH_CARE_PROXY'
+  | 'OTHER_LEGAL_AUTHORITY';
+
+const REPRESENTATIVE_RELATIONSHIP_OPTIONS: RepresentativeRelationship[] = [
+  'Spouse',
+  'Son',
+  'Daughter',
+  'Parent',
+  'Sibling',
+  'Grandchild',
+  'Other family member',
+  'Caregiver',
+  'Friend',
+  'Facility representative',
+  'Other / non-relative'
+];
+
+const REPRESENTATIVE_AUTHORITY_OPTIONS: Array<{ value: RepresentativeAuthority; label: string }> = [
+  { value: 'DESIGNATED_HEALTH_CARE_SURROGATE', label: 'Designated health care surrogate' },
+  { value: 'HEALTH_CARE_POWER_OF_ATTORNEY', label: 'Health care power of attorney' },
+  { value: 'COURT_APPOINTED_LEGAL_GUARDIAN', label: 'Court-appointed legal guardian' },
+  { value: 'STATUTORY_HEALTH_CARE_PROXY', label: 'Statutory health care proxy' },
+  { value: 'OTHER_LEGAL_AUTHORITY', label: 'Other legal authority' }
+];
+
+const OTHER_RELATIONSHIP_VALUE: RepresentativeRelationship = 'Other / non-relative';
+const FACILITY_REPRESENTATIVE_VALUE: RepresentativeRelationship = 'Facility representative';
+const OTHER_AUTHORITY_VALUE: RepresentativeAuthority = 'OTHER_LEGAL_AUTHORITY';
+
 const TECHNICAL_ACTIVATION_STATUS_OPTIONS: Array<{
   value: TechnicalActivationStatus;
   es: string;
@@ -167,10 +213,11 @@ export default function VisitWizard({
   const [repPresent, setRepPresent] = useState(savedBool('repPresent'));
   const [representativeAvailability, setRepresentativeAvailability] = useState<'NONE' | 'FAMILY' | 'LEGAL' | 'REMOTE'>(savedChoice('representativeAvailability', 'NONE'));
   const [readinessRepName, setReadinessRepName] = useState(savedString('readinessRepName'));
-  const [readinessRepRelationship, setReadinessRepRelationship] = useState(savedString('readinessRepRelationship'));
-  const [readinessRepAuthority, setReadinessRepAuthority] = useState<'HEALTH_CARE_PROXY' | 'POWER_OF_ATTORNEY' | 'GUARDIAN' | 'OTHER' | ''>(savedChoice('readinessRepAuthority', ''));
+  const [readinessRepRelationship, setReadinessRepRelationship] = useState<RepresentativeRelationship | ''>(savedChoice<RepresentativeRelationship | ''>('readinessRepRelationship', ''));
+  const [readinessRepRelationshipOther, setReadinessRepRelationshipOther] = useState(savedString('readinessRepRelationshipOther'));
+  const [readinessRepAuthority, setReadinessRepAuthority] = useState<RepresentativeAuthority | ''>(savedChoice<RepresentativeAuthority | ''>('readinessRepAuthority', ''));
+  const [readinessRepAuthorityOther, setReadinessRepAuthorityOther] = useState(savedString('readinessRepAuthorityOther'));
   const [readinessRepPhone, setReadinessRepPhone] = useState(savedString('readinessRepPhone'));
-  const [readinessRepEmail, setReadinessRepEmail] = useState(savedString('readinessRepEmail'));
   const [representativeContactMode, setRepresentativeContactMode] = useState<'IN_PERSON' | 'PHONE' | 'VIDEO'>(savedChoice('representativeContactMode', 'IN_PERSON'));
   const [preferredExplanationLanguage, setPreferredExplanationLanguage] = useState<'English' | 'Spanish' | 'Other'>(savedChoice('preferredExplanationLanguage', language === 'ES' ? 'Spanish' : 'English'));
   const [decisionMaker, setDecisionMaker] = useState<'PATIENT' | 'REPRESENTATIVE'>(savedChoice('decisionMaker', 'PATIENT'));
@@ -203,10 +250,11 @@ export default function VisitWizard({
   const consentDeclined = consentDecision === 'DECLINE';
   const [consentSignerType, setConsentSignerType] = useState<'PATIENT' | 'REPRESENTATIVE' | 'UNABLE'>(savedChoice('consentSignerType', 'PATIENT'));
   const [signerName, setSignerName] = useState(savedString('signerName', `${patient.firstName} ${patient.lastName}`));
-  const [repRelationship, setRepRelationship] = useState(savedString('repRelationship'));
-  const [authorityType, setAuthorityType] = useState<'HEALTH_CARE_PROXY' | 'POWER_OF_ATTORNEY' | 'GUARDIAN' | 'OTHER' | ''>(savedChoice('authorityType', ''));
+  const [repRelationship, setRepRelationship] = useState<RepresentativeRelationship | ''>(savedChoice<RepresentativeRelationship | ''>('repRelationship', ''));
+  const [repRelationshipOther, setRepRelationshipOther] = useState(savedString('repRelationshipOther'));
+  const [authorityType, setAuthorityType] = useState<RepresentativeAuthority | ''>(savedChoice<RepresentativeAuthority | ''>('authorityType', ''));
+  const [authorityTypeOther, setAuthorityTypeOther] = useState(savedString('authorityTypeOther'));
   const [representativePhone, setRepresentativePhone] = useState(savedString('representativePhone'));
-  const [representativeEmail, setRepresentativeEmail] = useState(savedString('representativeEmail'));
   const [representativeSignatureMethod, setRepresentativeSignatureMethod] = useState<'IN_PERSON' | 'REMOTE_LINK' | 'PHONE_VIDEO_VERBAL'>(savedChoice('representativeSignatureMethod', 'IN_PERSON'));
   const [signatureMethod, setSignatureMethod] = useState<'DRAW' | 'TYPE' | 'UNABLE'>(savedChoice('signatureMethod', 'DRAW'));
   const [typedSignatureName, setTypedSignatureName] = useState(savedString('typedSignatureName'));
@@ -241,8 +289,24 @@ export default function VisitWizard({
   const isMarkXConsent = signatureMethod === 'UNABLE' && unableSignMethod === 'MARK_X';
   const needsRepresentativeDetails = consentSignerType === 'REPRESENTATIVE' ||
     (signatureMethod === 'UNABLE' && unableSignMethod === 'REPRESENTATIVE_SIGNATURE');
+  const readinessRelationshipComplete = Boolean(readinessRepRelationship && (readinessRepRelationship !== OTHER_RELATIONSHIP_VALUE || readinessRepRelationshipOther.trim()));
+  const readinessAuthorityComplete = Boolean(readinessRepAuthority && (readinessRepAuthority !== OTHER_AUTHORITY_VALUE || readinessRepAuthorityOther.trim()));
+  const relationshipComplete = Boolean(repRelationship && (repRelationship !== OTHER_RELATIONSHIP_VALUE || repRelationshipOther.trim()));
+  const authorityComplete = Boolean(authorityType && (authorityType !== OTHER_AUTHORITY_VALUE || authorityTypeOther.trim()));
+  const readinessRelationshipForPayload = readinessRepRelationship === OTHER_RELATIONSHIP_VALUE
+    ? `${OTHER_RELATIONSHIP_VALUE}: ${readinessRepRelationshipOther.trim()}`
+    : readinessRepRelationship;
+  const relationshipForPayload = repRelationship === OTHER_RELATIONSHIP_VALUE
+    ? `${OTHER_RELATIONSHIP_VALUE}: ${repRelationshipOther.trim()}`
+    : repRelationship;
+  const readinessAuthorityForPayload = readinessRepAuthority === OTHER_AUTHORITY_VALUE
+    ? `Other legal authority: ${readinessRepAuthorityOther.trim()}`
+    : REPRESENTATIVE_AUTHORITY_OPTIONS.find(option => option.value === readinessRepAuthority)?.label || readinessRepAuthority;
+  const authorityForPayload = authorityType === OTHER_AUTHORITY_VALUE
+    ? `Other legal authority: ${authorityTypeOther.trim()}`
+    : REPRESENTATIVE_AUTHORITY_OPTIONS.find(option => option.value === authorityType)?.label || authorityType;
   const representativeComplete = !needsRepresentativeDetails ||
-    Boolean(signerName.trim() && repRelationship.trim() && authorityType && representativePhone.trim() && representativeSignatureMethod);
+    Boolean(signerName.trim() && relationshipComplete && authorityComplete && representativePhone.trim() && representativeSignatureMethod);
   const typedSignatureComplete = Boolean(typedSignatureName.trim() && typedSignatureAgreed && typedSignatureConfirmed);
   const unableConsentComplete = signatureMethod !== 'UNABLE' || Boolean(
     unableSignMethod &&
@@ -401,7 +465,7 @@ This service is not for emergencies. If you agree, we can continue with your aut
 
   const representativeRequired = decisionMaker === 'REPRESENTATIVE' || !patientCanDecide;
   const readinessRepresentativeComplete = representativeAvailability !== 'NONE' &&
-    Boolean(readinessRepName.trim() && readinessRepRelationship.trim() && readinessRepAuthority && readinessRepPhone.trim());
+    Boolean(readinessRepName.trim() && readinessRelationshipComplete && readinessAuthorityComplete && readinessRepPhone.trim());
   const step1Complete = idConfirmed && (
     participationDecisionPath === 'PATIENT'
       ? patientCanDecide
@@ -700,10 +764,10 @@ This service is not for emergencies. If you agree, we can continue with your aut
       consentEffectiveDate: CONSENT_TEXT_EFFECTIVE_DATE,
       signedBy: (consentSignerType === 'REPRESENTATIVE' || (signatureMethod === 'UNABLE' && unableSignMethod === 'REPRESENTATIVE_SIGNATURE')) ? 'REPRESENTATIVE' : 'PATIENT',
       signerName,
-      relationship: repRelationship || undefined,
+      relationship: relationshipForPayload || undefined,
       authorityType: authorityType || undefined,
+      authorityBasis: authorityForPayload || undefined,
       representativePhone: representativePhone || undefined,
-      representativeEmail: representativeEmail || undefined,
       representativeSignatureMethod: needsRepresentativeDetails ? representativeSignatureMethod : undefined,
       consentMethod: signatureMethod === 'TYPE'
         ? 'TYPED_SIGNATURE'
@@ -904,9 +968,10 @@ This service is not for emergencies. If you agree, we can continue with your aut
       representativeAvailability,
       readinessRepName,
       readinessRepRelationship,
+      readinessRepRelationshipOther,
       readinessRepAuthority,
+      readinessRepAuthorityOther,
       readinessRepPhone,
-      readinessRepEmail,
       representativeContactMode,
       preferredExplanationLanguage,
       decisionMaker,
@@ -930,9 +995,10 @@ This service is not for emergencies. If you agree, we can continue with your aut
       consentSignerType,
       signerName,
       repRelationship,
+      repRelationshipOther,
       authorityType,
+      authorityTypeOther,
       representativePhone,
-      representativeEmail,
       representativeSignatureMethod,
       signatureMethod,
       typedSignatureName,
@@ -1035,8 +1101,8 @@ This service is not for emergencies. If you agree, we can continue with your aut
         status: serviceExplanationConfirmed ? 'explained_and_understood' : 'pending'
       },
       representativeName: representativeAvailability !== 'NONE' ? readinessRepName : undefined,
-      representativeRelationship: representativeAvailability !== 'NONE' ? readinessRepRelationship : undefined,
-      representativeAuthority: representativeAvailability !== 'NONE' ? readinessRepAuthority : undefined,
+      representativeRelationship: representativeAvailability !== 'NONE' ? readinessRelationshipForPayload : undefined,
+      representativeAuthority: representativeAvailability !== 'NONE' ? readinessAuthorityForPayload : undefined,
       representativeContact: representativeAvailability !== 'NONE' ? `${representativeContactMode}: ${readinessRepPhone}` : undefined,
       formState
     };
@@ -1056,10 +1122,10 @@ This service is not for emergencies. If you agree, we can continue with your aut
         consentEffectiveDate: CONSENT_TEXT_EFFECTIVE_DATE,
         signedBy: (consentSignerType === 'REPRESENTATIVE' || (signatureMethod === 'UNABLE' && unableSignMethod === 'REPRESENTATIVE_SIGNATURE')) ? 'REPRESENTATIVE' : 'PATIENT',
         signerName,
-        relationship: repRelationship || undefined,
+        relationship: relationshipForPayload || undefined,
         authorityType: authorityType || undefined,
+        authorityBasis: authorityForPayload || undefined,
         representativePhone: representativePhone || undefined,
-        representativeEmail: representativeEmail || undefined,
         representativeSignatureMethod: needsRepresentativeDetails ? representativeSignatureMethod : undefined,
         consentMethod: signatureMethod === 'TYPE'
           ? 'TYPED_SIGNATURE'
@@ -1101,10 +1167,10 @@ This service is not for emergencies. If you agree, we can continue with your aut
         consentEffectiveDate: CONSENT_TEXT_EFFECTIVE_DATE,
         signedBy: declinedByRepresentative ? 'REPRESENTATIVE' : 'PATIENT',
         signerName: declinedByRepresentative ? readinessRepName : `${patient.firstName} ${patient.lastName}`,
-        relationship: declinedByRepresentative ? readinessRepRelationship : undefined,
+        relationship: declinedByRepresentative ? readinessRelationshipForPayload : undefined,
         authorityType: declinedByRepresentative ? readinessRepAuthority : undefined,
+        authorityBasis: declinedByRepresentative ? readinessAuthorityForPayload : undefined,
         representativePhone: declinedByRepresentative ? readinessRepPhone : undefined,
-        representativeEmail: declinedByRepresentative ? representativeEmail || undefined : undefined,
         declineReason: declineReason || undefined,
         nurseNotes: declineNotes || undefined,
         declineDateTime: new Date().toISOString(),
@@ -1676,33 +1742,32 @@ This service is not for emergencies. If you agree, we can continue with your aut
             </div>
 
             {participationDecisionPath === 'REPRESENTATIVE' && (
-              <div className="enrollment-form-grid">
+              <div className="enrollment-representative-grid">
                 <div>
                   <label className="mb-1 block text-sm font-bold">Full legal name</label>
                   <input value={readinessRepName} onChange={(e) => { setReadinessRepName(e.target.value); setSignerName(e.target.value); }} className="min-h-12 w-full rounded-xl border border-slate-300 px-3 text-base" />
                 </div>
                 <div>
                   <label className="mb-1 block text-sm font-bold">Relationship to patient</label>
-                  <input value={readinessRepRelationship} onChange={(e) => { setReadinessRepRelationship(e.target.value); setRepRelationship(e.target.value); }} className="min-h-12 w-full rounded-xl border border-slate-300 px-3 text-base" />
+                  <select value={readinessRepRelationship} onChange={(e) => { const value = e.target.value as RepresentativeRelationship | ''; setReadinessRepRelationship(value); setRepRelationship(value); if (value !== OTHER_RELATIONSHIP_VALUE) { setReadinessRepRelationshipOther(''); setRepRelationshipOther(''); } }} className="min-h-12 w-full rounded-xl border border-slate-300 bg-white px-3 text-base">
+                    <option value="">Select</option>
+                    {REPRESENTATIVE_RELATIONSHIP_OPTIONS.map(option => <option key={option} value={option}>{option}</option>)}
+                  </select>
                 </div>
                 <div>
                   <label className="mb-1 block text-sm font-bold">Authority basis</label>
-                  <select value={readinessRepAuthority} onChange={(e) => { setReadinessRepAuthority(e.target.value as typeof readinessRepAuthority); setAuthorityType(e.target.value as typeof authorityType); }} className="min-h-12 w-full rounded-xl border border-slate-300 bg-white px-3 text-base">
+                  <select value={readinessRepAuthority} onChange={(e) => { const value = e.target.value as RepresentativeAuthority | ''; setReadinessRepAuthority(value); setAuthorityType(value); if (value !== OTHER_AUTHORITY_VALUE) { setReadinessRepAuthorityOther(''); setAuthorityTypeOther(''); } }} className="min-h-12 w-full rounded-xl border border-slate-300 bg-white px-3 text-base">
                     <option value="">Select</option>
-                    <option value="HEALTH_CARE_PROXY">Health care surrogate</option>
-                    <option value="POWER_OF_ATTORNEY">Health care power of attorney</option>
-                    <option value="GUARDIAN">Legal guardian</option>
-                    <option value="OTHER">Other authorized representative</option>
+                    {REPRESENTATIVE_AUTHORITY_OPTIONS.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}
                   </select>
                 </div>
                 <div>
                   <label className="mb-1 block text-sm font-bold">Phone number</label>
                   <input value={readinessRepPhone} onChange={(e) => { setReadinessRepPhone(e.target.value); setRepresentativePhone(e.target.value); }} className="min-h-12 w-full rounded-xl border border-slate-300 px-3 text-base" />
                 </div>
-                <div className="md:col-span-2">
-                  <label className="mb-1 block text-sm font-bold">Email, optional</label>
-                  <input type="email" value={readinessRepEmail} onChange={(e) => { setReadinessRepEmail(e.target.value); setRepresentativeEmail(e.target.value); }} className="min-h-12 w-full rounded-xl border border-slate-300 px-3 text-base" />
-                </div>
+                {readinessRepRelationship === OTHER_RELATIONSHIP_VALUE && <div><label className="mb-1 block text-sm font-bold">Specify relationship</label><input value={readinessRepRelationshipOther} onChange={(e) => { setReadinessRepRelationshipOther(e.target.value); setRepRelationshipOther(e.target.value); }} className="min-h-12 w-full rounded-xl border border-slate-300 px-3 text-base" /></div>}
+                {readinessRepAuthority === OTHER_AUTHORITY_VALUE && <div><label className="mb-1 block text-sm font-bold">Specify authority basis</label><input value={readinessRepAuthorityOther} onChange={(e) => { setReadinessRepAuthorityOther(e.target.value); setAuthorityTypeOther(e.target.value); }} className="min-h-12 w-full rounded-xl border border-slate-300 px-3 text-base" /></div>}
+                {readinessRepRelationship === FACILITY_REPRESENTATIVE_VALUE && <p className="enrollment-info-banner md:col-span-2 xl:col-span-4"><Info size={16} aria-hidden="true" /> Facility staff may provide consent only when valid legal authority has been verified.</p>}
               </div>
             )}
           </section>
@@ -1794,12 +1859,14 @@ This service is not for emergencies. If you agree, we can continue with your aut
                 </section>
 
                 {decisionMaker === 'REPRESENTATIVE' && (
-                  <section className="enrollment-form-grid">
+                  <section className="enrollment-representative-grid">
                     <div><label className="mb-1 block text-sm font-bold">Full legal name</label><input value={signerName} onChange={(e) => setSignerName(e.target.value)} className="min-h-12 w-full rounded-xl border border-slate-300 px-3 text-base" /></div>
-                    <div><label className="mb-1 block text-sm font-bold">Relationship to patient</label><input value={repRelationship} onChange={(e) => setRepRelationship(e.target.value)} className="min-h-12 w-full rounded-xl border border-slate-300 px-3 text-base" /></div>
-                    <div><label className="mb-1 block text-sm font-bold">Authority basis</label><select value={authorityType} onChange={(e) => setAuthorityType(e.target.value as typeof authorityType)} className="min-h-12 w-full rounded-xl border border-slate-300 bg-white px-3 text-base"><option value="">Select</option><option value="HEALTH_CARE_PROXY">Health care surrogate</option><option value="POWER_OF_ATTORNEY">Health care power of attorney</option><option value="GUARDIAN">Legal guardian</option><option value="OTHER">Other authorized representative</option></select></div>
+                    <div><label className="mb-1 block text-sm font-bold">Relationship to patient</label><select value={repRelationship} onChange={(e) => { const value = e.target.value as RepresentativeRelationship | ''; setRepRelationship(value); if (value !== OTHER_RELATIONSHIP_VALUE) setRepRelationshipOther(''); }} className="min-h-12 w-full rounded-xl border border-slate-300 bg-white px-3 text-base"><option value="">Select</option>{REPRESENTATIVE_RELATIONSHIP_OPTIONS.map(option => <option key={option} value={option}>{option}</option>)}</select></div>
+                    <div><label className="mb-1 block text-sm font-bold">Authority basis</label><select value={authorityType} onChange={(e) => { const value = e.target.value as RepresentativeAuthority | ''; setAuthorityType(value); if (value !== OTHER_AUTHORITY_VALUE) setAuthorityTypeOther(''); }} className="min-h-12 w-full rounded-xl border border-slate-300 bg-white px-3 text-base"><option value="">Select</option>{REPRESENTATIVE_AUTHORITY_OPTIONS.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}</select></div>
                     <div><label className="mb-1 block text-sm font-bold">Phone number</label><input value={representativePhone} onChange={(e) => setRepresentativePhone(e.target.value)} className="min-h-12 w-full rounded-xl border border-slate-300 px-3 text-base" /></div>
-                    <div className="md:col-span-2"><label className="mb-1 block text-sm font-bold">Email, optional</label><input type="email" value={representativeEmail} onChange={(e) => setRepresentativeEmail(e.target.value)} className="min-h-12 w-full rounded-xl border border-slate-300 px-3 text-base" /></div>
+                    {repRelationship === OTHER_RELATIONSHIP_VALUE && <div><label className="mb-1 block text-sm font-bold">Specify relationship</label><input value={repRelationshipOther} onChange={(e) => setRepRelationshipOther(e.target.value)} className="min-h-12 w-full rounded-xl border border-slate-300 px-3 text-base" /></div>}
+                    {authorityType === OTHER_AUTHORITY_VALUE && <div><label className="mb-1 block text-sm font-bold">Specify authority basis</label><input value={authorityTypeOther} onChange={(e) => setAuthorityTypeOther(e.target.value)} className="min-h-12 w-full rounded-xl border border-slate-300 px-3 text-base" /></div>}
+                    {repRelationship === FACILITY_REPRESENTATIVE_VALUE && <p className="enrollment-info-banner md:col-span-2 xl:col-span-4"><Info size={16} aria-hidden="true" /> Facility staff may provide consent only when valid legal authority has been verified.</p>}
                   </section>
                 )}
 
@@ -2214,16 +2281,15 @@ This service is not for emergencies. If you agree, we can continue with your aut
                 {representativeAvailability !== 'NONE' && (
                   <div className="mt-4 grid gap-4 md:grid-cols-2">
                     <input value={readinessRepName} onChange={(e) => setReadinessRepName(e.target.value)} placeholder={l('Nombre completo *', 'Representative full name *')} className="rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm" />
-                    <input value={readinessRepRelationship} onChange={(e) => setReadinessRepRelationship(e.target.value)} placeholder={l('Relación con el paciente *', 'Relationship to patient *')} className="rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm" />
-                    <select value={readinessRepAuthority} onChange={(e) => setReadinessRepAuthority(e.target.value as typeof readinessRepAuthority)} className="rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm">
+                    <select value={readinessRepRelationship} onChange={(e) => setReadinessRepRelationship(e.target.value as RepresentativeRelationship | '')} className="rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm">
+                      <option value="">{l('Relación con el paciente *', 'Relationship to patient *')}</option>
+                      {REPRESENTATIVE_RELATIONSHIP_OPTIONS.map(option => <option key={option} value={option}>{option}</option>)}
+                    </select>
+                    <select value={readinessRepAuthority} onChange={(e) => setReadinessRepAuthority(e.target.value as RepresentativeAuthority | '')} className="rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm">
                       <option value="">{l('Tipo de autoridad *', 'Authority type *')}</option>
-                      <option value="HEALTH_CARE_PROXY">Health Care Proxy</option>
-                      <option value="POWER_OF_ATTORNEY">Power of Attorney</option>
-                      <option value="GUARDIAN">{l('Tutor legal', 'Guardian')}</option>
-                      <option value="OTHER">{l('Otro', 'Other')}</option>
+                      {REPRESENTATIVE_AUTHORITY_OPTIONS.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}
                     </select>
                     <input value={readinessRepPhone} onChange={(e) => setReadinessRepPhone(e.target.value)} placeholder={l('Teléfono *', 'Phone number *')} className="rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm" />
-                    <input type="email" value={readinessRepEmail} onChange={(e) => setReadinessRepEmail(e.target.value)} placeholder={l('Correo electrónico (opcional)', 'Email (optional)')} className="rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm" />
                     <select value={representativeContactMode} onChange={(e) => setRepresentativeContactMode(e.target.value as typeof representativeContactMode)} className="rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm">
                       <option value="IN_PERSON">{l('Presente en persona', 'Present in person')}</option>
                       <option value="PHONE">{l('Teléfono', 'Phone')}</option>
@@ -2436,25 +2502,21 @@ This service is not for emergencies. If you agree, we can continue with your aut
                         </div>
                         <div>
                           <label className="mb-1 block text-xs font-bold text-slate-700">{l('Relación con el paciente *', 'Relationship to patient *')}</label>
-                          <input value={repRelationship} onChange={(e) => setRepRelationship(e.target.value)} className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm" />
+                          <select value={repRelationship} onChange={(e) => setRepRelationship(e.target.value as RepresentativeRelationship | '')} className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm">
+                            <option value="">{l('Seleccione', 'Select')}</option>
+                            {REPRESENTATIVE_RELATIONSHIP_OPTIONS.map(option => <option key={option} value={option}>{option}</option>)}
+                          </select>
                         </div>
                         <div>
                           <label className="mb-1 block text-xs font-bold text-slate-700">{l('Tipo de autoridad *', 'Authority type *')}</label>
-                          <select value={authorityType} onChange={(e) => setAuthorityType(e.target.value as typeof authorityType)} className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm">
+                          <select value={authorityType} onChange={(e) => setAuthorityType(e.target.value as RepresentativeAuthority | '')} className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm">
                             <option value="">{l('Seleccione', 'Select')}</option>
-                            <option value="HEALTH_CARE_PROXY">Health Care Proxy</option>
-                            <option value="POWER_OF_ATTORNEY">Power of Attorney</option>
-                            <option value="GUARDIAN">{l('Tutor legal', 'Guardian')}</option>
-                            <option value="OTHER">{l('Otro', 'Other')}</option>
+                            {REPRESENTATIVE_AUTHORITY_OPTIONS.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}
                           </select>
                         </div>
                         <div>
                           <label className="mb-1 block text-xs font-bold text-slate-700">{l('Teléfono *', 'Phone number *')}</label>
                           <input value={representativePhone} onChange={(e) => setRepresentativePhone(e.target.value)} className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm" />
-                        </div>
-                        <div className="md:col-span-2">
-                          <label className="mb-1 block text-xs font-bold text-slate-700">{l('Correo electrónico (opcional)', 'Email (optional)')}</label>
-                          <input type="email" value={representativeEmail} onChange={(e) => setRepresentativeEmail(e.target.value)} className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm" />
                         </div>
                         <div className="md:col-span-2">
                           <label className="mb-1 block text-xs font-bold text-slate-700">{l('Método de firma *', 'Signature method *')}</label>

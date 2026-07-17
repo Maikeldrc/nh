@@ -233,9 +233,9 @@ export interface Consent {
   signedBy: 'PATIENT' | 'REPRESENTATIVE';
   signerName: string;
   relationship?: string; // e.g. "Son", "Spouse" (if representative)
-  authorityType?: 'HEALTH_CARE_PROXY' | 'POWER_OF_ATTORNEY' | 'GUARDIAN' | 'OTHER';
+  authorityType?: 'DESIGNATED_HEALTH_CARE_SURROGATE' | 'HEALTH_CARE_POWER_OF_ATTORNEY' | 'COURT_APPOINTED_LEGAL_GUARDIAN' | 'STATUTORY_HEALTH_CARE_PROXY' | 'OTHER_LEGAL_AUTHORITY';
+  authorityBasis?: string;
   representativePhone?: string;
-  representativeEmail?: string;
   representativeSignatureMethod?: 'IN_PERSON' | 'REMOTE_LINK' | 'PHONE_VIDEO_VERBAL';
   consentMethod?: 'SIGNATURE' | 'TYPED_SIGNATURE' | 'VERBAL' | 'MARK_X' | 'REPRESENTATIVE_SIGNATURE';
   signatureMethod?: 'DRAW' | 'TYPE' | 'UNABLE';
