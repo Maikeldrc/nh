@@ -955,6 +955,8 @@
 
   /* Premium enrollment redesign */
   .enrollment-shell {
+    --enrollment-content-max: 1320px;
+    --enrollment-content-gutter: 48px;
     width: 100%;
     margin: 0;
     padding: 0 0 7rem;
@@ -985,12 +987,12 @@
     align-items: center;
     justify-content: space-between;
     gap: 1rem;
-    width: min(100% - 48px, 1440px);
+    width: min(calc(100% - var(--enrollment-content-gutter)), var(--enrollment-content-max));
     margin-inline: auto;
   }
 
   #wizard-progress.enrollment-topbar > .enrollment-header {
-    width: min(100% - 48px, 1440px);
+    width: min(calc(100% - var(--enrollment-content-gutter)), var(--enrollment-content-max));
     margin-inline: auto;
     padding-inline: 0;
   }
@@ -1033,7 +1035,7 @@
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 1rem;
-    width: min(100% - 48px, 1180px);
+    width: min(calc(100% - var(--enrollment-content-gutter)), var(--enrollment-content-max));
     margin: 0 auto;
     padding: 1rem 0 1.15rem;
   }
@@ -1041,8 +1043,8 @@
   .enrollment-stepper::before {
     content: "";
     position: absolute;
-    left: 8%;
-    right: 8%;
+    left: 0;
+    right: 0;
     top: 2.05rem;
     height: 1px;
     background: var(--enrollment-border);
@@ -1062,6 +1064,14 @@
     background: transparent;
     color: var(--neutral-500);
     font-weight: 750;
+  }
+
+  .enrollment-step:first-child {
+    justify-content: flex-start;
+  }
+
+  .enrollment-step:last-child {
+    justify-content: flex-end;
   }
 
   .enrollment-step:disabled {
@@ -1106,7 +1116,7 @@
   }
 
   .enrollment-card-shell {
-    width: min(calc(100% - 48px), 1320px);
+    width: min(calc(100% - var(--enrollment-content-gutter)), var(--enrollment-content-max));
     margin: 1.5rem auto 0;
     overflow: clip;
     border: 1px solid var(--enrollment-border);
@@ -1116,8 +1126,8 @@
   }
 
   #wizard-body.enrollment-card-shell {
-    width: min(calc(100% - 48px), 1320px);
-    max-width: 1320px;
+    width: min(calc(100% - var(--enrollment-content-gutter)), var(--enrollment-content-max));
+    max-width: var(--enrollment-content-max);
     margin: 1.5rem auto 0;
   }
 
@@ -1773,7 +1783,7 @@
   }
 
   .enrollment-alert {
-    width: min(calc(100% - 48px), 1320px);
+    width: min(calc(100% - var(--enrollment-content-gutter)), var(--enrollment-content-max));
     margin: 1rem auto 0;
     border: 1px solid var(--error-100);
     background: var(--error-50);
