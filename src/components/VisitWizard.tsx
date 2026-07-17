@@ -329,6 +329,18 @@ export default function VisitWizard({
   const [consentPdfProgressLabel, setConsentPdfProgressLabel] = useState('');
   const [showFullConsent, setShowFullConsent] = useState(false);
   const previousSignatureMethodRef = useRef(signatureMethod);
+  const normalizeUsPhoneDigits = (value: string) => {
+    const digits = value.replace(/\D/g, '');
+    return digits.length === 11 && digits.startsWith('1') ? digits.slice(1) : digits;
+  };
+  const isValidUsPhoneNumber = (value: string) => {
+    const digits = normalizeUsPhoneDigits(value);
+    return /^[2-9]\d{2}[2-9]\d{6}$/.test(digits);
+  };
+  const phoneFormatError = l(
+    'Ingrese un número de teléfono válido de Estados Unidos, por ejemplo (305) 555-1234.',
+    'Enter a valid United States phone number, for example (305) 555-1234.'
+  );
   const isVerbalConsent = signatureMethod === 'UNABLE' && unableSignMethod === 'VERBAL';
   const isMarkXConsent = signatureMethod === 'UNABLE' && unableSignMethod === 'MARK_X';
   const isRepresentativeSignatureConsent = signatureMethod === 'UNABLE' && unableSignMethod === 'REPRESENTATIVE_SIGNATURE';
@@ -350,8 +362,10 @@ export default function VisitWizard({
   const authorityForPayload = authorityType === OTHER_AUTHORITY_VALUE
     ? `Other legal authority: ${authorityTypeOther.trim()}`
     : REPRESENTATIVE_AUTHORITY_OPTIONS.find(option => option.value === authorityType)?.label || authorityType;
+  const readinessRepresentativePhoneValid = isValidUsPhoneNumber(readinessRepPhone);
+  const representativePhoneValid = isValidUsPhoneNumber(representativePhone);
   const representativeComplete = !needsRepresentativeDetails ||
-    Boolean(signerName.trim() && relationshipComplete && authorityComplete && representativePhone.trim() && representativeSignatureMethod);
+    Boolean(signerName.trim() && relationshipComplete && authorityComplete && representativePhoneValid && representativeSignatureMethod);
   const typedSignatureComplete = Boolean(typedSignatureName.trim() && typedSignatureAgreed && typedSignatureConfirmed);
   const markWitnessComplete = !isMarkXConsent || !markWitnessDifferent || Boolean(markWitnessName.trim() && markWitnessRole.trim());
   const unableConsentComplete = signatureMethod !== 'UNABLE' || Boolean(
@@ -516,7 +530,7 @@ This service is not for emergencies. If you agree, we can continue with your aut
 
   const representativeRequired = decisionMaker === 'REPRESENTATIVE' || !patientCanDecide;
   const readinessRepresentativeComplete = representativeAvailability !== 'NONE' &&
-    Boolean(readinessRepName.trim() && readinessRelationshipComplete && readinessAuthorityComplete && readinessRepPhone.trim());
+    Boolean(readinessRepName.trim() && readinessRelationshipComplete && readinessAuthorityComplete && readinessRepresentativePhoneValid);
   const step1Complete = idConfirmed && (
     participationDecisionPath === 'PATIENT'
       ? patientCanDecide
@@ -1568,6 +1582,10 @@ This service is not for emergencies. If you agree, we can continue with your aut
       setAlertMessage('Select whether the patient can make the participation decision.');
       return;
     }
+    if (participationDecisionPath === 'REPRESENTATIVE' && readinessRepPhone.trim() && !readinessRepresentativePhoneValid) {
+      setAlertMessage(phoneFormatError);
+      return;
+    }
     if (participationDecisionPath === 'REPRESENTATIVE' && !readinessRepresentativeComplete) {
       setAlertMessage('Complete authorized representative identity and authority before continuing.');
       return;
@@ -1591,6 +1609,10 @@ This service is not for emergencies. If you agree, we can continue with your aut
     }
     if (!consentMethodSelected) {
       setAlertMessage('Select how consent will be documented.');
+      return;
+    }
+    if (needsRepresentativeDetails && representativePhone.trim() && !representativePhoneValid) {
+      setAlertMessage(phoneFormatError);
       return;
     }
     if (!representativeComplete) {
@@ -1843,7 +1865,15 @@ This service is not for emergencies. If you agree, we can continue with your aut
                 </div>
                 <div>
                   <label className="mb-1 block text-sm font-bold">Phone number</label>
-                  <input value={readinessRepPhone} onChange={(e) => { setReadinessRepPhone(e.target.value); setRepresentativePhone(e.target.value); }} className="min-h-12 w-full rounded-xl border border-slate-300 px-3 text-base" />
+                  <input
+                    type="tel"
+                    inputMode="tel"
+                    value={readinessRepPhone}
+                    onChange={(e) => { setReadinessRepPhone(e.target.value); setRepresentativePhone(e.target.value); }}
+                    className={`min-h-12 w-full rounded-xl border px-3 text-base ${readinessRepPhone.trim() && !readinessRepresentativePhoneValid ? 'border-red-500 ring-1 ring-red-500/20' : 'border-slate-300'}`}
+                    placeholder="(305) 555-1234"
+                  />
+                  {readinessRepPhone.trim() && !readinessRepresentativePhoneValid && <p className="mt-1 text-xs font-semibold text-red-600">{phoneFormatError}</p>}
                 </div>
                 {readinessRepRelationship === OTHER_RELATIONSHIP_VALUE && <div><label className="mb-1 block text-sm font-bold">Specify relationship</label><input value={readinessRepRelationshipOther} onChange={(e) => { setReadinessRepRelationshipOther(e.target.value); setRepRelationshipOther(e.target.value); }} className="min-h-12 w-full rounded-xl border border-slate-300 px-3 text-base" /></div>}
                 {readinessRepAuthority === OTHER_AUTHORITY_VALUE && <div><label className="mb-1 block text-sm font-bold">Specify authority basis</label><input value={readinessRepAuthorityOther} onChange={(e) => { setReadinessRepAuthorityOther(e.target.value); setAuthorityTypeOther(e.target.value); }} className="min-h-12 w-full rounded-xl border border-slate-300 px-3 text-base" /></div>}
@@ -1938,7 +1968,18 @@ This service is not for emergencies. If you agree, we can continue with your aut
                     <div><label className="mb-1 block text-sm font-bold">Full legal name</label><input value={signerName} onChange={(e) => setSignerName(e.target.value)} className="min-h-12 w-full rounded-xl border border-slate-300 px-3 text-base" /></div>
                     <div><label className="mb-1 block text-sm font-bold">Relationship to patient</label><select value={repRelationship} onChange={(e) => { const value = e.target.value as RepresentativeRelationship | ''; setRepRelationship(value); if (value !== OTHER_RELATIONSHIP_VALUE) setRepRelationshipOther(''); }} className="min-h-12 w-full rounded-xl border border-slate-300 bg-white px-3 text-base"><option value="">Select</option>{REPRESENTATIVE_RELATIONSHIP_OPTIONS.map(option => <option key={option} value={option}>{option}</option>)}</select></div>
                     <div><label className="mb-1 block text-sm font-bold">Authority basis</label><select value={authorityType} onChange={(e) => { const value = e.target.value as RepresentativeAuthority | ''; setAuthorityType(value); if (value !== OTHER_AUTHORITY_VALUE) setAuthorityTypeOther(''); }} className="min-h-12 w-full rounded-xl border border-slate-300 bg-white px-3 text-base"><option value="">Select</option>{REPRESENTATIVE_AUTHORITY_OPTIONS.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}</select></div>
-                    <div><label className="mb-1 block text-sm font-bold">Phone number</label><input value={representativePhone} onChange={(e) => setRepresentativePhone(e.target.value)} className="min-h-12 w-full rounded-xl border border-slate-300 px-3 text-base" /></div>
+                    <div>
+                      <label className="mb-1 block text-sm font-bold">Phone number</label>
+                      <input
+                        type="tel"
+                        inputMode="tel"
+                        value={representativePhone}
+                        onChange={(e) => setRepresentativePhone(e.target.value)}
+                        className={`min-h-12 w-full rounded-xl border px-3 text-base ${representativePhone.trim() && !representativePhoneValid ? 'border-red-500 ring-1 ring-red-500/20' : 'border-slate-300'}`}
+                        placeholder="(305) 555-1234"
+                      />
+                      {representativePhone.trim() && !representativePhoneValid && <p className="mt-1 text-xs font-semibold text-red-600">{phoneFormatError}</p>}
+                    </div>
                     {repRelationship === OTHER_RELATIONSHIP_VALUE && <div><label className="mb-1 block text-sm font-bold">Specify relationship</label><input value={repRelationshipOther} onChange={(e) => setRepRelationshipOther(e.target.value)} className="min-h-12 w-full rounded-xl border border-slate-300 px-3 text-base" /></div>}
                     {authorityType === OTHER_AUTHORITY_VALUE && <div><label className="mb-1 block text-sm font-bold">Specify authority basis</label><input value={authorityTypeOther} onChange={(e) => setAuthorityTypeOther(e.target.value)} className="min-h-12 w-full rounded-xl border border-slate-300 px-3 text-base" /></div>}
                     {repRelationship === FACILITY_REPRESENTATIVE_VALUE && <p className="enrollment-info-banner md:col-span-2 xl:col-span-4"><Info size={16} aria-hidden="true" /> Facility staff may provide consent only when valid legal authority has been verified.</p>}
@@ -2421,7 +2462,14 @@ This service is not for emergencies. If you agree, we can continue with your aut
                       <option value="">{l('Tipo de autoridad *', 'Authority type *')}</option>
                       {REPRESENTATIVE_AUTHORITY_OPTIONS.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}
                     </select>
-                    <input value={readinessRepPhone} onChange={(e) => setReadinessRepPhone(e.target.value)} placeholder={l('Teléfono *', 'Phone number *')} className="rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm" />
+                    <input
+                      type="tel"
+                      inputMode="tel"
+                      value={readinessRepPhone}
+                      onChange={(e) => setReadinessRepPhone(e.target.value)}
+                      placeholder={l('Teléfono *', 'Phone number *')}
+                      className={`rounded-xl border bg-white px-3 py-2.5 text-sm ${readinessRepPhone.trim() && !readinessRepresentativePhoneValid ? 'border-red-500 ring-1 ring-red-500/20' : 'border-slate-300'}`}
+                    />
                     <select value={representativeContactMode} onChange={(e) => setRepresentativeContactMode(e.target.value as typeof representativeContactMode)} className="rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm">
                       <option value="IN_PERSON">{l('Presente en persona', 'Present in person')}</option>
                       <option value="PHONE">{l('Teléfono', 'Phone')}</option>
@@ -2648,7 +2696,14 @@ This service is not for emergencies. If you agree, we can continue with your aut
                         </div>
                         <div>
                           <label className="mb-1 block text-xs font-bold text-slate-700">{l('Teléfono *', 'Phone number *')}</label>
-                          <input value={representativePhone} onChange={(e) => setRepresentativePhone(e.target.value)} className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm" />
+                          <input
+                            type="tel"
+                            inputMode="tel"
+                            value={representativePhone}
+                            onChange={(e) => setRepresentativePhone(e.target.value)}
+                            className={`w-full rounded-xl border bg-white px-3 py-2.5 text-sm ${representativePhone.trim() && !representativePhoneValid ? 'border-red-500 ring-1 ring-red-500/20' : 'border-slate-300'}`}
+                            placeholder="(305) 555-1234"
+                          />
                         </div>
                         <div className="md:col-span-2">
                           <label className="mb-1 block text-xs font-bold text-slate-700">{l('Método de firma *', 'Signature method *')}</label>
