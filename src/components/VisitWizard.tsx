@@ -1836,26 +1836,21 @@ This service is not for emergencies. If you agree, we can continue with your aut
 
             {consentDecision === 'ACCEPT' && (
               <>
-                <section className="enrollment-summary-card">
-                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                    <div className="enrollment-row-heading">
-                      <div>
-                        <h3>Participation summary</h3>
-                        <p>The patient has accepted services.</p>
-                      </div>
-                    </div>
-                    <button type="button" onClick={() => setStep(1)} className="enrollment-ghost-action"><Pencil size={16} className="mr-2" /> Edit responses</button>
+                <section className="enrollment-summary-card enrollment-participation-summary">
+                  <span className="enrollment-participation-status" aria-hidden="true"><CheckCircle size={20} /></span>
+                  <div className="enrollment-participation-copy">
+                    <h3>Participation summary</h3>
+                    <p>The patient has accepted services.</p>
                   </div>
-                  <div className="enrollment-summary-grid mt-4">
-                    <div className="enrollment-summary-item">
-                      <p>Participation decision</p>
-                      <strong>Accept services</strong>
-                    </div>
-                    <div className="enrollment-summary-item">
-                      <p>Consent provided by</p>
-                      <strong>{decisionMaker === 'REPRESENTATIVE' ? 'Authorized representative' : 'Patient'}</strong>
-                    </div>
+                  <div className="enrollment-participation-metric enrollment-participation-decision">
+                    <p>Participation decision</p>
+                    <strong>Accept services</strong>
                   </div>
+                  <div className="enrollment-participation-metric enrollment-participation-provider">
+                    <p>Consent provided by</p>
+                    <strong>{decisionMaker === 'REPRESENTATIVE' ? 'Authorized representative' : 'Patient'}</strong>
+                  </div>
+                  <button type="button" onClick={() => setStep(1)} className="enrollment-ghost-action enrollment-participation-action"><Pencil size={16} className="mr-2" /> Edit responses</button>
                 </section>
 
                 {decisionMaker === 'REPRESENTATIVE' && (
