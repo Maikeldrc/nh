@@ -248,6 +248,24 @@ export interface Consent {
   declineReason?: string;
   nurseNotes?: string;
   nurseAttestations?: string[];
+  finalAttestationText?: string;
+  finalAttestationConfirmed?: boolean;
+  finalAttestationConfirmedAt?: string;
+  documentedByUserId?: string;
+  documentedByName?: string;
+  documentedByRole?: string;
+  documentedAt?: string;
+  signerIdentity?: string;
+  representativeAuthority?: string;
+  markXWitness?: {
+    name: string;
+    role: string;
+    facility?: string;
+    userId?: string;
+    witnessedAt: string;
+    witnessedByAuthenticatedUser: boolean;
+  };
+  markXEvidenceCaptured?: boolean;
   facility?: string;
   captureDevice?: string;
   language?: string;

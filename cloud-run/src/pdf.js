@@ -122,7 +122,7 @@ function renderConsentPdf(patient, consent) {
     labelValue(doc, authC1, y + 10, 168, 'Authorized Care Program', program);
     labelValue(doc, authC1, y + 33, 168, 'Consent Template Version', consent.consentVersion || 'v2.0 AMAVITA_ITERA');
     labelValue(doc, authC2, y + 10, 168, 'Signer Name', signerName);
-    labelValue(doc, authC2, y + 33, 168, 'Authorized Person', authorizedPerson);
+    labelValue(doc, authC2, y + 33, 168, consent.authorityBasis ? 'Authority' : 'Authorized Person', consent.authorityBasis || authorizedPerson);
     labelValue(doc, authC3, y + 10, 150, 'Consent Method', humanize(consentMethod));
     labelValue(doc, authC3, y + 33, 150, 'Decision', consent.status || 'GRANTED');
     y += 69;
@@ -157,18 +157,26 @@ function renderConsentPdf(patient, consent) {
     // Audit
     sectionHeader(doc, page.x, y, page.w, 'Audit Log Details', '#7C3AED');
     y += 18;
-    card(doc, page.x, y, page.w, 76, '#FFFFFF', line);
+    card(doc, page.x, y, page.w, 88, '#FFFFFF', line);
     const c1 = page.x + 13;
     const c2 = page.x + 196;
     const c3 = page.x + 358;
+    const witness = consent.markXWitness;
+    const witnessSummary = witness
+      ? `${witness.name || 'N/A'} - ${witness.role || 'N/A'}${witness.userId ? ` (${witness.userId})` : ''}`
+      : 'N/A';
     labelValue(doc, c1, y + 10, 170, 'Consent Document ID', docId, { valueSize: 6.8 });
     labelValue(doc, c1, y + 31, 170, 'Audit Trail Token', consent.auditId || `audit_${docId.slice(-8)}`, { valueSize: 6.8 });
     labelValue(doc, c1, y + 52, 170, 'Decision', consent.status || 'GRANTED');
-    labelValue(doc, c2, y + 10, 145, 'Signer', signerName);
-    labelValue(doc, c2, y + 31, 145, 'Captured By', nurseName);
+    labelValue(doc, c1, y + 72, 170, 'Final Attestation', consent.finalAttestationConfirmed ? 'Confirmed' : 'Not confirmed');
+    labelValue(doc, c2, y + 10, 145, 'Signer Identity', consent.signerIdentity || signerName);
+    labelValue(doc, c2, y + 31, 145, 'Documented By', consent.documentedByName || nurseName);
     labelValue(doc, c2, y + 52, 145, 'Date & Time', formatDateTime(generatedAt), { valueSize: 6.8 });
+    labelValue(doc, c2, y + 72, 145, 'Documenter Role', consent.documentedByRole || 'Enrollment staff');
     labelValue(doc, c3, y + 10, 210, 'Facility', facility, { valueSize: facility.length > 48 ? 6.7 : 7.2 });
-    labelValue(doc, c3, y + 43, 210, 'Capture Device', consent.captureDevice || 'AMAVITA CareStart');
+    labelValue(doc, c3, y + 31, 210, 'Mark/X Witness', witnessSummary, { valueSize: 6.5 });
+    labelValue(doc, c3, y + 52, 210, 'Evidence Captured', consent.markXEvidenceCaptured ? 'Mark/X captured' : consent.patientSignature ? 'Signature captured' : 'Documented');
+    labelValue(doc, c3, y + 72, 210, 'Capture Device', consent.captureDevice || 'AMAVITA CareStart');
 
     pdfFooter(doc, page, docId);
 

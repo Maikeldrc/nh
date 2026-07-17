@@ -171,6 +171,7 @@ const FULL_CONSENT_SECTIONS = [
 const FULL_CONSENT_LEGAL_TEXT = FULL_CONSENT_SECTIONS
   .map(({ title, body }) => `${title}\n${body}`)
   .join('\n\n');
+const FINAL_CONSENT_ATTESTATION_TEXT = 'I confirm that I verified the signer’s identity and, when applicable, authority; explained the selected services; answered questions; and accurately documented the patient’s or authorized representative’s decision.';
 
 export default function VisitWizard({
   currentUser,
@@ -274,6 +275,7 @@ export default function VisitWizard({
   const [attestationCosts, setAttestationCosts] = useState(savedBool('attestationCosts'));
   const [attestationWitnessed, setAttestationWitnessed] = useState(savedBool('attestationWitnessed'));
   const [staffAttestationConfirmed, setStaffAttestationConfirmed] = useState(savedBool('staffAttestationConfirmed'));
+  const [markWitnessDifferent, setMarkWitnessDifferent] = useState(savedBool('markWitnessDifferent'));
   const [markWitnessName, setMarkWitnessName] = useState(savedString('markWitnessName'));
   const [markWitnessRole, setMarkWitnessRole] = useState(savedString('markWitnessRole'));
   const [markWitnessAttested, setMarkWitnessAttested] = useState(savedBool('markWitnessAttested'));
@@ -287,6 +289,7 @@ export default function VisitWizard({
   const previousSignatureMethodRef = useRef(signatureMethod);
   const isVerbalConsent = signatureMethod === 'UNABLE' && unableSignMethod === 'VERBAL';
   const isMarkXConsent = signatureMethod === 'UNABLE' && unableSignMethod === 'MARK_X';
+  const isRepresentativeSignatureConsent = signatureMethod === 'UNABLE' && unableSignMethod === 'REPRESENTATIVE_SIGNATURE';
   const needsRepresentativeDetails = consentSignerType === 'REPRESENTATIVE' ||
     (signatureMethod === 'UNABLE' && unableSignMethod === 'REPRESENTATIVE_SIGNATURE');
   const readinessRelationshipComplete = Boolean(readinessRepRelationship && (readinessRepRelationship !== OTHER_RELATIONSHIP_VALUE || readinessRepRelationshipOther.trim()));
@@ -308,18 +311,20 @@ export default function VisitWizard({
   const representativeComplete = !needsRepresentativeDetails ||
     Boolean(signerName.trim() && relationshipComplete && authorityComplete && representativePhone.trim() && representativeSignatureMethod);
   const typedSignatureComplete = Boolean(typedSignatureName.trim() && typedSignatureAgreed && typedSignatureConfirmed);
+  const markWitnessComplete = !isMarkXConsent || !markWitnessDifferent || Boolean(markWitnessName.trim() && markWitnessRole.trim());
   const unableConsentComplete = signatureMethod !== 'UNABLE' || Boolean(
     unableSignMethod &&
-    (isVerbalConsent || unableToSignReason.trim()) &&
+    (!isMarkXConsent || unableToSignReason.trim()) &&
     (!isMarkXConsent || patientSignature) &&
-    (!isMarkXConsent || (markWitnessName.trim() && markWitnessRole.trim() && markWitnessAttested)) &&
+    (!isRepresentativeSignatureConsent || patientSignature) &&
+    markWitnessComplete &&
     unableConsentConfirmed
   );
   const patientEvidenceComplete =
     signatureMethod === 'DRAW' ? Boolean(patientSignature) :
     signatureMethod === 'TYPE' ? typedSignatureComplete :
     unableConsentComplete;
-  const nurseAttestationComplete = Boolean(nurseSignature || staffAttestationConfirmed);
+  const nurseAttestationComplete = Boolean(staffAttestationConfirmed);
   const consentRecordComplete = consentDecision === 'ACCEPT' &&
     representativeComplete &&
     Boolean(signerName.trim()) &&
@@ -752,7 +757,9 @@ This service is not for emergencies. If you agree, we can continue with your aut
       });
     }, 550);
 
+    const consentTimestamp = new Date().toISOString();
     const mockConsentObj: Consent = {
+      ...buildConsentAuditMetadata(consentTimestamp),
       id: `con_${Date.now()}`,
       patientId: patient.id,
       visitId: existingVisit?.id || `vis_${Date.now()}`,
@@ -780,7 +787,7 @@ This service is not for emergencies. If you agree, we can continue with your aut
       signerType: (consentSignerType === 'REPRESENTATIVE' || (signatureMethod === 'UNABLE' && unableSignMethod === 'REPRESENTATIVE_SIGNATURE')) ? 'AUTHORIZED_REPRESENTATIVE' : 'PATIENT',
       unableToSignReason: unableToSignReason || undefined,
       nurseNotes: verbalConsentNurseNote || undefined,
-      nurseAttestations: ['SIGNER_IDENTITY_ROLE_CONFIRMED', 'VOLUNTARY_DECISION_CONFIRMED', 'SIGNATURE_OR_VERBAL_CONSENT_WITNESSED'],
+      nurseAttestations: ['FINAL_CONSENT_ATTESTATION_CONFIRMED'],
       facility: patient.nursingHome,
       captureDevice: PRODUCT_NAME,
       language,
@@ -788,8 +795,8 @@ This service is not for emergencies. If you agree, we can continue with your aut
       patientSignature,
       nurseSignature,
       nurseName: currentUser.name,
-      dateTime: new Date().toISOString(),
-      signedAt: new Date().toISOString(),
+      dateTime: consentTimestamp,
+      signedAt: consentTimestamp,
       capturedBy: currentUser.name,
       pdfGenerated: true,
       auditId: `con_audit_${Math.random().toString(36).substring(2, 9).toUpperCase()}`
@@ -1021,6 +1028,7 @@ This service is not for emergencies. If you agree, we can continue with your aut
       markWitnessName,
       markWitnessRole,
       markWitnessAttested,
+      markWitnessDifferent,
       consentPdfGenerated,
       deviceType,
       brand,
@@ -1110,7 +1118,9 @@ This service is not for emergencies. If you agree, we can continue with your aut
     // Consent Object (if signed)
     let consentObj: Consent | undefined = undefined;
     if (consentDecision === 'ACCEPT' && consentRecordComplete) {
+      const consentTimestamp = new Date().toISOString();
       consentObj = {
+        ...buildConsentAuditMetadata(consentTimestamp),
         id: `con_${patient.id}`,
         patientId: patient.id,
         visitId,
@@ -1138,7 +1148,7 @@ This service is not for emergencies. If you agree, we can continue with your aut
         signerType: (consentSignerType === 'REPRESENTATIVE' || (signatureMethod === 'UNABLE' && unableSignMethod === 'REPRESENTATIVE_SIGNATURE')) ? 'AUTHORIZED_REPRESENTATIVE' : 'PATIENT',
         unableToSignReason: unableToSignReason || undefined,
         nurseNotes: verbalConsentNurseNote || undefined,
-        nurseAttestations: ['SIGNER_IDENTITY_ROLE_CONFIRMED', 'VOLUNTARY_DECISION_CONFIRMED', 'SIGNATURE_OR_VERBAL_CONSENT_WITNESSED'],
+        nurseAttestations: ['FINAL_CONSENT_ATTESTATION_CONFIRMED'],
         facility: patient.nursingHome,
         captureDevice: PRODUCT_NAME,
         language,
@@ -1146,8 +1156,8 @@ This service is not for emergencies. If you agree, we can continue with your aut
         patientSignature,
         nurseSignature,
         nurseName: currentUser.name,
-        dateTime: new Date().toISOString(),
-        signedAt: new Date().toISOString(),
+        dateTime: consentTimestamp,
+        signedAt: consentTimestamp,
         capturedBy: currentUser.name,
         pdfGenerated: consentPdfGenerated,
         auditId: `con_audit_${Math.random().toString(36).substring(2, 9).toUpperCase()}`
@@ -1430,6 +1440,28 @@ This service is not for emergencies. If you agree, we can continue with your aut
   };
 
   const staffRoleLabel = currentUser.role === 'NURSE' ? 'Nurse' : 'Enrollment staff';
+  const effectiveMarkWitnessName = markWitnessDifferent ? markWitnessName.trim() : currentUser.name;
+  const effectiveMarkWitnessRole = markWitnessDifferent ? markWitnessRole.trim() : staffRoleLabel;
+  const buildConsentAuditMetadata = (timestamp: string): Partial<Consent> => ({
+    finalAttestationText: FINAL_CONSENT_ATTESTATION_TEXT,
+    finalAttestationConfirmed: staffAttestationConfirmed,
+    finalAttestationConfirmedAt: staffAttestationConfirmed ? timestamp : undefined,
+    documentedByUserId: currentUser.id,
+    documentedByName: currentUser.name,
+    documentedByRole: staffRoleLabel,
+    documentedAt: timestamp,
+    signerIdentity: signerName.trim() || undefined,
+    representativeAuthority: needsRepresentativeDetails ? authorityForPayload || undefined : undefined,
+    markXWitness: isMarkXConsent ? {
+      name: effectiveMarkWitnessName,
+      role: effectiveMarkWitnessRole,
+      facility: patient.nursingHome || undefined,
+      userId: markWitnessDifferent ? undefined : currentUser.id,
+      witnessedAt: timestamp,
+      witnessedByAuthenticatedUser: !markWitnessDifferent
+    } : undefined,
+    markXEvidenceCaptured: isMarkXConsent ? Boolean(patientSignature) : undefined
+  });
   const selectedServices = patient.assignedProgram || 'Not selected';
   const providerDisplayName = patient.provider?.trim() || '[Provider Name]';
   const providerDisplayWithTitle = /^dr\.?\s/i.test(providerDisplayName)
@@ -1466,6 +1498,7 @@ This service is not for emergencies. If you agree, we can continue with your aut
     } else {
       setSignatureMethod('UNABLE');
       setUnableSignMethod(method);
+      setUnableConsentConfirmed(false);
       if (method === 'VERBAL') {
         setUnableToSignReason('');
       }
@@ -1526,7 +1559,7 @@ This service is not for emergencies. If you agree, we can continue with your aut
       } else if (isVerbalConsent) {
         setAlertMessage('Confirm verbal consent before continuing.');
       } else if (isMarkXConsent) {
-        setAlertMessage('Capture the Mark/X signature and complete witness attestation before continuing.');
+        setAlertMessage('Capture the Mark/X signature and complete any required alternate witness fields before continuing.');
       } else {
         setAlertMessage('Complete the selected consent evidence before continuing.');
       }
@@ -1895,7 +1928,7 @@ This service is not for emergencies. If you agree, we can continue with your aut
                     <div className="enrollment-consent-panel space-y-4">
                       <div><label className="mb-1 block text-sm font-bold">Full legal name</label><input value={typedSignatureName} onChange={(e) => setTypedSignatureName(e.target.value)} className="min-h-12 w-full rounded-xl border border-slate-300 px-3 text-base" /></div>
                       <label className="flex cursor-pointer items-start gap-3 rounded-xl bg-white p-4"><input type="checkbox" checked={typedSignatureAgreed} onChange={(e) => setTypedSignatureAgreed(e.target.checked)} className="mt-1 h-5 w-5 rounded text-blue-600" /><span className="text-base font-bold">I confirm that typing my full legal name represents my signature.</span></label>
-                      <button type="button" onClick={() => { setSignerName(typedSignatureName.trim()); setTypedSignatureConfirmed(true); }} disabled={!typedSignatureName.trim() || !typedSignatureAgreed} className="min-h-11 rounded-xl bg-blue-600 px-4 text-sm font-extrabold text-white disabled:opacity-50">Confirm typed signature</button>
+                      <button type="button" onClick={() => { setSignerName(typedSignatureName.trim()); setTypedSignatureConfirmed(true); }} disabled={!typedSignatureName.trim() || !typedSignatureAgreed || !staffAttestationConfirmed} className="min-h-11 rounded-xl bg-blue-600 px-4 text-sm font-extrabold text-white disabled:opacity-50">Confirm typed signature</button>
                     </div>
                   )}
 
@@ -1906,7 +1939,7 @@ This service is not for emergencies. If you agree, we can continue with your aut
                       <div><p className="text-sm font-bold text-slate-500">Facility</p><p className="text-lg font-black">{patient.nursingHome}</p></div>
                       <div><p className="text-sm font-bold text-slate-500">Date and time</p><p className="text-lg font-black">{new Date().toLocaleString()}</p></div>
                       <div className="md:col-span-2"><label className="mb-1 block text-sm font-bold">Consent documentation note, optional</label><textarea value={verbalConsentNurseNote} onChange={(e) => setVerbalConsentNurseNote(e.target.value)} rows={3} className="w-full rounded-xl border border-slate-300 p-3 text-base" /></div>
-                      <button type="button" onClick={() => setUnableConsentConfirmed(true)} className="min-h-11 rounded-xl bg-blue-600 px-4 text-sm font-extrabold text-white">Confirm verbal consent</button>
+                      <button type="button" onClick={() => setUnableConsentConfirmed(true)} disabled={!staffAttestationConfirmed} className="min-h-11 rounded-xl bg-blue-600 px-4 text-sm font-extrabold text-white disabled:opacity-50">Confirm verbal consent</button>
                     </div>
                   )}
 
@@ -1914,9 +1947,37 @@ This service is not for emergencies. If you agree, we can continue with your aut
                     <div className="enrollment-consent-panel space-y-4">
                       <SignaturePad id="simplified-mark-x" label="Mark/X signature area" onSave={handleSavePatientSignature} onClear={() => setPatientSignature('')} savedDataUrl={patientSignature} signerName={signerName} confirmLabel="Save Mark/X" />
                       <div><label className="mb-1 block text-sm font-bold">Reason full signature could not be provided</label><textarea value={unableToSignReason} onChange={(e) => setUnableToSignReason(e.target.value)} rows={3} className="w-full rounded-xl border border-slate-300 p-3 text-base" /></div>
-                      <div className="grid gap-4 md:grid-cols-2"><div><label className="mb-1 block text-sm font-bold">Witness name</label><input value={markWitnessName} onChange={(e) => setMarkWitnessName(e.target.value)} className="min-h-12 w-full rounded-xl border border-slate-300 px-3 text-base" /></div><div><label className="mb-1 block text-sm font-bold">Witness role/title</label><input value={markWitnessRole} onChange={(e) => setMarkWitnessRole(e.target.value)} className="min-h-12 w-full rounded-xl border border-slate-300 px-3 text-base" /></div></div>
-                      <label className="flex cursor-pointer items-start gap-3 rounded-xl bg-white p-4"><input type="checkbox" checked={markWitnessAttested} onChange={(e) => setMarkWitnessAttested(e.target.checked)} className="mt-1 h-5 w-5 rounded text-blue-600" /><span className="text-base font-bold">Witness attestation completed.</span></label>
-                      <button type="button" onClick={() => setUnableConsentConfirmed(true)} disabled={!patientSignature || !unableToSignReason.trim() || !markWitnessName.trim() || !markWitnessRole.trim() || !markWitnessAttested} className="min-h-11 rounded-xl bg-blue-600 px-4 text-sm font-extrabold text-white disabled:opacity-50">Confirm Mark/X</button>
+                      <div className="rounded-xl border border-slate-200 bg-white p-4 text-sm font-semibold text-slate-700">
+                        <p className="font-extrabold text-slate-900">Witness recorded automatically</p>
+                        <p className="mt-1">Witness: {currentUser.name} · {staffRoleLabel} · {patient.nursingHome || 'Facility not provided'}</p>
+                      </div>
+                      <label className="flex cursor-pointer items-start gap-3 rounded-xl bg-white p-4"><input type="checkbox" checked={markWitnessDifferent} onChange={(e) => setMarkWitnessDifferent(e.target.checked)} className="mt-1 h-5 w-5 rounded text-blue-600" /><span className="text-base font-bold">A different person witnessed the Mark/X.</span></label>
+                      {markWitnessDifferent && (
+                        <div className="grid gap-4 md:grid-cols-2">
+                          <div><label className="mb-1 block text-sm font-bold">Witness full name</label><input value={markWitnessName} onChange={(e) => setMarkWitnessName(e.target.value)} className="min-h-12 w-full rounded-xl border border-slate-300 px-3 text-base" /></div>
+                          <div><label className="mb-1 block text-sm font-bold">Witness role/title</label><input value={markWitnessRole} onChange={(e) => setMarkWitnessRole(e.target.value)} className="min-h-12 w-full rounded-xl border border-slate-300 px-3 text-base" /></div>
+                        </div>
+                      )}
+                      <button type="button" onClick={() => setUnableConsentConfirmed(true)} disabled={!patientSignature || !unableToSignReason.trim() || !markWitnessComplete || !staffAttestationConfirmed} className="min-h-11 rounded-xl bg-blue-600 px-4 text-sm font-extrabold text-white disabled:opacity-50">Confirm Mark/X</button>
+                    </div>
+                  )}
+
+                  {isRepresentativeSignatureConsent && (
+                    <div className="enrollment-signature-panel">
+                      <div>
+                        <h4>Representative details</h4>
+                        <p>The authorized representative signs on behalf of the patient after authority is verified.</p>
+                        <label className="mt-4 mb-2 block text-sm font-bold">Signer name</label>
+                        <input value={signerName} onChange={(e) => setSignerName(e.target.value)} className="min-h-12 w-full rounded-xl border border-slate-300 px-3 text-base" />
+                      </div>
+                      <div>
+                        <div className="mb-3 flex items-center gap-2">
+                          <h4>Representative signature</h4>
+                          <span className="enrollment-required-badge">Required</span>
+                        </div>
+                        <SignaturePad id="simplified-representative-signature" label="Representative signature" onSave={handleSavePatientSignature} onClear={() => setPatientSignature('')} savedDataUrl={patientSignature} confirmLabel="Save signature" showLabel={false} showSignerName={false} />
+                        <button type="button" onClick={() => setUnableConsentConfirmed(true)} disabled={!patientSignature || !staffAttestationConfirmed} className="mt-4 min-h-11 rounded-xl bg-blue-600 px-4 text-sm font-extrabold text-white disabled:opacity-50">Confirm representative signature</button>
+                      </div>
                     </div>
                   )}
                 </section>
@@ -1925,7 +1986,7 @@ This service is not for emergencies. If you agree, we can continue with your aut
                   <input type="checkbox" checked={staffAttestationConfirmed} onChange={(e) => setStaffAttestationConfirmed(e.target.checked)} className="mt-1 h-6 w-6 rounded text-blue-600" />
                   <span className="enrollment-attestation-icon" aria-hidden="true"><ClipboardCheck size={22} /></span>
                   <span>
-                    <strong>I confirm that I verified the signer’s identity and role, explained the selected services, answered questions, and accurately documented the patient’s or authorized representative’s decision.</strong>
+                    <strong>{FINAL_CONSENT_ATTESTATION_TEXT}</strong>
                     <small><span className="enrollment-required-badge">Required</span></small>
                   </span>
                 </label>
@@ -2610,7 +2671,7 @@ This service is not for emergencies. If you agree, we can continue with your aut
                             setSignerName(typedSignatureName.trim());
                             setTypedSignatureConfirmed(true);
                           }}
-                          disabled={!typedSignatureName.trim() || !typedSignatureAgreed || typedSignatureConfirmed}
+                          disabled={!typedSignatureName.trim() || !typedSignatureAgreed || !staffAttestationConfirmed || typedSignatureConfirmed}
                           className="inline-flex min-h-11 items-center justify-center rounded-xl bg-blue-600 px-5 text-sm font-extrabold text-white shadow-lg shadow-blue-600/20 hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
                         >
                           <CheckCircle size={16} className="mr-2" /> {l('Confirmar Firma Tipeada', 'Confirm Typed Signature')}
@@ -2676,15 +2737,29 @@ This service is not for emergencies. If you agree, we can continue with your aut
                               signerName={`${patient.firstName} ${patient.lastName}`}
                               confirmLabel={l('Guardar Marca / X', 'Save Mark / X')}
                             />
+                            <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs font-semibold text-slate-700">
+                              <p className="font-extrabold text-slate-900">{l('Testigo registrado automáticamente', 'Witness recorded automatically')}</p>
+                              <p className="mt-1">{currentUser.name} · {staffRoleLabel} · {patient.nursingHome || l('Residencia no indicada', 'Facility not provided')}</p>
+                            </div>
+                            <label className="mt-4 flex cursor-pointer items-start gap-3 rounded-xl bg-slate-50 p-3">
+                              <input type="checkbox" checked={markWitnessDifferent} onChange={(e) => setMarkWitnessDifferent(e.target.checked)} className="mt-1 h-5 w-5 rounded text-blue-600" />
+                              <span className="text-sm font-bold text-slate-800">{l('Una persona diferente presenció la Marca/X.', 'A different person witnessed the Mark/X.')}</span>
+                            </label>
+                            {markWitnessDifferent && (
+                              <div className="mt-4 grid gap-4 md:grid-cols-2">
+                                <div><label className="mb-1 block text-xs font-bold text-slate-700">{l('Nombre completo del testigo', 'Witness full name')}</label><input value={markWitnessName} onChange={(e) => setMarkWitnessName(e.target.value)} className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm" /></div>
+                                <div><label className="mb-1 block text-xs font-bold text-slate-700">{l('Rol / título del testigo', 'Witness role/title')}</label><input value={markWitnessRole} onChange={(e) => setMarkWitnessRole(e.target.value)} className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm" /></div>
+                              </div>
+                            )}
                           </div>
                         )}
                         <button
                           type="button"
                           onClick={() => {
-                            if (!unableSignMethod || !unableToSignReason.trim() || (isMarkXConsent && !patientSignature)) return;
+                            if (!unableSignMethod || !unableToSignReason.trim() || (isMarkXConsent && (!patientSignature || !markWitnessComplete)) || !staffAttestationConfirmed) return;
                             setUnableConsentConfirmed(true);
                           }}
-                          disabled={!unableSignMethod || !unableToSignReason.trim() || (isMarkXConsent && !patientSignature) || unableConsentConfirmed}
+                          disabled={!unableSignMethod || !unableToSignReason.trim() || (isMarkXConsent && (!patientSignature || !markWitnessComplete)) || !staffAttestationConfirmed || unableConsentConfirmed}
                           className="inline-flex min-h-11 items-center justify-center rounded-xl bg-amber-600 px-5 text-sm font-extrabold text-white shadow-lg shadow-amber-600/20 hover:bg-amber-700 disabled:cursor-not-allowed disabled:opacity-50"
                         >
                           <CheckCircle size={16} className="mr-2" />
@@ -2705,10 +2780,7 @@ This service is not for emergencies. If you agree, we can continue with your aut
                     <div className="mb-5">
                       <h3 className="text-lg font-extrabold text-slate-900">{l('Atestación del Personal de Inscripción', 'Enrollment Personnel Attestation')}</h3>
                       <p className="mt-2 max-w-4xl text-sm leading-relaxed text-slate-600">
-                        {l(
-                          'La explicación del servicio se completó en el Paso 2. La enfermera confirma que la identidad y el rol del firmante fueron confirmados, que el paciente o representante tomó una decisión voluntaria, y que la firma o el consentimiento verbal fue presenciado/documentado durante este encuentro.',
-                          'The service explanation was completed in Step 2. The nurse confirms that the signer’s identity and role were confirmed, the patient or representative made a voluntary decision, and the signature or verbal consent was witnessed/documented during this encounter.'
-                        )}
+                        {FINAL_CONSENT_ATTESTATION_TEXT}
                       </p>
                     </div>
                     <div className="mb-5 grid gap-3 rounded-xl border border-slate-200 bg-slate-50 p-4 text-xs sm:grid-cols-2 lg:grid-cols-4">
