@@ -2131,6 +2131,21 @@
     opacity: 0.88;
   }
 
+  .premium-dark-header .medical-order-status-badge--pending,
+  .premium-dark-header .medical-order-status-badge--pending svg {
+    color: #92400e !important;
+  }
+
+  .premium-dark-header .medical-order-status-badge--approved,
+  .premium-dark-header .medical-order-status-badge--approved svg {
+    color: #047857 !important;
+  }
+
+  .premium-dark-header .medical-order-status-badge--revision,
+  .premium-dark-header .medical-order-status-badge--revision svg {
+    color: #991b1b !important;
+  }
+
   .bg-blue-50,
   .bg-indigo-50 {
     background-color: var(--primary-50);

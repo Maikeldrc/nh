@@ -42,6 +42,7 @@ export default function MedicalOrderReviewModal({
   const approvedDeviceTypes = getApprovedOrderDeviceTypes(patient);
   const pendingDeviceTypes = requestedDeviceTypes.filter(device => !approvedDeviceTypes.includes(device));
   const [selectedDeviceApprovals, setSelectedDeviceApprovals] = useState<string[]>(pendingDeviceTypes);
+  const revisionHistory = (order?.auditTrail || []).filter(entry => entry.action === 'REJECTED_NEEDS_REVISION');
 
   if (!isOpen) return null;
 
@@ -65,21 +66,21 @@ export default function MedicalOrderReviewModal({
     switch (orderStatus) {
       case 'ORDER_PENDING_PHYSICIAN_APPROVAL':
         return (
-          <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-amber-100 text-amber-800 border border-amber-200">
+          <span className="medical-order-status-badge medical-order-status-badge--pending inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-amber-100 text-amber-800 border border-amber-200">
             <AlertTriangle size={12} className="mr-1" />
             {l('Pendiente de Aprobacion', 'Pending Approval')}
           </span>
         );
       case 'ORDER_APPROVED':
         return (
-          <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
+          <span className="medical-order-status-badge medical-order-status-badge--approved inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
             <CheckCircle size={12} className="mr-1" />
             {l('Aprobada', 'Approved')}
           </span>
         );
       case 'ORDER_REJECTED_NEEDS_REVISION':
         return (
-          <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-red-100 text-red-800 border border-red-200">
+          <span className="medical-order-status-badge medical-order-status-badge--revision inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-red-100 text-red-800 border border-red-200">
             <AlertTriangle size={12} className="mr-1" />
             {l('Requiere Revision', 'Needs Revision')}
           </span>
@@ -366,6 +367,37 @@ export default function MedicalOrderReviewModal({
                     </div>
                   )}
                 </div>
+              )}
+            </div>
+          )}
+
+          {revisionHistory.length > 0 && (
+            <div className="rounded-xl border border-rose-200 bg-rose-50 p-4">
+              <div className="mb-3 flex items-center space-x-2">
+                <AlertTriangle size={14} className="text-rose-600" />
+                <h3 className="text-xs font-extrabold uppercase tracking-wider text-rose-700">
+                  {l('Historial de Revisiones Requeridas', 'Revision Required History')}
+                </h3>
+              </div>
+              <div className="space-y-2">
+                {revisionHistory.map((entry, index) => (
+                  <div key={`${entry.dateTime}-${index}`} className="rounded-lg border border-rose-100 bg-white px-3 py-2 text-xs">
+                    <div className="mb-1 flex flex-wrap items-center justify-between gap-2">
+                      <span className="font-extrabold text-rose-800">
+                        {l('Revision solicitada por', 'Revision requested by')} {entry.userName}
+                      </span>
+                      <span className="font-mono text-[10px] font-bold text-slate-500">
+                        {new Date(entry.dateTime).toLocaleString()}
+                      </span>
+                    </div>
+                    <p className="font-semibold text-slate-700">{entry.notes || l('Sin motivo documentado.', 'No reason documented.')}</p>
+                  </div>
+                ))}
+              </div>
+              {orderStatus === 'ORDER_REJECTED_NEEDS_REVISION' && (
+                <p className="mt-3 rounded-lg border border-rose-100 bg-white px-3 py-2 text-[11px] font-bold text-rose-800">
+                  {l('Esta orden debe corregirse y reenviarse antes de que el medico pueda aprobarla.', 'This order must be corrected and resent before the physician can approve it.')}
+                </p>
               )}
             </div>
           )}

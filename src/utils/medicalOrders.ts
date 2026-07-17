@@ -67,6 +67,7 @@ export function getMedicalOrderStatus(patient: Patient): MedicalOrderStatus | nu
   const approvedDevices = getApprovedOrderDeviceTypes(patient);
   if (requiredDevices.length > 0 && requiredDevices.every(device => approvedDevices.includes(device))) return 'ORDER_APPROVED';
   if (!order) return 'ORDER_REQUIRED';
+  if (order.status === 'ORDER_REJECTED_NEEDS_REVISION') return 'ORDER_REJECTED_NEEDS_REVISION';
   if (order.deviceApprovals?.length) {
     const requestedDevices = getOrderRequestedDevices(order, patient);
     const hasPendingCoverageForMissingDevices = requiredDevices
@@ -130,6 +131,12 @@ export function updatePendingMedicalOrderDevices(patient: Patient, user: User, d
     deviceType: requestedDevices.join(' + '),
     deviceApprovals: requestedDevices.map(device => {
       const existingApproval = existingOrder.deviceApprovals?.find(approval => approval.deviceType === device);
+      if (existingApproval?.status === 'REJECTED') {
+        return {
+          deviceType: device,
+          status: 'PENDING' as const
+        };
+      }
       return existingApproval || {
         deviceType: device,
         status: 'PENDING' as const
@@ -154,10 +161,20 @@ export function updatePendingMedicalOrderDevices(patient: Patient, user: User, d
 export function resubmitMedicalOrder(patient: Patient, user: User): MedicalOrder {
   const now = new Date().toISOString();
   const existingOrder = patient.medicalOrder || createMedicalOrder(patient, user);
+  const requestedDevices = getOrderRequestedDevices(existingOrder, patient);
   return {
     ...existingOrder,
     status: 'ORDER_PENDING_PHYSICIAN_APPROVAL',
+    deviceApprovals: requestedDevices.map(device => {
+      const existingApproval = existingOrder.deviceApprovals?.find(approval => approval.deviceType === device);
+      if (existingApproval?.status === 'APPROVED') return existingApproval;
+      return {
+        deviceType: device,
+        status: 'PENDING' as const
+      };
+    }),
     submittedAt: now,
+    rejectedAt: undefined,
     revisionNotes: undefined,
     auditTrail: [
       ...existingOrder.auditTrail,
@@ -209,7 +226,7 @@ export function approveMedicalOrderDevices(patient: Patient, user: User, approve
     rejectedAt: undefined,
     reviewedBy: user.name,
     reviewedByUserId: user.id,
-    revisionNotes: notes, // Store the approval notes here
+    revisionNotes: allApproved ? undefined : existingOrder.revisionNotes,
     auditTrail: [
       ...existingOrder.auditTrail,
       {
@@ -226,9 +243,18 @@ export function approveMedicalOrderDevices(patient: Patient, user: User, approve
 export function rejectMedicalOrder(patient: Patient, user: User, notes = 'Needs revision before device activation.'): MedicalOrder {
   const now = new Date().toISOString();
   const existingOrder = patient.medicalOrder || createMedicalOrder(patient, user);
+  const requestedDevices = getOrderRequestedDevices(existingOrder, patient);
   return {
     ...existingOrder,
     status: 'ORDER_REJECTED_NEEDS_REVISION',
+    deviceApprovals: requestedDevices.map(device => {
+      const existingApproval = existingOrder.deviceApprovals?.find(approval => approval.deviceType === device);
+      if (existingApproval?.status === 'APPROVED') return existingApproval;
+      return {
+        deviceType: device,
+        status: 'REJECTED' as const
+      };
+    }),
     rejectedAt: now,
     approvedAt: undefined,
     reviewedBy: user.name,
