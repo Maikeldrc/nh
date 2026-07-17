@@ -1594,7 +1594,7 @@ This service is not for emergencies. If you agree, we can continue with your aut
   const providerDisplayWithTitle = /^dr\.?\s/i.test(providerDisplayName)
     ? providerDisplayName
     : `Dr. ${providerDisplayName}`;
-  const deviceSetupReady = isRpmApplicable && medicalOrderApproved && Boolean(serialNumber.trim()) && devDeliveredToPatient && devInstructionsGiven && devUnderstandingDemonstrated;
+  const deviceSetupReady = isRpmApplicable && Boolean(serialNumber.trim()) && devDeliveredToPatient && devInstructionsGiven && devUnderstandingDemonstrated;
   const deviceOperationallyReady = isRpmApplicable && Boolean(serialNumber.trim()) && devDeliveredToPatient && devInstructionsGiven && devUnderstandingDemonstrated && firstReadingComplete;
   const onlyMedicalOrderPendingForCompletion = isRpmApplicable && requiresMedicalOrder && !medicalOrderApproved && deviceOperationallyReady;
   const consentMethodSelected = consentDecision === 'DECLINE' || (
@@ -1607,7 +1607,7 @@ This service is not for emergencies. If you agree, we can continue with your aut
   const canCompleteSimplifiedEnrollment = consentDecision === 'ACCEPT' && consentPdfGenerated && patientAppPreferenceComplete;
   const rpmActivationLabel = !isRpmApplicable
     ? 'Not applicable'
-    : firstReadingComplete && deviceSetupReady
+    : firstReadingComplete && deviceSetupReady && medicalOrderApproved
       ? 'Active'
       : firstReadingComplete
         ? 'First reading captured'
@@ -1733,7 +1733,7 @@ This service is not for emergencies. If you agree, we can continue with your aut
     if (isRpmApplicable && deviceSetupReady && !deliveryPdfGenerated && !isGeneratingDeliveryPdf) {
       await triggerDeliveryPDFGeneration();
     }
-    const shouldActivate = !isRpmApplicable || (isRpmApplicable && deviceSetupReady && firstReadingComplete);
+    const shouldActivate = !isRpmApplicable || (isRpmApplicable && medicalOrderApproved && deviceSetupReady && firstReadingComplete);
     const { visitObj, consentObj, deviceObj, readingObj } = createStateBundles(false);
     visitObj.status = onlyMedicalOrderPendingForCompletion ? 'IN_PROGRESS' : 'COMPLETED';
     visitObj.endTime = onlyMedicalOrderPendingForCompletion ? undefined : new Date().toISOString();
@@ -2241,9 +2241,7 @@ This service is not for emergencies. If you agree, we can continue with your aut
                   </div>
                 </div>
 
-                {medicalOrderApproved && (
-                  <>
-                    <div className="enrollment-subcard">
+                  <div className="enrollment-subcard">
                       <h4 className="enrollment-question-title"><ScanBarcode size={20} aria-hidden="true" /> Device information</h4>
                       <div className="mt-4 grid gap-4 md:grid-cols-2">
                         <div><label className="mb-1 block text-sm font-bold">Device</label><select value={deviceType} onChange={(e) => setDeviceType(e.target.value as typeof deviceType)} className="min-h-12 w-full rounded-xl border border-slate-300 bg-white px-3 text-base"><option value="BP Monitor">BP Monitor</option><option value="Scale">Scale</option><option value="Other">Other</option></select></div>
@@ -2279,9 +2277,9 @@ This service is not for emergencies. If you agree, we can continue with your aut
                           </div>
                         </div>
                       )}
-                    </div>
+                  </div>
 
-                    <div className="enrollment-subcard">
+                  <div className="enrollment-subcard">
                       <h4 className="enrollment-question-title"><GraduationCap size={20} aria-hidden="true" /> Delivery and education</h4>
                       <div className="mt-4 space-y-3">
                         {[['Device delivered to the patient or responsible staff', devDeliveredToPatient, setDevDeliveredToPatient], ['Device use and measurement technique explained', devInstructionsGiven, setDevInstructionsGiven], ['Patient or responsible staff demonstrated understanding', devUnderstandingDemonstrated, setDevUnderstandingDemonstrated]].map(([label, checked, setter]) => (
@@ -2291,9 +2289,9 @@ This service is not for emergencies. If you agree, we can continue with your aut
                           </label>
                         ))}
                       </div>
-                    </div>
+                  </div>
 
-                    <div className="enrollment-subcard">
+                  <div className="enrollment-subcard">
                       <h4 className="enrollment-question-title"><HeartPulse size={20} aria-hidden="true" /> First reading</h4>
                       <p className="mt-1 text-sm font-semibold text-slate-600">The first reading is helpful, but enrollment can be completed while activation is pending.</p>
                       {selectedMonitoringDeviceTypes.length === 0 ? (
@@ -2320,9 +2318,7 @@ This service is not for emergencies. If you agree, we can continue with your aut
                           )}
                         </div>
                       )}
-                    </div>
-                  </>
-                )}
+                  </div>
                 </div>
                 <aside className="enrollment-sidebar">
                   <div className="enrollment-subcard">
