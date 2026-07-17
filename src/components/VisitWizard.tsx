@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useLayoutEffect, useRef } from 'react';
 import QRCode from 'qrcode';
 import { Patient, Visit, Consent, Device, BPReading, User, DocumentRecord, TechnicalActivationStatus, ConditionGroupCatalog, DiagnosisCatalog, ProgramCatalog } from '../types';
 import SignaturePad from './SignaturePad';
@@ -251,22 +251,32 @@ export default function VisitWizard({
   const [step, setStep] = useState(normalizedInitialStep);
   const previousRenderedStepRef = useRef(step);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (previousRenderedStepRef.current === step) return;
     previousRenderedStepRef.current = step;
 
-    window.requestAnimationFrame(() => {
-      const wizardContainer = document.getElementById('wizard-container');
-      if (!wizardContainer) return;
+    if (document.activeElement instanceof HTMLElement) {
+      document.activeElement.blur();
+    }
 
-      const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-      const appHeaderOffset = 76;
-      const top = Math.max(0, wizardContainer.getBoundingClientRect().top + window.scrollY - appHeaderOffset);
-      window.scrollTo({
-        top,
-        behavior: prefersReducedMotion ? 'auto' : 'smooth'
-      });
+    const resetStepScroll = () => {
+      const wizardBody = document.getElementById('wizard-body');
+      const appHeader = document.getElementById('app-header');
+      const wizardProgress = document.getElementById('wizard-progress');
+      if (!wizardBody) return;
+
+      const stickyOffset = (appHeader?.getBoundingClientRect().height || 68)
+        + (wizardProgress?.getBoundingClientRect().height || 0)
+        + 16;
+      const top = Math.max(0, wizardBody.getBoundingClientRect().top + window.scrollY - stickyOffset);
+      window.scrollTo({ top, behavior: 'auto' });
       document.getElementById('wizard-body')?.focus({ preventScroll: true });
+    };
+
+    resetStepScroll();
+    window.requestAnimationFrame(() => {
+      resetStepScroll();
+      window.requestAnimationFrame(resetStepScroll);
     });
   }, [step]);
 
