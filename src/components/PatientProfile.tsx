@@ -17,6 +17,7 @@ interface PatientProfileProps {
   bpReadings: BPReading[];
   documents: DocumentRecord[];
   auditLogs: AuditLog[];
+  users: User[];
   nursingHomes: string[];
   conditionGroups: ConditionGroupCatalog[];
   diagnoses: DiagnosisCatalog[];
@@ -40,6 +41,7 @@ export default function PatientProfile({
   bpReadings,
   documents,
   auditLogs,
+  users,
   nursingHomes,
   conditionGroups,
   diagnoses,
@@ -460,6 +462,7 @@ export default function PatientProfile({
         onSave={onUpdatePatient}
         patient={patient}
         currentUser={currentUser}
+        users={users}
         nursingHomes={nursingHomes}
         conditionGroups={conditionGroups}
         diagnoses={diagnoses}

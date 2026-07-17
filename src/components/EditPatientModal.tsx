@@ -11,6 +11,7 @@ interface EditPatientModalProps {
   onSave: (updatedPatient: Patient) => void;
   patient: Patient;
   currentUser: User;
+  users: User[];
   nursingHomes: string[];
   conditionGroups: ConditionGroupCatalog[];
   diagnoses: DiagnosisCatalog[];
@@ -23,6 +24,7 @@ export default function EditPatientModal({
   onSave,
   patient,
   currentUser,
+  users,
   nursingHomes,
   conditionGroups,
   diagnoses,
@@ -68,6 +70,7 @@ export default function EditPatientModal({
   const [medicareId, setMedicareId] = useState('');
   const [nursingHome, setNursingHome] = useState('');
   const [room, setRoom] = useState('');
+  const [selectedPhysicianId, setSelectedPhysicianId] = useState('');
   const [selectedPrograms, setSelectedPrograms] = useState<string[]>([]);
   const assignedProgram = selectedPrograms.join(' + ');
   const [categorySearch, setCategorySearch] = useState('');
@@ -111,6 +114,10 @@ export default function EditPatientModal({
       selected_at: new Date().toISOString()
     };
   };
+  const physicians = users
+    .filter(user => user.role === 'PHYSICIAN' && user.active !== false)
+    .sort((a, b) => a.name.localeCompare(b.name));
+  const selectedPhysician = physicians.find(physician => physician.id === selectedPhysicianId);
   const ICD10_CODE_PATTERN = /^[A-Z][0-9][0-9A-Z](?:\.[0-9A-Z]{1,4})?$/;
   const CCM_CONDITIONS_ERROR = 'CCM requires at least 2 chronic conditions with valid ICD-10 codes.';
   const assignedProgramIncludesCcm = assignedProgram
@@ -157,6 +164,11 @@ export default function EditPatientModal({
       setMedicareId(patient.medicareId || '');
       setNursingHome(patient.nursingHome || nursingHomes[0] || '');
       setRoom(patient.room || '');
+      const physicianMatch = physicians.find(physician =>
+        physician.name === (patient.medicalOrder?.assignedPhysician || patient.provider)
+        || physician.name === patient.provider
+      );
+      setSelectedPhysicianId(physicianMatch?.id || '');
       setSelectedPrograms((patient.assignedProgram || '').split('+').map(program => program.trim()).filter(Boolean));
       setSelectedRequiredDevices(parseRequiredDevices(patient.requiredDevice));
       
@@ -201,7 +213,7 @@ export default function EditPatientModal({
       );
       setIsLtc(hasLtc);
     }
-  }, [patient, isOpen, nursingHomes, conditionGroups, diagnoses]);
+  }, [patient, isOpen, nursingHomes, conditionGroups, diagnoses, users]);
 
   // RTM and inactive programs are not available during patient registration/editing.
   const activeProgramCatalog = programs.length > 0
@@ -268,6 +280,9 @@ export default function EditPatientModal({
     if (!nursingHome) {
       newErrors.nursingHome = language === 'ES' ? 'Debe seleccionar un asilo/residencia' : 'Nursing home is required';
     }
+    if (!selectedPhysician) {
+      newErrors.provider = l('Seleccione el médico supervisor.', 'Select the supervising physician.');
+    }
     if (!isLtc) {
       newErrors.isLtc = language === 'ES' ? 'El paciente debe ser Long Term Care (LTC) obligatoriamente' : 'The patient must be Long Term Care (LTC)';
     }
@@ -309,6 +324,15 @@ export default function EditPatientModal({
       icd10Code: diagnosis.icd10Code,
       icd10Display: diagnosis.icd10Display
     }));
+    const supervisingPhysician = selectedPhysician?.name || patient.provider;
+    const existingMedicalOrder = patient.medicalOrder
+      ? {
+          ...patient.medicalOrder,
+          assignedPhysician: patient.medicalOrder.status === 'ORDER_APPROVED'
+            ? patient.medicalOrder.assignedPhysician
+            : supervisingPhysician
+        }
+      : undefined;
     
     const updatedPatient: Patient = {
       ...patient,
@@ -318,6 +342,7 @@ export default function EditPatientModal({
       medicareId: medicareId.trim(),
       nursingHome,
       room: room.trim() || undefined,
+      provider: supervisingPhysician,
       assignedProgram,
       conditions,
       diagnoses: patientDiagnoses,
@@ -325,13 +350,13 @@ export default function EditPatientModal({
       medicationsPendingReview: isMedicationListPending,
       requiredDevice,
       medicalOrder: assignedProgram.includes('RPM') && requiredDevice
-        ? patient.medicalOrder || {
+        ? existingMedicalOrder || {
             id: `ord_pending_${patient.id}`,
             status: 'ORDER_REQUIRED',
             createdAt: '',
             createdBy: '',
             createdByUserId: '',
-            assignedPhysician: patient.provider,
+            assignedPhysician: supervisingPhysician,
             orderVersion: MEDICAL_ORDER_VERSION,
             auditTrail: []
           }
@@ -491,6 +516,30 @@ export default function EditPatientModal({
                   placeholder="e.g. 104-B"
                 />
               </div>
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-slate-700 mb-1">
+                {language === 'ES' ? 'Médico supervisor *' : 'Supervising physician *'}
+              </label>
+              <select
+                value={selectedPhysicianId}
+                onChange={(e) => setSelectedPhysicianId(e.target.value)}
+                className={`w-full px-3 py-2 border rounded-xl text-xs bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 text-slate-800 font-semibold ${
+                  errors.provider ? 'border-red-500 ring-1 ring-red-500/20' : 'border-slate-300'
+                }`}
+              >
+                <option value="">{language === 'ES' ? 'Seleccione un médico' : 'Select a physician'}</option>
+                {physicians.map(physician => (
+                  <option key={physician.id} value={physician.id}>{physician.name}</option>
+                ))}
+              </select>
+              {physicians.length === 0 && (
+                <span className="text-[10px] text-amber-600 font-semibold mt-1 block">
+                  {language === 'ES' ? 'No hay médicos activos registrados.' : 'No active physicians are registered.'}
+                </span>
+              )}
+              {errors.provider && <span className="text-[10px] text-red-500 font-semibold mt-0.5 block">{errors.provider}</span>}
             </div>
 
             <div>

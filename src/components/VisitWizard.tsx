@@ -34,6 +34,7 @@ interface VisitWizardProps {
   onGenerateDeliveryPDF: (device: Device, callback: (pdfDataUrl: string) => void) => Promise<void>;
   onUpdatePatient?: (updatedPatient: Patient) => void;
   onGenerateMedicalOrder: (patientId: string, deviceType?: string) => void;
+  users: User[];
   nursingHomes: string[];
   conditionGroups: ConditionGroupCatalog[];
   diagnoses: DiagnosisCatalog[];
@@ -224,6 +225,7 @@ export default function VisitWizard({
   onGenerateDeliveryPDF,
   onUpdatePatient,
   onGenerateMedicalOrder,
+  users,
   nursingHomes,
   conditionGroups,
   diagnoses,
@@ -2436,6 +2438,7 @@ This service is not for emergencies. If you agree, we can continue with your aut
         }}
         patient={patient}
         currentUser={currentUser}
+        users={users}
         nursingHomes={nursingHomes}
         conditionGroups={conditionGroups}
         diagnoses={diagnoses}
@@ -4005,6 +4008,7 @@ This service is not for emergencies. If you agree, we can continue with your aut
         }}
         patient={patient}
         currentUser={currentUser}
+        users={users}
         nursingHomes={nursingHomes}
         conditionGroups={conditionGroups}
         diagnoses={diagnoses}

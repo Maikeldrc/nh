@@ -429,6 +429,11 @@ export default function RegisterPatientModal({
   // Nurses list
   const nurses = users.filter(u => isEnrollmentOperationsRole(u.role) && u.active !== false);
   const assignedNurseId = isEnrollmentOperationsRole(currentUser.role) ? currentUser.id : (nurses[0]?.id || '');
+  const physicians = users
+    .filter(user => user.role === 'PHYSICIAN' && user.active !== false)
+    .sort((a, b) => a.name.localeCompare(b.name));
+  const [selectedPhysicianId, setSelectedPhysicianId] = useState('');
+  const selectedPhysician = physicians.find(physician => physician.id === selectedPhysicianId);
 
   // RTM and inactive programs are not available during new patient registration.
   const eligiblePrograms = activePrograms.filter(program => program.code !== 'RTM' && program.code !== 'Other');
@@ -537,6 +542,9 @@ export default function RegisterPatientModal({
     if (!nursingHome) {
       newErrors.nursingHome = language === 'ES' ? 'Debe seleccionar un asilo/residencia' : 'Nursing home is required';
     }
+    if (!selectedPhysician) {
+      newErrors.provider = language === 'ES' ? 'Seleccione el médico supervisor.' : 'Select the supervising physician.';
+    }
     if (!isLtc) {
       newErrors.isLtc = language === 'ES' ? 'El paciente debe ser Long Term Care (LTC) obligatoriamente' : 'The patient must be Long Term Care (LTC)';
     }
@@ -594,6 +602,7 @@ export default function RegisterPatientModal({
     setMedStrength('');
     setIsLtc(false);
     setSelectedRequiredDevices([]);
+    setSelectedPhysicianId('');
     setErrors({});
   };
 
@@ -639,6 +648,7 @@ export default function RegisterPatientModal({
     
     const finalMedications = [...medications];
     const selectedNurse = nurses.find(n => n.id === assignedNurseId) || currentUser;
+    const supervisingPhysician = selectedPhysician?.name || '';
 
     return {
       id: `pat_${Date.now()}`,
@@ -648,7 +658,7 @@ export default function RegisterPatientModal({
       medicareId: medicareId.trim() || undefined,
       nursingHome: nursingHome || defaultNursingHome || 'Input Facility',
       room: room.trim() || undefined,
-      provider: 'Dr. Robert Chen', // default provider
+      provider: supervisingPhysician,
       practice: PRACTICE_NAME,    // default medical practice
       assignedProgram,
       conditions,
@@ -867,6 +877,30 @@ export default function RegisterPatientModal({
                   placeholder="e.g. 104-B"
                 />
               </div>
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-slate-700 mb-1">
+                {language === 'ES' ? 'Médico supervisor *' : 'Supervising physician *'}
+              </label>
+              <select
+                value={selectedPhysicianId}
+                onChange={(e) => setSelectedPhysicianId(e.target.value)}
+                className={`w-full px-3 py-2 border rounded-xl text-xs bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 text-slate-800 font-semibold ${
+                  errors.provider ? 'border-red-500 ring-1 ring-red-500/20' : 'border-slate-300'
+                }`}
+              >
+                <option value="">{language === 'ES' ? 'Seleccione un médico' : 'Select a physician'}</option>
+                {physicians.map(physician => (
+                  <option key={physician.id} value={physician.id}>{physician.name}</option>
+                ))}
+              </select>
+              {physicians.length === 0 && (
+                <span className="text-[10px] text-amber-600 font-semibold mt-1 block">
+                  {language === 'ES' ? 'No hay médicos activos registrados.' : 'No active physicians are registered.'}
+                </span>
+              )}
+              {errors.provider && <span className="text-[10px] text-red-500 font-semibold mt-0.5 block">{errors.provider}</span>}
             </div>
 
             <div>

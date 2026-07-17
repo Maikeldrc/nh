@@ -927,6 +927,7 @@ export default function App() {
             bpReadings={patientBPReadings}
             documents={documents.filter(d => d.patientId === selectedPatient.id)}
             auditLogs={auditLogs}
+            users={getUsers()}
             nursingHomes={nursingHomes}
             conditionGroups={conditionGroups}
             diagnoses={diagnoses}
@@ -961,6 +962,7 @@ export default function App() {
             onGenerateDeliveryPDF={handleGenerateDeliveryPDF}
             onUpdatePatient={handleUpdatePatient}
             onGenerateMedicalOrder={handleGenerateMedicalOrder}
+            users={getUsers()}
             nursingHomes={nursingHomes}
             conditionGroups={conditionGroups}
             diagnoses={diagnoses}
