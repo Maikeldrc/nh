@@ -445,15 +445,39 @@ function titleFor(type) {
   return 'Physician Medical Order';
 }
 
+function fileTypeFor(type) {
+  if (type === 'CONSENT') return 'Consent';
+  if (type === 'DEVICE_DELIVERY') return 'Device';
+  if (type === 'MEDICAL_ORDER') return 'Order';
+  return humanize(type || 'Document');
+}
+
+function sanitizeFilePart(value) {
+  return String(value || '')
+    .normalize('NFKD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^A-Za-z0-9]+/g, '_')
+    .replace(/^_+|_+$/g, '')
+    .slice(0, 80);
+}
+
+export function buildPdfFileName(type, patient, id) {
+  const patientName = sanitizeFilePart(`${patient?.firstName || ''} ${patient?.lastName || ''}`) || 'Patient';
+  const docType = sanitizeFilePart(fileTypeFor(type)) || 'Document';
+  const docCode = sanitizeFilePart(id) || `doc_${Date.now()}`;
+  return `${patientName}_${docType}_${docCode}.pdf`;
+}
+
 export async function createPdf(type, patient, source, user) {
   const id = `doc_${crypto.randomUUID()}`;
   const buffer = await renderPdf(type, patient, source);
   const title = titleFor(type);
+  const fileName = buildPdfFileName(type, patient, id);
   const response = await withPdfStorageError(() => retryTransientGoogleError(() => drive.files.create({
-    fields: 'id',
+    fields: 'id,name',
     supportsAllDrives: true,
     requestBody: {
-      name: `${id}.pdf`,
+      name: fileName,
       parents: [config.driveFolderId],
       mimeType: 'application/pdf',
       appProperties: {
@@ -471,6 +495,7 @@ export async function createPdf(type, patient, source, user) {
       visitId: source.consent?.visitId || patient.id,
       type,
       title,
+      fileName: response.data.name || fileName,
       dateTime: new Date().toISOString(),
       generatedBy: user.name,
       driveFileId: response.data.id

@@ -504,7 +504,7 @@ app.get('/v1/documents/:id/content', async (req, res, next) => {
     });
     res.set({
       'Content-Type': 'application/pdf',
-      'Content-Disposition': `attachment; filename="${document.id}.pdf"`,
+      'Content-Disposition': `attachment; filename="${document.fileName || `${document.id}.pdf`}"`,
       'Cache-Control': 'private, no-store'
     });
     return res.send(buffer);

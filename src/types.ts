@@ -341,7 +341,9 @@ export interface DocumentRecord {
   visitId: string;
   type: 'CONSENT' | 'DEVICE_DELIVERY' | 'MEDICAL_ORDER';
   title: string;
+  fileName?: string;
   dateTime: string;
   generatedBy: string;
   version?: string;
+  driveFileId?: string;
 }
