@@ -430,9 +430,29 @@ export default function RegisterPatientModal({
   useEffect(() => {
     const eligibleCodes = eligiblePrograms.map(program => program.code);
     setSelectedPrograms(previous => {
-      return previous.filter(code => eligibleCodes.includes(code));
+      const eligibleSelection = previous.filter(code => eligibleCodes.includes(code));
+      return eligibleSelection.includes('CCM') && eligibleSelection.includes('PCM')
+        ? eligibleSelection.filter(code => code !== 'PCM')
+        : eligibleSelection;
     });
   }, [programs]);
+
+  const toggleProgramSelection = (programCode: string, checked: boolean) => {
+    setSelectedPrograms(previous => {
+      if (!checked) {
+        return previous.filter(code => code !== programCode);
+      }
+
+      const nextPrograms = previous.filter(code => {
+        if (programCode === 'CCM') return code !== 'PCM';
+        if (programCode === 'PCM') return code !== 'CCM';
+        return true;
+      });
+
+      return Array.from(new Set([...nextPrograms, programCode]));
+    });
+  };
+
   const ICD10_CODE_PATTERN = /^[A-Z][0-9][0-9A-Z](?:\.[0-9A-Z]{1,4})?$/;
   const CCM_CONDITIONS_ERROR = 'CCM requires at least 2 chronic conditions with valid ICD-10 codes.';
   const assignedProgramIncludesCcm = assignedProgram
@@ -850,13 +870,7 @@ export default function RegisterPatientModal({
                       <input
                         type="checkbox"
                         checked={checked}
-                        onChange={(event) => {
-                          if (event.target.checked) {
-                            setSelectedPrograms([...selectedPrograms, program.code]);
-                          } else {
-                            setSelectedPrograms(selectedPrograms.filter(code => code !== program.code));
-                          }
-                        }}
+                        onChange={(event) => toggleProgramSelection(program.code, event.target.checked)}
                         className="mr-2 h-3.5 w-3.5 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
                       />
                       {program.display}

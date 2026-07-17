@@ -202,8 +202,29 @@ export default function EditPatientModal({
   const eligiblePrograms = activeProgramCatalog.filter(program => program.code !== 'RTM' && program.code !== 'Other');
   useEffect(() => {
     const eligibleCodes = eligiblePrograms.map(program => program.code);
-    setSelectedPrograms(previous => previous.filter(code => eligibleCodes.includes(code)));
+    setSelectedPrograms(previous => {
+      const eligibleSelection = previous.filter(code => eligibleCodes.includes(code));
+      return eligibleSelection.includes('CCM') && eligibleSelection.includes('PCM')
+        ? eligibleSelection.filter(code => code !== 'PCM')
+        : eligibleSelection;
+    });
   }, [programs]);
+
+  const toggleProgramSelection = (programCode: string, checked: boolean) => {
+    setSelectedPrograms(previous => {
+      if (!checked) {
+        return previous.filter(code => code !== programCode);
+      }
+
+      const nextPrograms = previous.filter(code => {
+        if (programCode === 'CCM') return code !== 'PCM';
+        if (programCode === 'PCM') return code !== 'CCM';
+        return true;
+      });
+
+      return Array.from(new Set([...nextPrograms, programCode]));
+    });
+  };
 
   // Errors state
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -469,12 +490,7 @@ export default function EditPatientModal({
                     <input
                       type="checkbox"
                       checked={selectedPrograms.includes(program.code)}
-                      onChange={(event) => {
-                        setSelectedPrograms(previous => event.target.checked
-                          ? Array.from(new Set([...previous, program.code]))
-                          : previous.filter(code => code !== program.code)
-                        );
-                      }}
+                      onChange={(event) => toggleProgramSelection(program.code, event.target.checked)}
                       className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
                     />
                     <span>{program.display || program.code}</span>
