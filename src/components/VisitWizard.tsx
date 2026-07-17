@@ -249,6 +249,26 @@ export default function VisitWizard({
   
   // Current active step (1 to 5)
   const [step, setStep] = useState(normalizedInitialStep);
+  const previousRenderedStepRef = useRef(step);
+
+  useEffect(() => {
+    if (previousRenderedStepRef.current === step) return;
+    previousRenderedStepRef.current = step;
+
+    window.requestAnimationFrame(() => {
+      const wizardContainer = document.getElementById('wizard-container');
+      if (!wizardContainer) return;
+
+      const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      const appHeaderOffset = 76;
+      const top = Math.max(0, wizardContainer.getBoundingClientRect().top + window.scrollY - appHeaderOffset);
+      window.scrollTo({
+        top,
+        behavior: prefersReducedMotion ? 'auto' : 'smooth'
+      });
+      document.getElementById('wizard-body')?.focus({ preventScroll: true });
+    });
+  }, [step]);
 
 
   // STEP 1: IDENTITY CONFIRMATION
@@ -1839,7 +1859,7 @@ This service is not for emergencies. If you agree, we can continue with your aut
         </div>
       )}
 
-      <main className="enrollment-card-shell" id="wizard-body">
+      <main className="enrollment-card-shell" id="wizard-body" tabIndex={-1}>
         {step === 1 && (
           <section className="enrollment-screen">
             <SectionHeader
