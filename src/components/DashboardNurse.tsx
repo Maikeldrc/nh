@@ -420,7 +420,7 @@ export default function DashboardNurse({
     const patient = row.patient;
     if (patient.status === 'ACTIVE' || row.enrollmentStatus === 'Enrollment completed' || row.enrollmentStatus === 'Pending activation') {
       return (
-        <button onClick={() => onViewEnrollment(patient.id)} className="inline-flex min-h-11 w-full items-center justify-center rounded-xl bg-blue-600 px-3 text-xs font-extrabold text-white shadow-lg shadow-blue-600/15 transition hover:bg-blue-700">
+        <button onClick={() => onViewEnrollment(patient.id)} className="inline-flex min-h-11 w-full items-center justify-center rounded-xl border border-indigo-200 bg-indigo-50 px-3 text-xs font-extrabold text-indigo-700 shadow-sm transition hover:bg-indigo-100">
           <Eye size={14} className="mr-1.5" /> View enrollment
         </button>
       );
