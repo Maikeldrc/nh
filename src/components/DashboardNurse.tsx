@@ -71,6 +71,7 @@ interface WorklistRow {
 
 const PATIENTS_PER_PAGE = 10;
 const PATIENT_PAGE_SIZE_OPTIONS = [10, 25, 50, 100];
+const SORT_OPTIONS: SortOption[] = ['PRIORITY', 'UPDATED', 'NAME', 'FACILITY', 'STATUS'];
 const TEST_VALUE_PATTERN = /\b(demo|test|qa[_\s-]?draft|sample|asdf|qwe|xxx|zzzz|sasasa)\b/i;
 
 const badgeToneClasses: Record<BadgeTone, string> = {
@@ -101,6 +102,14 @@ function toTimestamp(value?: string): number {
   if (!value) return 0;
   const timestamp = Date.parse(value);
   return Number.isFinite(timestamp) ? timestamp : 0;
+}
+
+function normalizeSortText(value?: string): string {
+  return (value || '').trim().toLocaleLowerCase();
+}
+
+function patientDisplayName(patient: Patient): string {
+  return `${patient.firstName || ''} ${patient.lastName || ''}`.trim();
 }
 
 function isValidBirthDate(value?: string): boolean {
@@ -301,10 +310,14 @@ export default function DashboardNurse({
   const [search, setSearch] = useState('');
   const [selectedNH, setSelectedNH] = useState('');
   const [selectedStatus, setSelectedStatus] = useState<WorklistFilter>('ALL');
-  const [sortBy, setSortBy] = useState<SortOption>('PRIORITY');
   const { language, t } = useLanguage();
   const l = (es: string, en: string) => language === 'ES' ? es : en;
   const patientPageSizePreferenceKey = `amavita.patientPageSize.${currentUser.id}`;
+  const patientSortPreferenceKey = `amavita.patientSort.${currentUser.id}`;
+  const [sortBy, setSortBy] = useState<SortOption>(() => {
+    const stored = window.localStorage.getItem(patientSortPreferenceKey) as SortOption | null;
+    return stored && SORT_OPTIONS.includes(stored) ? stored : 'PRIORITY';
+  });
   const [patientPageSize, setPatientPageSize] = useState(() => {
     const stored = Number(window.localStorage.getItem(patientPageSizePreferenceKey));
     return PATIENT_PAGE_SIZE_OPTIONS.includes(stored) ? stored : PATIENTS_PER_PAGE;
@@ -369,9 +382,9 @@ export default function DashboardNurse({
     return filtered.sort((a, b) => {
       if (sortBy === 'PRIORITY') return a.priority - b.priority || (toTimestamp(b.lastUpdated) - toTimestamp(a.lastUpdated));
       if (sortBy === 'UPDATED') return toTimestamp(b.lastUpdated) - toTimestamp(a.lastUpdated);
-      if (sortBy === 'NAME') return `${a.patient.lastName} ${a.patient.firstName}`.localeCompare(`${b.patient.lastName} ${b.patient.firstName}`);
-      if (sortBy === 'FACILITY') return a.patient.nursingHome.localeCompare(b.patient.nursingHome) || a.patient.lastName.localeCompare(b.patient.lastName);
-      return statusSortOrder[a.enrollmentStatus] - statusSortOrder[b.enrollmentStatus] || a.patient.lastName.localeCompare(b.patient.lastName);
+      if (sortBy === 'NAME') return normalizeSortText(patientDisplayName(a.patient)).localeCompare(normalizeSortText(patientDisplayName(b.patient)));
+      if (sortBy === 'FACILITY') return normalizeSortText(a.patient.nursingHome).localeCompare(normalizeSortText(b.patient.nursingHome)) || normalizeSortText(patientDisplayName(a.patient)).localeCompare(normalizeSortText(patientDisplayName(b.patient)));
+      return statusSortOrder[a.enrollmentStatus] - statusSortOrder[b.enrollmentStatus] || normalizeSortText(patientDisplayName(a.patient)).localeCompare(normalizeSortText(patientDisplayName(b.patient)));
     });
   }, [rows, search, selectedNH, selectedStatus, sortBy]);
 
@@ -391,11 +404,16 @@ export default function DashboardNurse({
     patientPagination.setPage(1);
   };
 
+  const handleSortChange = (nextSort: SortOption) => {
+    setSortBy(nextSort);
+    window.localStorage.setItem(patientSortPreferenceKey, nextSort);
+  };
+
   const clearAllFilters = () => {
     setSearch('');
     setSelectedNH('');
     setSelectedStatus('ALL');
-    setSortBy('PRIORITY');
+    handleSortChange('PRIORITY');
   };
 
   const hasActiveFilters = Boolean(search || selectedNH || selectedStatus !== 'ALL' || sortBy !== 'PRIORITY');
@@ -522,7 +540,7 @@ export default function DashboardNurse({
 
               <select
                 value={sortBy}
-                onChange={(event) => setSortBy(event.target.value as SortOption)}
+                onChange={(event) => handleSortChange(event.target.value as SortOption)}
                 aria-label="Sort patients"
                 className="min-h-11 rounded-xl border border-slate-300 bg-white px-3 text-sm font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
