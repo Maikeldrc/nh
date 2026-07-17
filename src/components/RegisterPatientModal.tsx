@@ -685,7 +685,7 @@ export default function RegisterPatientModal({
       {/* Modal Card */}
       <div className="relative bg-white rounded-2xl shadow-2xl border border-slate-100 max-w-2xl w-full mx-4 overflow-hidden z-10 my-8">
         {/* Header */}
-        <div className="bg-gradient-to-r from-blue-600 to-indigo-700 px-6 py-4 text-white flex justify-between items-center">
+        <div className="premium-dark-header bg-gradient-to-r from-blue-600 to-indigo-700 px-6 py-4 text-white flex justify-between items-center">
           <div className="flex items-center space-x-3">
             <div className="bg-white/10 p-2 rounded-lg">
               <UserPlus size={20} className="text-white" />

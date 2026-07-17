@@ -3616,7 +3616,7 @@ This service is not for emergencies. If you agree, we can continue with your aut
       {alertMessage && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-sm">
           <div className="w-full max-w-sm rounded-2xl border border-slate-200 bg-white shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-200">
-            <div className="bg-gradient-to-r from-blue-600 to-indigo-700 px-6 py-4 flex items-center text-white">
+            <div className="premium-dark-header bg-gradient-to-r from-blue-600 to-indigo-700 px-6 py-4 flex items-center text-white">
               <Info size={24} className="mr-3 text-blue-200" />
               <h2 className="text-lg font-bold">{language === 'ES' ? 'Aviso' : 'Notice'}</h2>
             </div>

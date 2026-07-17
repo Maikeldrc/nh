@@ -95,7 +95,7 @@ export default function MedicalOrderReviewModal({
       {/* Modal Card */}
       <div className="relative bg-white rounded-2xl shadow-2xl border border-slate-100 max-w-2xl w-full mx-4 overflow-hidden z-10 my-8">
         {/* Header */}
-        <div className="bg-gradient-to-r from-violet-700 via-indigo-700 to-blue-700 px-6 py-5 text-white">
+        <div className="premium-dark-header bg-gradient-to-r from-violet-700 via-indigo-700 to-blue-700 px-6 py-5 text-white">
           <div className="flex justify-between items-start">
             <div className="flex items-center space-x-3">
               <div className="bg-white/15 p-2.5 rounded-xl">

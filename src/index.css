@@ -1844,6 +1844,23 @@
     color: var(--primary-700);
   }
 
+  .premium-dark-header,
+  .premium-dark-header h1,
+  .premium-dark-header h2,
+  .premium-dark-header h3,
+  .premium-dark-header p,
+  .premium-dark-header span,
+  .premium-dark-header small,
+  .premium-dark-header button,
+  .premium-dark-header svg {
+    color: #ffffff !important;
+  }
+
+  .premium-dark-header p,
+  .premium-dark-header small {
+    opacity: 0.88;
+  }
+
   .bg-blue-50,
   .bg-indigo-50 {
     background-color: var(--primary-50);
