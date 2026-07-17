@@ -1558,6 +1558,11 @@
     background: #fbfcff;
   }
 
+  .enrollment-pdf-card > div {
+    min-width: 0;
+    flex: 1;
+  }
+
   .enrollment-pdf-card p {
     margin: 0 0 0.25rem;
     color: var(--enrollment-text);
@@ -1569,6 +1574,36 @@
     display: block;
     font-size: 0.82rem;
     font-weight: 650;
+  }
+
+  .enrollment-pdf-progress {
+    margin-top: 0.75rem;
+    width: 100%;
+  }
+
+  .enrollment-pdf-progress-meta {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    color: var(--enrollment-secondary);
+    font-size: 0.76rem;
+    font-weight: 750;
+  }
+
+  .enrollment-pdf-progress-track {
+    margin-top: 0.4rem;
+    height: 0.5rem;
+    overflow: hidden;
+    border-radius: 999px;
+    background: #e8edfb;
+  }
+
+  .enrollment-pdf-progress-bar {
+    height: 100%;
+    border-radius: inherit;
+    background: linear-gradient(90deg, var(--enrollment-primary), var(--enrollment-primary-hover));
+    transition: width 220ms ease;
   }
 
   .enrollment-complete-grid {

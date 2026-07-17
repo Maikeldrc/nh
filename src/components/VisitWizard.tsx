@@ -1996,6 +1996,20 @@ This service is not for emergencies. If you agree, we can continue with your aut
                   <div>
                     <p>Consent PDF</p>
                     <strong className={consentPdfGenerated ? 'text-emerald-700' : 'text-slate-800'}>{isGeneratingConsentPdf ? 'Generating automatically...' : consentPdfGenerated ? 'Generated and attached' : 'Will generate automatically after consent is confirmed.'}</strong>
+                    {isGeneratingConsentPdf && (
+                      <div className="enrollment-pdf-progress" role="status" aria-live="polite">
+                        <div className="enrollment-pdf-progress-meta">
+                          <span>{consentPdfProgressLabel || 'Generating PDF...'}</span>
+                          <span>{Math.max(8, Math.min(99, consentPdfProgress))}%</span>
+                        </div>
+                        <div className="enrollment-pdf-progress-track" aria-hidden="true">
+                          <div
+                            className="enrollment-pdf-progress-bar"
+                            style={{ width: `${Math.max(8, Math.min(99, consentPdfProgress))}%` }}
+                          />
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
               </>
