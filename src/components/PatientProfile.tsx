@@ -288,7 +288,7 @@ export default function PatientProfile({
             {device ? (
               <div className="bg-slate-50/50 border border-slate-200 rounded-xl p-3 space-y-1.5">
                 <p className="font-bold text-slate-800 text-xs">{l('Dispositivo Entregado', 'Delivered Device')}:</p>
-                <p className="text-slate-600 font-bold">{device.deviceType} - {device.model}</p>
+                <p className="text-slate-600 font-bold">{device.deviceType}</p>
                 <p className="text-[10px] text-slate-400 font-mono">Device ID: {device.serialNumber || device.deviceId || 'N/A'}</p>
                 
                 <div className="pt-1.5 flex justify-between items-center text-[10px] font-semibold">
