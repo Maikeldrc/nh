@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import { Activity, Mail, Lock, AlertCircle } from 'lucide-react';
+import { Mail, Lock, AlertCircle } from 'lucide-react';
 import { useLanguage } from '../utils/LanguageContext';
 import { loginWithEmail } from '../utils/auth';
+import appLogo from '../assets/amavita-logo.png';
 
 interface LoginProps {
   onLoginSuccess: () => void;
@@ -67,9 +68,7 @@ export default function Login({ onLoginSuccess, initialError = '' }: LoginProps)
 
       <div className="sm:mx-auto sm:w-full sm:max-w-md">
         <div className="flex justify-center">
-          <div className="flex items-center justify-center bg-blue-600 p-3 rounded-2xl text-white shadow-lg shadow-blue-600/20">
-            <Activity size={32} className="stroke-[2.5]" />
-          </div>
+          <img src={appLogo} alt="" aria-hidden="true" className="h-16 w-16 rounded-2xl object-contain shadow-lg shadow-blue-600/10" />
         </div>
         <h2 className="mt-6 text-center text-3xl font-extrabold text-slate-800 tracking-tight">
           {t('login_title')}
