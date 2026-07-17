@@ -41,11 +41,15 @@ interface TablePaginationProps {
   startIndex: number;
   endIndex: number;
   onPageChange: (page: number) => void;
+  pageSizeOptions?: number[];
+  onPageSizeChange?: (pageSize: number) => void;
   labels: {
     showing: string;
     of: string;
     previous: string;
     next: string;
+    rowsPerPage?: string;
+    patients?: string;
   };
 }
 
@@ -57,16 +61,34 @@ export default function TablePagination({
   startIndex,
   endIndex,
   onPageChange,
+  pageSizeOptions,
+  onPageSizeChange,
   labels
 }: TablePaginationProps) {
-  if (totalCount <= pageSize) return null;
+  if (!onPageSizeChange && totalCount <= pageSize) return null;
 
   return (
-    <div className="flex flex-col gap-3 border-t border-slate-200 bg-slate-50/60 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
-      <p className="text-xs font-semibold text-slate-500">
-        {labels.showing} {startIndex}-{endIndex} {labels.of} {totalCount}
-      </p>
-      <div className="flex items-center gap-2">
+    <div className="flex flex-col gap-3 border-t border-slate-200 bg-slate-50/60 px-5 py-4 lg:flex-row lg:items-center lg:justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
+        <p className="text-xs font-semibold text-slate-500">
+          {labels.showing} {startIndex}-{endIndex} {labels.of} {totalCount}{labels.patients ? ` ${labels.patients}` : ''}
+        </p>
+        {onPageSizeChange && pageSizeOptions && (
+          <label className="flex w-full items-center gap-2 text-xs font-bold text-slate-600 sm:w-auto">
+            <span>{labels.rowsPerPage || 'Rows per page'}</span>
+            <select
+              value={pageSize}
+              onChange={(event) => onPageSizeChange(Number(event.target.value))}
+              className="h-9 rounded-xl border border-slate-300 bg-white px-2 text-xs font-bold text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              {pageSizeOptions.map(option => (
+                <option key={option} value={option}>{option}</option>
+              ))}
+            </select>
+          </label>
+        )}
+      </div>
+      <div className="flex flex-wrap items-center gap-2">
         <button
           type="button"
           onClick={() => onPageChange(Math.max(1, page - 1))}

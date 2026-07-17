@@ -54,6 +54,7 @@ interface DashboardAdminProps {
 }
 
 const PATIENTS_PER_PAGE = 10;
+const PATIENT_PAGE_SIZE_OPTIONS = [10, 25, 50, 100];
 
 export default function DashboardAdmin({
   currentUser,
@@ -93,6 +94,11 @@ export default function DashboardAdmin({
   const [cleanupConfirmText, setCleanupConfirmText] = useState('');
   const [isCleaningPatientData, setIsCleaningPatientData] = useState(false);
   const [cleanupProgress, setCleanupProgress] = useState(0);
+  const patientPageSizePreferenceKey = `amavita.patientPageSize.${currentUser.id}`;
+  const [patientPageSize, setPatientPageSize] = useState(() => {
+    const stored = Number(window.localStorage.getItem(patientPageSizePreferenceKey));
+    return PATIENT_PAGE_SIZE_OPTIONS.includes(stored) ? stored : PATIENTS_PER_PAGE;
+  });
   const isAdmin = currentUser.role === 'ADMIN';
   
   // Tab control: 'patients' | 'audit_logs' | 'documents' | 'catalog' | 'users' | 'facilities' | 'backups'
@@ -157,7 +163,7 @@ export default function DashboardAdmin({
     });
   }, [documents, search, selectedNH, patients]);
 
-  const patientPagination = usePaginatedRows(filteredPatients, PATIENTS_PER_PAGE);
+  const patientPagination = usePaginatedRows(filteredPatients, patientPageSize);
   const documentPagination = usePaginatedRows(filteredDocuments, PATIENTS_PER_PAGE);
   const auditPagination = usePaginatedRows(auditLogs, PATIENTS_PER_PAGE);
   const paginationLabels = {
@@ -165,6 +171,17 @@ export default function DashboardAdmin({
     of: l('de', 'of'),
     previous: l('Anterior', 'Previous'),
     next: l('Siguiente', 'Next')
+  };
+  const patientPaginationLabels = {
+    ...paginationLabels,
+    rowsPerPage: l('Pacientes por página', 'Patients per page'),
+    patients: l('pacientes', 'patients')
+  };
+
+  const handlePatientPageSizeChange = (nextPageSize: number) => {
+    setPatientPageSize(nextPageSize);
+    window.localStorage.setItem(patientPageSizePreferenceKey, String(nextPageSize));
+    patientPagination.setPage(1);
   };
 
   // Status Badge helper
@@ -642,7 +659,9 @@ export default function DashboardAdmin({
               startIndex={patientPagination.startIndex}
               endIndex={patientPagination.endIndex}
               onPageChange={patientPagination.setPage}
-              labels={paginationLabels}
+              pageSizeOptions={PATIENT_PAGE_SIZE_OPTIONS}
+              onPageSizeChange={handlePatientPageSizeChange}
+              labels={patientPaginationLabels}
             />
           </div>
         )}
