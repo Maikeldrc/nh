@@ -904,6 +904,7 @@ export default function App() {
             nursingHomes={nursingHomes}
             conditionGroups={conditionGroups}
             diagnoses={diagnoses}
+            programs={programs}
             onBack={() => {
               setCurrentView('DASHBOARD');
               setActivePatientId(null);
@@ -937,6 +938,7 @@ export default function App() {
             nursingHomes={nursingHomes}
             conditionGroups={conditionGroups}
             diagnoses={diagnoses}
+            programs={programs}
           />
         )}
       </main>

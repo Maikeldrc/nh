@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import QRCode from 'qrcode';
-import { Patient, Visit, Consent, Device, BPReading, User, DocumentRecord, TechnicalActivationStatus, ConditionGroupCatalog, DiagnosisCatalog } from '../types';
+import { Patient, Visit, Consent, Device, BPReading, User, DocumentRecord, TechnicalActivationStatus, ConditionGroupCatalog, DiagnosisCatalog, ProgramCatalog } from '../types';
 import SignaturePad from './SignaturePad';
 import { 
   Check, ArrowRight, ArrowLeft, Save, AlertTriangle, ShieldAlert,
@@ -37,6 +37,7 @@ interface VisitWizardProps {
   nursingHomes: string[];
   conditionGroups: ConditionGroupCatalog[];
   diagnoses: DiagnosisCatalog[];
+  programs: ProgramCatalog[];
 }
 
 function AppDownloadQrCard({ label, helper, url }: { label: string; helper: string; url: string }) {
@@ -225,7 +226,8 @@ export default function VisitWizard({
   onGenerateMedicalOrder,
   nursingHomes,
   conditionGroups,
-  diagnoses
+  diagnoses,
+  programs
 }: VisitWizardProps) {
   const { language, t } = useLanguage();
   const l = (es: string, en: string) => language === 'ES' ? es : en;
@@ -2273,6 +2275,7 @@ This service is not for emergencies. If you agree, we can continue with your aut
         nursingHomes={nursingHomes}
         conditionGroups={conditionGroups}
         diagnoses={diagnoses}
+        programs={programs}
       />
 
       {showExitDialog && (
@@ -3821,6 +3824,7 @@ This service is not for emergencies. If you agree, we can continue with your aut
         nursingHomes={nursingHomes}
         conditionGroups={conditionGroups}
         diagnoses={diagnoses}
+        programs={programs}
       />
 
       {showExitDialog && (

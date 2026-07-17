@@ -1,5 +1,5 @@
 import { useState, FormEvent, useEffect } from 'react';
-import { ConditionGroupCatalog, DiagnosisCatalog, Medication, Patient, PatientDiagnosis, User } from '../types';
+import { ConditionGroupCatalog, DiagnosisCatalog, Medication, Patient, PatientDiagnosis, ProgramCatalog, User } from '../types';
 import { PROGRAMS } from '../data';
 import { X, Edit3, Calendar, MapPin, HeartPulse, Save } from 'lucide-react';
 import { useLanguage } from '../utils/LanguageContext';
@@ -14,6 +14,7 @@ interface EditPatientModalProps {
   nursingHomes: string[];
   conditionGroups: ConditionGroupCatalog[];
   diagnoses: DiagnosisCatalog[];
+  programs: ProgramCatalog[];
 }
 
 export default function EditPatientModal({
@@ -24,7 +25,8 @@ export default function EditPatientModal({
   currentUser,
   nursingHomes,
   conditionGroups,
-  diagnoses
+  diagnoses,
+  programs
 }: EditPatientModalProps) {
   const { language } = useLanguage();
   const l = (es: string, en: string) => language === 'ES' ? es : en;
@@ -66,7 +68,8 @@ export default function EditPatientModal({
   const [medicareId, setMedicareId] = useState('');
   const [nursingHome, setNursingHome] = useState('');
   const [room, setRoom] = useState('');
-  const [assignedProgram, setAssignedProgram] = useState<Patient['assignedProgram']>('RPM');
+  const [selectedPrograms, setSelectedPrograms] = useState<string[]>([]);
+  const assignedProgram = selectedPrograms.join(' + ');
   const [categorySearch, setCategorySearch] = useState('');
   const [selectedCategoryCodes, setSelectedCategoryCodes] = useState<string[]>([]);
   const [isCategoryDropdownOpen, setIsCategoryDropdownOpen] = useState(false);
@@ -146,7 +149,7 @@ export default function EditPatientModal({
       setMedicareId(patient.medicareId || '');
       setNursingHome(patient.nursingHome || nursingHomes[0] || '');
       setRoom(patient.room || '');
-      setAssignedProgram(patient.assignedProgram || 'RPM');
+      setSelectedPrograms((patient.assignedProgram || '').split('+').map(program => program.trim()).filter(Boolean));
       setRequiredDevice(patient.requiredDevice || '');
       
       const savedDiagnosisLabels = (patient.diagnoses || []).map(diagnosis => `${diagnosis.icd10Display} · ${diagnosis.icd10Code}`);
@@ -192,8 +195,15 @@ export default function EditPatientModal({
     }
   }, [patient, isOpen, nursingHomes, conditionGroups, diagnoses]);
 
-  // Filter programs to exclude RTM
-  const eligiblePrograms = PROGRAMS.filter(prog => prog !== 'RTM');
+  // RTM and inactive programs are not available during patient registration/editing.
+  const activeProgramCatalog = programs.length > 0
+    ? programs.filter(program => program.is_active)
+    : PROGRAMS.map(code => ({ id: `fallback_${code}`, code, display: code, is_active: true }));
+  const eligiblePrograms = activeProgramCatalog.filter(program => program.code !== 'RTM' && program.code !== 'Other');
+  useEffect(() => {
+    const eligibleCodes = eligiblePrograms.map(program => program.code);
+    setSelectedPrograms(previous => previous.filter(code => eligibleCodes.includes(code)));
+  }, [programs]);
 
   // Errors state
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -225,6 +235,9 @@ export default function EditPatientModal({
     if (!isLtc) {
       newErrors.isLtc = language === 'ES' ? 'El paciente debe ser Long Term Care (LTC) obligatoriamente' : 'The patient must be Long Term Care (LTC)';
     }
+    if (selectedPrograms.length === 0) {
+      newErrors.assignedProgram = language === 'ES' ? 'Seleccione al menos un programa.' : 'Select at least one program.';
+    }
     if (assignedProgram.includes('RPM') && !requiredDevice) {
       newErrors.requiredDevice = l('Seleccione el dispositivo requerido.', 'Select the required device.');
     }
@@ -235,6 +248,11 @@ export default function EditPatientModal({
     }
     if (!meetsCcmConditionsRequirement) {
       newErrors.conditions = CCM_CONDITIONS_ERROR;
+    }
+    if (medications.length === 0 && !isMedicationListPending) {
+      newErrors.medications = language === 'ES'
+        ? 'Agregue al menos un medicamento o marque que la lista no está disponible en este momento.'
+        : 'Add at least one medication or mark that the medication list is not available at this time.';
     }
 
     setErrors(newErrors);
@@ -439,25 +457,31 @@ export default function EditPatientModal({
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">
-                  {language === 'ES' ? 'Programa Asignado' : 'Assigned Program'}
-                </label>
-                <select
-                  value={assignedProgram}
-                  onChange={(e) => setAssignedProgram(e.target.value as any)}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-xl text-xs bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 text-slate-800 font-semibold"
-                >
-                  {eligiblePrograms.map(prog => (
-                    <option key={prog} value={prog}>{prog}</option>
-                  ))}
-                </select>
+            <div>
+              <label className="block text-xs font-bold text-slate-700 mb-2">
+                {language === 'ES' ? 'Programa Asignado *' : 'Assigned Program *'}
+              </label>
+              <div className={`grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 rounded-xl border p-2 ${
+                errors.assignedProgram ? 'border-red-500 ring-1 ring-red-500/20' : 'border-slate-200'
+              }`}>
+                {eligiblePrograms.map(program => (
+                  <label key={program.id || program.code} className="flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-700 cursor-pointer hover:border-blue-300">
+                    <input
+                      type="checkbox"
+                      checked={selectedPrograms.includes(program.code)}
+                      onChange={(event) => {
+                        setSelectedPrograms(previous => event.target.checked
+                          ? Array.from(new Set([...previous, program.code]))
+                          : previous.filter(code => code !== program.code)
+                        );
+                      }}
+                      className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                    />
+                    <span>{program.display || program.code}</span>
+                  </label>
+                ))}
               </div>
-
-              <div className="flex items-end pb-1.5">
-                {/* Balance column placeholder */}
-              </div>
+              {errors.assignedProgram && <span className="text-[10px] text-red-500 font-semibold mt-1 block">{errors.assignedProgram}</span>}
             </div>
 
             {/* Mandatory Long Term Care (LTC) Confirmation Checkbox */}
@@ -782,6 +806,11 @@ export default function EditPatientModal({
                   {language === 'ES' ? 'Lista de medicamentos no disponible en este momento' : 'Medication list not available at this time'}
                 </label>
               </div>
+              {errors.medications && (
+                <span className="text-[10px] text-red-500 font-semibold block">
+                  {errors.medications}
+                </span>
+              )}
             </div>
           </div>
 
