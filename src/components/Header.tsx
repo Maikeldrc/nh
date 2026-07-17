@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import { User } from '../types';
-import { Shield, User as UserIcon, LogOut, ChevronDown, Activity, Stethoscope, Eye, ClipboardCheck } from 'lucide-react';
+import { Shield, User as UserIcon, LogOut, ChevronDown, Stethoscope, Eye, ClipboardCheck } from 'lucide-react';
 import { useLanguage } from '../utils/LanguageContext';
 import { PRODUCT_NAME } from '../utils/branding';
+import appLogo from '../assets/amavita-logo.png';
 
 interface HeaderProps {
   currentUser: User;
@@ -20,9 +21,7 @@ export default function Header({ currentUser, onLogout }: HeaderProps) {
         <div className="flex justify-between items-center h-16">
           {/* Logo Brand Section */}
           <div className="flex items-center space-x-3" id="brand-logo">
-            <div className="flex items-center justify-center bg-blue-600 p-2 rounded-lg text-white shadow-sm">
-              <Activity size={22} className="stroke-[2.5]" />
-            </div>
+            <img src={appLogo} alt="" aria-hidden="true" className="h-10 w-10 rounded-xl object-contain shadow-sm" />
             <div>
               <div className="flex items-center space-x-1.5">
                 <span className="font-extrabold text-lg tracking-tight text-slate-800">{PRODUCT_NAME}</span>
