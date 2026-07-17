@@ -321,14 +321,15 @@ export default function VisitWizard({
   const [markWitnessName, setMarkWitnessName] = useState(savedString('markWitnessName'));
   const [markWitnessRole, setMarkWitnessRole] = useState(savedString('markWitnessRole'));
   const [markWitnessAttested, setMarkWitnessAttested] = useState(savedBool('markWitnessAttested'));
-  const [consentPdfUrl, setConsentPdfUrl] = useState('');
-  const [consentPdfGenerated, setConsentPdfGenerated] = useState(false);
+  const [consentPdfUrl, setConsentPdfUrl] = useState(savedString('consentPdfUrl'));
+  const [consentPdfGenerated, setConsentPdfGenerated] = useState(savedBool('consentPdfGenerated'));
   const [isGeneratingConsentPdf, setIsGeneratingConsentPdf] = useState(false);
   const [autoConsentPdfAttempted, setAutoConsentPdfAttempted] = useState(false);
   const [consentPdfProgress, setConsentPdfProgress] = useState(0);
   const [consentPdfProgressLabel, setConsentPdfProgressLabel] = useState('');
   const [showFullConsent, setShowFullConsent] = useState(false);
   const previousSignatureMethodRef = useRef(signatureMethod);
+  const previousConsentSnapshotRef = useRef('');
   const normalizeUsPhoneDigits = (value: string) => {
     const digits = value.replace(/\D/g, '');
     return digits.length === 11 && digits.startsWith('1') ? digits.slice(1) : digits;
@@ -707,6 +708,67 @@ This service is not for emergencies. If you agree, we can continue with your aut
     }
   }, [consentDecision, consentPdfGenerated, consentRecordComplete, isGeneratingConsentPdf, autoConsentPdfAttempted]);
 
+  useEffect(() => {
+    const snapshot = JSON.stringify({
+      consentDecision,
+      consentSignerType,
+      signerName,
+      repRelationship,
+      repRelationshipOther,
+      authorityType,
+      authorityTypeOther,
+      representativePhone,
+      representativeSignatureMethod,
+      signatureMethod,
+      typedSignatureName,
+      typedSignatureAgreed,
+      typedSignatureConfirmed,
+      unableSignMethod,
+      unableToSignReason,
+      verbalConsentNurseNote,
+      patientSignature,
+      staffAttestationConfirmed,
+      markWitnessDifferent,
+      markWitnessName,
+      markWitnessRole
+    });
+    if (!previousConsentSnapshotRef.current) {
+      previousConsentSnapshotRef.current = snapshot;
+      return;
+    }
+    if (previousConsentSnapshotRef.current !== snapshot) {
+      previousConsentSnapshotRef.current = snapshot;
+      if (consentPdfGenerated) {
+        setConsentPdfGenerated(false);
+        setConsentPdfUrl('');
+        setAutoConsentPdfAttempted(false);
+      }
+    }
+  }, [
+    consentDecision,
+    consentSignerType,
+    signerName,
+    repRelationship,
+    repRelationshipOther,
+    authorityType,
+    authorityTypeOther,
+    representativePhone,
+    representativeSignatureMethod,
+    signatureMethod,
+    typedSignatureName,
+    typedSignatureAgreed,
+    typedSignatureConfirmed,
+    unableSignMethod,
+    unableToSignReason,
+    verbalConsentNurseNote,
+    patientSignature,
+    staffAttestationConfirmed,
+    markWitnessDifferent,
+    markWitnessName,
+    markWitnessRole,
+    consentPdfGenerated
+  ]);
+
   // ----------------------------------------------------
   // BUSINESS VALIDATION ALERTS
   // ----------------------------------------------------
@@ -791,13 +853,13 @@ This service is not for emergencies. If you agree, we can continue with your aut
   // ----------------------------------------------------
   // DOCUMENT GENERATION TRIGGERS
   // ----------------------------------------------------
-  const triggerConsentPDFGeneration = async (isAutomatic = false): Promise<boolean> => {
+  const triggerConsentPDFGeneration = async (isAutomatic = false, forceRegenerate = false): Promise<boolean> => {
     if (!consentRecordComplete) {
       setAlertMessage(l('Complete la identificación del firmante, la evidencia de consentimiento y la atestación del personal de inscripción antes de generar el PDF.', 'Complete signer identification, consent evidence, and the enrollment personnel attestation before generating the PDF.'));
       return false;
     }
     if (isGeneratingConsentPdf) return false;
-    if (consentPdfGenerated) return true;
+    if (consentPdfGenerated && !forceRegenerate) return true;
     if (isAutomatic) setAutoConsentPdfAttempted(true);
 
     setIsGeneratingConsentPdf(true);
@@ -1094,6 +1156,7 @@ This service is not for emergencies. If you agree, we can continue with your aut
       markWitnessAttested,
       markWitnessDifferent,
       consentPdfGenerated,
+      consentPdfUrl,
       deviceType,
       brand,
       model,
@@ -2088,7 +2151,7 @@ This service is not for emergencies. If you agree, we can continue with your aut
 
                 <div className="enrollment-pdf-card">
                   <span className="enrollment-section-icon" aria-hidden="true"><FileCheck size={20} /></span>
-                  <div>
+                  <div className="min-w-0 flex-1">
                     <p>Consent PDF</p>
                     <strong className={consentPdfGenerated ? 'text-emerald-700' : 'text-slate-800'}>{isGeneratingConsentPdf ? 'Generating automatically...' : consentPdfGenerated ? 'Generated and attached' : 'Will generate automatically after consent is confirmed.'}</strong>
                     {isGeneratingConsentPdf && (
@@ -2106,6 +2169,33 @@ This service is not for emergencies. If you agree, we can continue with your aut
                       </div>
                     )}
                   </div>
+                  {consentPdfGenerated && (
+                    <div className="flex flex-col gap-2 sm:flex-row">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (consentPdfUrl) {
+                            window.open(consentPdfUrl, '_blank', 'noopener,noreferrer');
+                          } else {
+                            setAlertMessage('The generated consent PDF is attached, but no preview URL is available in this session. Regenerate it to view now.');
+                          }
+                        }}
+                        className="inline-flex min-h-10 items-center justify-center rounded-xl border border-slate-300 bg-white px-3 text-xs font-extrabold text-slate-700 hover:bg-slate-50"
+                      >
+                        <FileText size={14} className="mr-1.5" />
+                        View Consent
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => triggerConsentPDFGeneration(false, true)}
+                        disabled={!consentRecordComplete || isGeneratingConsentPdf}
+                        className="inline-flex min-h-10 items-center justify-center rounded-xl bg-blue-600 px-3 text-xs font-extrabold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-slate-300"
+                      >
+                        <RefreshCw size={14} className="mr-1.5" />
+                        Regenerate Consent
+                      </button>
+                    </div>
+                  )}
                 </div>
               </>
             )}
