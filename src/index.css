@@ -1612,6 +1612,78 @@
     gap: 1.5rem;
   }
 
+  .enrollment-app-section {
+    align-items: stretch;
+  }
+
+  .enrollment-app-section > .enrollment-segmented {
+    align-self: center;
+  }
+
+  .enrollment-app-qr-grid {
+    display: grid;
+    grid-column: 1 / -1;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1rem;
+    margin-top: 1rem;
+  }
+
+  .enrollment-app-qr-card {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: center;
+    gap: 1rem;
+    min-width: 0;
+    border: 1px solid var(--enrollment-border);
+    border-radius: 1rem;
+    background: #fff;
+    padding: 1rem;
+    color: var(--enrollment-text);
+    text-decoration: none;
+    transition: border-color 180ms ease, box-shadow 180ms ease, transform 180ms ease;
+  }
+
+  .enrollment-app-qr-card:hover {
+    border-color: rgba(79, 94, 247, 0.55);
+    box-shadow: 0 16px 34px rgba(15, 23, 42, 0.08);
+    transform: translateY(-1px);
+  }
+
+  .enrollment-app-qr-card strong {
+    display: block;
+    font-size: 1rem;
+    font-weight: 850;
+  }
+
+  .enrollment-app-qr-card p {
+    margin: 0.25rem 0 0;
+    color: var(--enrollment-secondary);
+    font-size: 0.84rem;
+    font-weight: 650;
+    line-height: 1.35;
+  }
+
+  .enrollment-app-qr-image {
+    display: grid;
+    width: 7.5rem;
+    aspect-ratio: 1;
+    place-items: center;
+    overflow: hidden;
+    border: 1px solid #dbe3f1;
+    border-radius: 0.8rem;
+    background: #fff;
+    color: var(--enrollment-secondary);
+    font-size: 0.72rem;
+    font-weight: 800;
+    text-align: center;
+  }
+
+  .enrollment-app-qr-image img {
+    display: block;
+    width: 100%;
+    height: 100%;
+  }
+
   .enrollment-sidebar {
     display: flex;
     flex-direction: column;
@@ -1870,6 +1942,16 @@
     .enrollment-representative-grid,
     .enrollment-status-grid {
       grid-template-columns: 1fr;
+    }
+
+    .enrollment-app-qr-grid,
+    .enrollment-app-qr-card {
+      grid-template-columns: 1fr;
+    }
+
+    .enrollment-app-qr-image {
+      width: min(11rem, 100%);
+      justify-self: center;
     }
 
     .enrollment-card-heading {

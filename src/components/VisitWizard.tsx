@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import QRCode from 'qrcode';
 import { Patient, Visit, Consent, Device, BPReading, User, DocumentRecord, TechnicalActivationStatus, ConditionGroupCatalog, DiagnosisCatalog } from '../types';
 import SignaturePad from './SignaturePad';
 import { 
@@ -13,6 +14,9 @@ import { useLanguage } from '../utils/LanguageContext';
 import EditPatientModal from './EditPatientModal';
 import { getMedicalOrderStatus, isMedicalOrderApproved, patientRequiresDevice } from '../utils/medicalOrders';
 import { POWERED_BY, PRODUCT_NAME } from '../utils/branding';
+
+const ANDROID_APP_URL = 'https://play.google.com/store/apps/details?id=health.itera.app';
+const APPLE_APP_URL = 'https://apps.apple.com/us/app/itera-health/id6475365901';
 
 interface VisitWizardProps {
   currentUser: User;
@@ -33,6 +37,42 @@ interface VisitWizardProps {
   nursingHomes: string[];
   conditionGroups: ConditionGroupCatalog[];
   diagnoses: DiagnosisCatalog[];
+}
+
+function AppDownloadQrCard({ label, helper, url }: { label: string; helper: string; url: string }) {
+  const [qrDataUrl, setQrDataUrl] = useState('');
+
+  useEffect(() => {
+    let active = true;
+    QRCode.toDataURL(url, {
+      errorCorrectionLevel: 'M',
+      margin: 1,
+      width: 180,
+      color: {
+        dark: '#0F172A',
+        light: '#FFFFFF'
+      }
+    }).then((dataUrl) => {
+      if (active) setQrDataUrl(dataUrl);
+    }).catch(() => {
+      if (active) setQrDataUrl('');
+    });
+    return () => {
+      active = false;
+    };
+  }, [url]);
+
+  return (
+    <a href={url} target="_blank" rel="noreferrer" className="enrollment-app-qr-card">
+      <div className="enrollment-app-qr-image" aria-label={`${label} QR code`}>
+        {qrDataUrl ? <img src={qrDataUrl} alt={`${label} download QR code`} /> : <span>Generating QR...</span>}
+      </div>
+      <div>
+        <strong>{label}</strong>
+        <p>{helper}</p>
+      </div>
+    </a>
+  );
 }
 
 type RepresentativeRelationship =
@@ -2025,19 +2065,6 @@ This service is not for emergencies. If you agree, we can continue with your aut
               description={isRpmApplicable ? 'Finalize RPM setup if applicable, then finish enrollment.' : 'Review the CCM enrollment summary and finish.'}
             />
 
-            <section className="enrollment-row-card">
-              <div className="enrollment-row-heading">
-                <div>
-                  <h3>Optional patient app</h3>
-                  <p>Would the patient or caregiver like information about the mobile app?</p>
-                </div>
-              </div>
-              <div className="enrollment-segmented">
-                <DecisionCard active={wantsPatientAppInfo === 'YES'} title="Yes" onClick={() => setWantsPatientAppInfo('YES')} />
-                <DecisionCard active={wantsPatientAppInfo === 'NO'} title="No" onClick={() => setWantsPatientAppInfo('NO')} />
-              </div>
-            </section>
-
             {!isRpmApplicable ? (
               <section className="enrollment-subcard">
                 <h3 className="enrollment-question-title">Enrollment summary</h3>
@@ -2189,6 +2216,34 @@ This service is not for emergencies. If you agree, we can continue with your aut
                 {isRpmApplicable && <div className={`enrollment-status-tile ${deviceSetupReady ? 'success' : 'warning'}`}><p>RPM device</p><strong>{deviceSetupReady ? 'Assigned' : 'Pending'}</strong></div>}
                 {isRpmApplicable && <div className="enrollment-status-tile info"><p>RPM activation</p><strong>{rpmActivationLabel}</strong></div>}
               </div>
+            </section>
+
+            <section className="enrollment-row-card enrollment-app-section">
+              <div className="enrollment-row-heading">
+                <span className="enrollment-section-icon" aria-hidden="true"><Smartphone size={20} /></span>
+                <div>
+                  <h3>Optional patient app</h3>
+                  <p>Would the patient or caregiver like information about the mobile app?</p>
+                </div>
+              </div>
+              <div className="enrollment-segmented">
+                <DecisionCard active={wantsPatientAppInfo === 'YES'} title="Yes" onClick={() => setWantsPatientAppInfo('YES')} />
+                <DecisionCard active={wantsPatientAppInfo === 'NO'} title="No" onClick={() => setWantsPatientAppInfo('NO')} />
+              </div>
+              {wantsPatientAppInfo === 'YES' && (
+                <div className="enrollment-app-qr-grid">
+                  <AppDownloadQrCard
+                    label="Android"
+                    helper="Scan to download ITERA Health from Google Play."
+                    url={ANDROID_APP_URL}
+                  />
+                  <AppDownloadQrCard
+                    label="Apple"
+                    helper="Scan to download ITERA Health from the App Store."
+                    url={APPLE_APP_URL}
+                  />
+                </div>
+              )}
             </section>
           </section>
         )}
