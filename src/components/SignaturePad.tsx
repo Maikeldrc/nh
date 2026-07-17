@@ -10,9 +10,11 @@ interface SignaturePadProps {
   savedDataUrl?: string;
   signerName?: string;
   confirmLabel?: string;
+  showLabel?: boolean;
+  showSignerName?: boolean;
 }
 
-export default function SignaturePad({ id, label, onSave, onClear, savedDataUrl, signerName, confirmLabel }: SignaturePadProps) {
+export default function SignaturePad({ id, label, onSave, onClear, savedDataUrl, signerName, confirmLabel, showLabel = true, showSignerName = true }: SignaturePadProps) {
   const { language } = useLanguage();
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const [isDrawing, setIsDrawing] = useState(false);
@@ -139,7 +141,7 @@ export default function SignaturePad({ id, label, onSave, onClear, savedDataUrl,
   return (
     <div className="flex flex-col space-y-2 w-full" id={`sig-pad-container-${id}`}>
       <div className="flex justify-between items-center">
-        <label className="text-xs font-bold text-slate-700 uppercase tracking-wider">{label}</label>
+        {showLabel && <label className="text-xs font-bold text-slate-700 uppercase tracking-wider">{label}</label>}
         {isSaved && (
           <span className="inline-flex items-center text-xs text-emerald-600 bg-emerald-50 px-2.5 py-0.5 rounded-xl font-bold border border-emerald-200">
             <Check size={12} className="mr-1" /> {language === 'ES' ? 'Guardada' : 'Saved'}
@@ -147,7 +149,7 @@ export default function SignaturePad({ id, label, onSave, onClear, savedDataUrl,
         )}
       </div>
 
-      {signerName && (
+      {showSignerName && signerName && (
         <div className="text-xs text-slate-600 bg-slate-100 border border-slate-200 rounded-xl px-3 py-1.5 font-semibold flex items-center space-x-1.5 shadow-sm">
           <span className="font-bold text-slate-400">{language === 'ES' ? 'Firmante:' : 'Signer:'}</span>
           <span className="text-slate-800 font-extrabold">{signerName}</span>

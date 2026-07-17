@@ -1889,7 +1889,7 @@ This service is not for emergencies. If you agree, we can continue with your aut
                           <h4>{decisionMaker === 'REPRESENTATIVE' ? 'Representative signature' : 'Patient signature'}</h4>
                           <span className="enrollment-required-badge">Required</span>
                         </div>
-                        <SignaturePad id="simplified-draw-signature" label={decisionMaker === 'REPRESENTATIVE' ? 'Authorized Representative Signature' : 'Patient Signature'} onSave={handleSavePatientSignature} onClear={() => setPatientSignature('')} savedDataUrl={patientSignature} signerName={signerName} confirmLabel="Save signature" />
+                        <SignaturePad id="simplified-draw-signature" label={decisionMaker === 'REPRESENTATIVE' ? 'Authorized Representative Signature' : 'Patient Signature'} onSave={handleSavePatientSignature} onClear={() => setPatientSignature('')} savedDataUrl={patientSignature} confirmLabel="Save signature" showLabel={false} showSignerName={false} />
                       </div>
                     </div>
                   )}
