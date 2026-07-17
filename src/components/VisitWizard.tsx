@@ -3,13 +3,17 @@ import { Patient, Visit, Consent, Device, BPReading, User, DocumentRecord, Techn
 import SignaturePad from './SignaturePad';
 import { 
   Check, ArrowRight, ArrowLeft, Save, AlertTriangle, ShieldAlert,
-  Smartphone, UserCheck, FileText, CheckCircle, Activity, Play, Info, Edit3, AlertCircle, RefreshCw
+  Smartphone, UserCheck, FileText, CheckCircle, Activity, Play, Info, Edit3, AlertCircle, RefreshCw,
+  UserRound, ShieldCheck, UsersRound, FileSignature, BookOpen, Type, AudioLines,
+  X as XIcon, UserRoundCheck, Bookmark, Clock3, Monitor, ScanBarcode, GraduationCap,
+  HeartPulse, ClipboardCheck, FileCheck, LogOut
 } from 'lucide-react';
 import { DEFAULT_EXPLANATION_SCRIPT, DEFAULT_EXPLANATION_SCRIPT_ES, DEFAULT_CONSENT_TEXT, DEFAULT_CONSENT_TEXT_ES } from '../data';
 import { useLanguage } from '../utils/LanguageContext';
 import EditPatientModal from './EditPatientModal';
 import { getMedicalOrderStatus, isMedicalOrderApproved, patientRequiresDevice } from '../utils/medicalOrders';
 import { POWERED_BY, PRODUCT_NAME } from '../utils/branding';
+import amavitaLogo from '../assets/amavita-logo.png';
 
 interface VisitWizardProps {
   currentUser: User;
@@ -1455,15 +1459,21 @@ This service is not for emergencies. If you agree, we can continue with your aut
   const ThreeStepProgress = () => {
     const steps = ['Confirm patient', 'Explain & obtain consent', 'Complete enrollment'];
     return (
-      <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm" id="wizard-progress">
-        <div className="mb-4 flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
-          <div>
-            <p className="text-xs font-extrabold uppercase tracking-[0.18em] text-blue-700">{PRODUCT_NAME}</p>
-            <h1 className="text-2xl font-black text-slate-950">On-site enrollment</h1>
+      <div className="enrollment-topbar" id="wizard-progress">
+        <div className="enrollment-header">
+          <div className="enrollment-brand">
+            <img src={amavitaLogo} alt={`${PRODUCT_NAME} logo`} className="enrollment-logo" />
+            <div>
+              <p className="enrollment-brand-kicker">{PRODUCT_NAME}</p>
+              <h1>On-site enrollment</h1>
+            </div>
           </div>
-          <p className="text-sm font-semibold text-slate-500">Estimated time: 4-7 minutes</p>
+          <div className="enrollment-time">
+            <Clock3 size={18} aria-hidden="true" />
+            <span>Estimated time: 4-7 minutes</span>
+          </div>
         </div>
-        <div className="grid gap-2 sm:grid-cols-3">
+        <div className="enrollment-stepper" role="list" aria-label="Enrollment progress">
           {steps.map((name, index) => {
             const stepNumber = index + 1;
             const isCurrent = step === stepNumber;
@@ -1479,97 +1489,124 @@ This service is not for emergencies. If you agree, we can continue with your aut
                   }
                 }}
                 disabled={!canNavigateToStep}
-                className={`min-h-14 rounded-xl border px-4 text-left transition focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 ${
-                  isCurrent ? 'border-blue-500 bg-blue-50 text-blue-950' : isDone ? 'border-emerald-200 bg-emerald-50 text-emerald-900' : canNavigateToStep ? 'border-slate-200 bg-white text-slate-500 hover:border-blue-300' : 'cursor-not-allowed border-slate-200 bg-slate-50 text-slate-300'
-                }`}
+                className={`enrollment-step ${isCurrent ? 'is-active' : ''} ${isDone ? 'is-complete' : ''}`}
                 aria-current={isCurrent ? 'step' : undefined}
+                role="listitem"
               >
-                <span className="block text-xs font-black uppercase tracking-wide">Step {stepNumber}</span>
-                <span className="block text-base font-extrabold">{name}</span>
+                <span className="enrollment-step-number">{isDone ? <Check size={16} aria-hidden="true" /> : stepNumber}</span>
+                <span className="enrollment-step-text">{name}</span>
               </button>
             );
           })}
-        </div>
-        <div className="mt-4 h-2 overflow-hidden rounded-full bg-slate-100">
-          <div className="h-full rounded-full bg-blue-600 transition-all" style={{ width: `${workflowProgress}%` }} />
         </div>
       </div>
     );
   };
 
-  const DecisionCard = ({ active, title, helper, onClick }: { active: boolean; title: string; helper?: string; onClick: () => void }) => (
+  const SectionHeader = ({ icon, title, description }: { icon: React.ReactNode; title: string; description: string }) => (
+    <div className="enrollment-section-title">
+      <span className="enrollment-section-icon" aria-hidden="true">{icon}</span>
+      <div>
+        <h2>{title}</h2>
+        <p>{description}</p>
+      </div>
+    </div>
+  );
+
+  const DecisionCard = ({ active, title, helper, icon, onClick }: { active: boolean; title: string; helper?: string; icon?: React.ReactNode; onClick: () => void }) => (
     <button
       type="button"
       onClick={onClick}
-      className={`min-h-24 rounded-2xl border-2 p-5 text-left transition focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 ${
-        active ? 'border-blue-600 bg-blue-50 shadow-sm' : 'border-slate-200 bg-white hover:border-blue-300 hover:bg-blue-50/40'
-      }`}
+      className={`enrollment-selection-card ${active ? 'is-selected' : ''}`}
+      aria-pressed={active}
     >
-      <span className="block text-lg font-extrabold text-slate-950">{title}</span>
-      {helper && <span className="mt-1 block text-sm leading-relaxed text-slate-600">{helper}</span>}
+      {icon && <span className="enrollment-selection-icon" aria-hidden="true">{icon}</span>}
+      <span className="enrollment-selection-copy">
+        <span className="enrollment-selection-title">{title}</span>
+        {helper && <span className="enrollment-selection-helper">{helper}</span>}
+      </span>
+      <span className="enrollment-radio" aria-hidden="true" />
     </button>
   );
 
   return (
-    <div className="space-y-6 text-slate-900" id="wizard-container">
+    <div className="enrollment-shell text-slate-900" id="wizard-container">
       <ThreeStepProgress />
 
       {alertMessage && (
-        <div className="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm font-bold text-red-800">
+        <div className="enrollment-alert" role="alert" aria-live="polite">
+          <AlertCircle size={18} aria-hidden="true" />
           {alertMessage}
         </div>
       )}
 
-      <main className="mx-auto w-full max-w-5xl rounded-2xl border border-slate-200 bg-white shadow-sm" id="wizard-body">
+      <main className="enrollment-card-shell" id="wizard-body">
         {step === 1 && (
-          <section className="space-y-7 p-6 sm:p-8">
-            <div className="max-w-3xl">
-              <h2 className="text-3xl font-black text-slate-950">Confirm patient</h2>
-              <p className="mt-2 text-lg text-slate-600">Verify the patient and determine who will make the participation decision.</p>
-            </div>
+          <section className="enrollment-screen">
+            <SectionHeader
+              icon={<UserRound size={24} />}
+              title="Confirm patient"
+              description="Verify the patient and determine who will make the participation decision."
+            />
 
-            <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5">
-              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="enrollment-summary-card">
+              <div className="enrollment-card-heading">
+                <div className="enrollment-row-heading">
+                  <span className="enrollment-section-icon" aria-hidden="true"><UserRound size={20} /></span>
+                  <div>
+                    <h3>Patient summary</h3>
+                    <p>Please verify the patient information below.</p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsEditModalOpen(true)}
+                  className="enrollment-ghost-action"
+                >
+                  <Edit3 size={16} className="mr-2" /> Edit patient
+                </button>
+              </div>
+              <div className="enrollment-summary-grid">
                 {[
                   ['Patient name', `${patient.firstName} ${patient.lastName}`],
                   ['Date of birth', patient.birthDate],
-                  ['Facility', patient.nursingHome],
                   ['Room', patient.room || 'Not provided'],
+                  ['Facility', patient.nursingHome],
                   ['Ordering provider', patient.provider],
                   ['Selected services', selectedServices]
                 ].map(([label, value]) => (
-                  <div key={label}>
-                    <p className="text-xs font-black uppercase tracking-wide text-slate-400">{label}</p>
-                    <p className="mt-1 text-base font-extrabold text-slate-900">{value}</p>
+                  <div className="enrollment-summary-item" key={label}>
+                    <p>{label}</p>
+                    <strong>{value}</strong>
                   </div>
                 ))}
               </div>
-              <button
-                type="button"
-                onClick={() => setIsEditModalOpen(true)}
-                className="mt-5 inline-flex min-h-11 items-center rounded-xl border border-blue-200 bg-white px-4 text-sm font-extrabold text-blue-700 hover:bg-blue-50"
-              >
-                <Edit3 size={16} className="mr-2" /> Edit patient
-              </button>
             </div>
 
-            <label className="flex cursor-pointer items-start gap-4 rounded-2xl border border-blue-200 bg-blue-50/50 p-5">
+            <label className={`enrollment-attestation ${idConfirmed ? 'is-complete' : ''}`}>
               <input
                 type="checkbox"
                 checked={idConfirmed}
                 onChange={(event) => setIdConfirmed(event.target.checked)}
                 className="mt-1 h-6 w-6 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
               />
-              <span className="text-lg font-extrabold text-slate-900">I verified the patient's identity using at least two identifiers.</span>
+              <span className="enrollment-attestation-icon" aria-hidden="true">
+                <ShieldCheck size={22} />
+              </span>
+              <span>
+                <strong>I verified the patient's identity using at least two identifiers.</strong>
+                <small>Identity verification is required before consent can be captured.</small>
+              </span>
             </label>
 
             <div className="space-y-4">
-              <h3 className="text-xl font-black">Who will make the participation decision?</h3>
-              <div className="grid gap-4 md:grid-cols-2">
+              <h3 className="enrollment-question-title"><UsersRound size={20} aria-hidden="true" /> Who will make the participation decision?</h3>
+              <div className="enrollment-selection-grid two">
                 <DecisionCard
                   active={decisionMaker === 'PATIENT'}
                   title="Patient"
                   helper="Use when the patient can understand the explanation and make a participation decision."
+                  icon={<UserRound size={22} />}
                   onClick={() => {
                     setDecisionMaker('PATIENT');
                     setConsentSignerType('PATIENT');
@@ -1581,6 +1618,7 @@ This service is not for emergencies. If you agree, we can continue with your aut
                   active={decisionMaker === 'REPRESENTATIVE'}
                   title="Authorized representative"
                   helper="Use when a legally authorized person will decide or provide consent."
+                  icon={<UserRoundCheck size={22} />}
                   onClick={() => {
                     setDecisionMaker('REPRESENTATIVE');
                     setConsentSignerType('REPRESENTATIVE');
@@ -1592,13 +1630,15 @@ This service is not for emergencies. If you agree, we can continue with your aut
             </div>
 
             {decisionMaker === 'PATIENT' && (
-              <div className="space-y-4 rounded-2xl border border-slate-200 p-5">
-                <h3 className="text-xl font-black">Can the patient understand the explanation and make a participation decision?</h3>
-                <div className="grid gap-4 md:grid-cols-2">
-                  <DecisionCard active={patientCanDecide} title="Yes" onClick={() => setPatientCanDecide(true)} />
+              <div className="enrollment-subcard space-y-4">
+                <h3 className="enrollment-question-title"><ShieldCheck size={20} aria-hidden="true" /> Can the patient understand the explanation and make a participation decision?</h3>
+                <div className="enrollment-selection-grid two">
+                  <DecisionCard active={patientCanDecide} title="Yes" helper="The patient is able to understand and can make a participation decision." icon={<CheckCircle size={22} />} onClick={() => setPatientCanDecide(true)} />
                   <DecisionCard
                     active={!patientCanDecide}
                     title="No - authorized representative required"
+                    helper="The patient is not able to understand; an authorized representative is required."
+                    icon={<UsersRound size={22} />}
                     onClick={() => {
                       setPatientCanDecide(false);
                       setDecisionMaker('REPRESENTATIVE');
@@ -1608,13 +1648,13 @@ This service is not for emergencies. If you agree, we can continue with your aut
                   />
                 </div>
                 {!patientCanDecide && (
-                  <p className="rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm font-bold text-blue-900">An authorized representative is required to continue.</p>
+                  <p className="enrollment-info-banner"><Info size={16} aria-hidden="true" /> An authorized representative is required to continue.</p>
                 )}
               </div>
             )}
 
             {decisionMaker === 'REPRESENTATIVE' && (
-              <div className="grid gap-4 rounded-2xl border border-slate-200 bg-slate-50 p-5 md:grid-cols-2">
+              <div className="enrollment-form-grid">
                 <div>
                   <label className="mb-1 block text-sm font-bold">Full legal name</label>
                   <input value={readinessRepName} onChange={(e) => { setReadinessRepName(e.target.value); setSignerName(e.target.value); }} className="min-h-12 w-full rounded-xl border border-slate-300 px-3 text-base" />
@@ -1647,52 +1687,71 @@ This service is not for emergencies. If you agree, we can continue with your aut
         )}
 
         {step === 2 && (
-          <section className="space-y-7 p-6 sm:p-8">
-            <div className="max-w-3xl">
-              <h2 className="text-3xl font-black text-slate-950">Explain & obtain consent</h2>
-              <p className="mt-2 text-lg text-slate-600">Explain the selected services, record the decision, and document consent.</p>
-            </div>
+          <section className="enrollment-screen">
+            <SectionHeader
+              icon={<FileSignature size={24} />}
+              title="Explain & obtain consent"
+              description="Explain the selected services, record the decision, and document consent."
+            />
 
-            <section className="rounded-2xl border border-blue-200 bg-blue-50 p-5">
-              <p className="text-xs font-black uppercase tracking-[0.18em] text-blue-700">Enrollment guide</p>
-              <div className="mt-4 max-w-3xl space-y-4 text-lg leading-relaxed text-slate-900">
-                <p>Dr. {patient.provider || '[Provider Name]'} would like our care team to help monitor and coordinate your care between visits.</p>
-                <p>A Care Manager may contact you to review your health, medications, symptoms, and care needs.</p>
-                {isRpmApplicable && <p>If remote monitoring is included, you will receive a connected device that securely sends your readings to the care team.</p>}
-                <p>Participation is voluntary. You may stop the service at any time.</p>
-                <p>Medicare may cover the service, but cost-sharing may apply depending on your coverage.</p>
-                <p>Only one practitioner may provide and bill for the same service during the applicable billing period.</p>
-                <p>This service is not for emergencies.</p>
+            <section className="enrollment-guide-card">
+              <span className="enrollment-section-icon" aria-hidden="true"><BookOpen size={22} /></span>
+              <div className="min-w-0">
+                <p className="enrollment-eyebrow">Enrollment guide</p>
+                <ul className="enrollment-guide-list">
+                  {[
+                    `Dr. ${patient.provider || '[Provider Name]'} would like our care team to help monitor and coordinate your care between visits.`,
+                    'A Care Manager may contact you to review your health, medications, symptoms, and care needs.',
+                    isRpmApplicable ? 'If remote monitoring is included, you will receive a connected device that securely sends your readings to the care team.' : '',
+                    'Participation is voluntary. You may stop the service at any time.',
+                    'Medicare may cover the service, but cost-sharing may apply depending on your coverage.',
+                    'Only one practitioner may provide and bill for the same service during the applicable billing period.',
+                    'This service is not for emergencies. If you have a medical emergency, call 911.'
+                  ].filter(Boolean).map(item => (
+                    <li key={item}><CheckCircle size={15} aria-hidden="true" /> <span>{item}</span></li>
+                  ))}
+                </ul>
+                <button type="button" onClick={() => setShowDetailedEnrollmentGuide(!showDetailedEnrollmentGuide)} className="enrollment-ghost-action mt-5">
+                  <FileText size={16} className="mr-2" aria-hidden="true" />
+                  {showDetailedEnrollmentGuide ? 'Hide detailed script' : 'View detailed script'}
+                </button>
+                {showDetailedEnrollmentGuide && (
+                  <div className="mt-4 rounded-xl border border-blue-100 bg-white p-4 text-base leading-relaxed text-slate-700">
+                    {step2GuideScript.split('\n\n').map((paragraph, index) => <p key={index} className="mb-3 last:mb-0">{paragraph}</p>)}
+                  </div>
+                )}
               </div>
-              <button type="button" onClick={() => setShowDetailedEnrollmentGuide(!showDetailedEnrollmentGuide)} className="mt-5 min-h-11 rounded-xl border border-blue-200 bg-white px-4 text-sm font-extrabold text-blue-700 hover:bg-blue-50">
-                {showDetailedEnrollmentGuide ? 'Hide detailed script' : 'View detailed script'}
-              </button>
-              {showDetailedEnrollmentGuide && (
-                <div className="mt-4 max-w-3xl rounded-xl border border-blue-100 bg-white p-4 text-base leading-relaxed text-slate-700">
-                  {step2GuideScript.split('\n\n').map((paragraph, index) => <p key={index} className="mb-3 last:mb-0">{paragraph}</p>)}
-                </div>
-              )}
             </section>
 
-            <section className="rounded-2xl border border-slate-200 p-5">
-              <h3 className="text-xl font-black">Optional patient app</h3>
-              <p className="mt-1 text-base text-slate-600">Would the patient or caregiver like information about the mobile app?</p>
-              <div className="mt-4 grid gap-4 md:grid-cols-2">
+            <section className="enrollment-row-card">
+              <div className="enrollment-row-heading">
+                <span className="enrollment-section-icon success" aria-hidden="true"><Smartphone size={20} /></span>
+                <div>
+                  <h3>Optional patient app</h3>
+                  <p>Would the patient or caregiver like information about the mobile app?</p>
+                </div>
+              </div>
+              <div className="enrollment-segmented">
                 <DecisionCard active={wantsPatientAppInfo === 'YES'} title="Yes" onClick={() => setWantsPatientAppInfo('YES')} />
                 <DecisionCard active={wantsPatientAppInfo === 'NO'} title="No" onClick={() => setWantsPatientAppInfo('NO')} />
               </div>
             </section>
 
-            <label className="flex cursor-pointer items-start gap-4 rounded-2xl border border-blue-200 bg-blue-50/40 p-5">
+            <label className={`enrollment-attestation ${serviceExplanationConfirmed ? 'is-complete' : ''}`}>
               <input type="checkbox" checked={serviceExplanationConfirmed} onChange={(e) => setServiceExplanationConfirmed(e.target.checked)} className="mt-1 h-6 w-6 rounded text-blue-600" />
-              <span className="text-lg font-extrabold text-slate-900">I explained the selected services, answered questions, and confirmed understanding.</span>
+              <span className="enrollment-attestation-icon" aria-hidden="true"><ShieldCheck size={22} /></span>
+              <span>
+                <strong>I explained the selected services, answered questions, and confirmed understanding.</strong>
+                <small>This step is required before capturing consent.</small>
+              </span>
             </label>
 
-            <section className="space-y-4 rounded-2xl border border-slate-200 p-5">
-              <h3 className="text-xl font-black">What is the participation decision?</h3>
-              <div className="grid gap-4 md:grid-cols-2">
-                <DecisionCard active={consentDecision === 'ACCEPT'} title="Accept services" onClick={() => setConsentDecision('ACCEPT')} />
-                <DecisionCard active={consentDecision === 'DECLINE'} title="Decline services" onClick={() => setConsentDecision('DECLINE')} />
+            <section className="enrollment-subcard space-y-4">
+              <h3 className="enrollment-question-title"><UsersRound size={20} aria-hidden="true" /> What is the participation decision?</h3>
+              <p className="enrollment-muted-copy">Record the patient's decision for the selected services.</p>
+              <div className="enrollment-selection-grid two">
+                <DecisionCard active={consentDecision === 'ACCEPT'} title="Accept services" helper="Patient agrees to receive the selected services." icon={<CheckCircle size={22} />} onClick={() => setConsentDecision('ACCEPT')} />
+                <DecisionCard active={consentDecision === 'DECLINE'} title="Decline services" helper="Patient does not want to receive the services." icon={<XIcon size={22} />} onClick={() => setConsentDecision('DECLINE')} />
               </div>
               {consentDecision === 'DECLINE' && (
                 <div>
@@ -1704,18 +1763,31 @@ This service is not for emergencies. If you agree, we can continue with your aut
 
             {consentDecision === 'ACCEPT' && (
               <>
-                <section className="rounded-2xl border border-slate-200 p-5">
+                <section className="enrollment-summary-card">
                   <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                    <div>
-                      <p className="text-sm font-bold text-slate-500">Consent provided by</p>
-                      <p className="text-xl font-black">{decisionMaker === 'REPRESENTATIVE' ? 'Authorized representative' : 'Patient'}</p>
+                    <div className="enrollment-row-heading">
+                      <span className="enrollment-section-icon success" aria-hidden="true"><CheckCircle size={20} /></span>
+                      <div>
+                        <h3>Participation summary</h3>
+                        <p>The patient has accepted services.</p>
+                      </div>
                     </div>
-                    <button type="button" onClick={() => setStep(1)} className="min-h-11 rounded-xl border border-slate-300 px-4 text-sm font-extrabold text-slate-700 hover:bg-slate-50">Edit</button>
+                    <button type="button" onClick={() => setStep(1)} className="enrollment-ghost-action"><Edit3 size={16} className="mr-2" /> Edit responses</button>
+                  </div>
+                  <div className="enrollment-summary-grid mt-4">
+                    <div className="enrollment-summary-item">
+                      <p>Participation decision</p>
+                      <strong>Accept services</strong>
+                    </div>
+                    <div className="enrollment-summary-item">
+                      <p>Consent provided by</p>
+                      <strong>{decisionMaker === 'REPRESENTATIVE' ? 'Authorized representative' : 'Patient'}</strong>
+                    </div>
                   </div>
                 </section>
 
                 {decisionMaker === 'REPRESENTATIVE' && (
-                  <section className="grid gap-4 rounded-2xl border border-slate-200 bg-slate-50 p-5 md:grid-cols-2">
+                  <section className="enrollment-form-grid">
                     <div><label className="mb-1 block text-sm font-bold">Full legal name</label><input value={signerName} onChange={(e) => setSignerName(e.target.value)} className="min-h-12 w-full rounded-xl border border-slate-300 px-3 text-base" /></div>
                     <div><label className="mb-1 block text-sm font-bold">Relationship to patient</label><input value={repRelationship} onChange={(e) => setRepRelationship(e.target.value)} className="min-h-12 w-full rounded-xl border border-slate-300 px-3 text-base" /></div>
                     <div><label className="mb-1 block text-sm font-bold">Authority basis</label><select value={authorityType} onChange={(e) => setAuthorityType(e.target.value as typeof authorityType)} className="min-h-12 w-full rounded-xl border border-slate-300 bg-white px-3 text-base"><option value="">Select</option><option value="HEALTH_CARE_PROXY">Health care surrogate</option><option value="POWER_OF_ATTORNEY">Health care power of attorney</option><option value="GUARDIAN">Legal guardian</option><option value="OTHER">Other authorized representative</option></select></div>
@@ -1724,26 +1796,37 @@ This service is not for emergencies. If you agree, we can continue with your aut
                   </section>
                 )}
 
-                <section className="space-y-4 rounded-2xl border border-slate-200 p-5">
-                  <h3 className="text-xl font-black">How will consent be documented?</h3>
-                  <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-                    <DecisionCard active={signatureMethod === 'DRAW'} title="Draw signature" onClick={() => setConsentMethod('DRAW')} />
-                    <DecisionCard active={signatureMethod === 'TYPE'} title="Type full legal name" onClick={() => setConsentMethod('TYPE')} />
-                    <DecisionCard active={isVerbalConsent} title="Verbal consent" onClick={() => setConsentMethod('VERBAL')} />
-                    <DecisionCard active={isMarkXConsent} title="Mark or X" onClick={() => setConsentMethod('MARK_X')} />
-                    <DecisionCard active={unableSignMethod === 'REPRESENTATIVE_SIGNATURE'} title="Representative signature" onClick={() => setConsentMethod('REPRESENTATIVE_SIGNATURE')} />
+                <section className="enrollment-subcard space-y-4">
+                  <h3 className="enrollment-question-title"><FileSignature size={20} aria-hidden="true" /> How will consent be documented?</h3>
+                  <p className="enrollment-muted-copy">Select the method used to capture consent.</p>
+                  <div className="enrollment-selection-grid consent-methods">
+                    <DecisionCard active={signatureMethod === 'DRAW'} title="Draw signature" helper="Capture a handwritten signature." icon={<FileSignature size={22} />} onClick={() => setConsentMethod('DRAW')} />
+                    <DecisionCard active={signatureMethod === 'TYPE'} title="Type full legal name" helper="Enter the signer's full legal name." icon={<Type size={22} />} onClick={() => setConsentMethod('TYPE')} />
+                    <DecisionCard active={isVerbalConsent} title="Verbal consent" helper="Document that verbal consent was provided." icon={<AudioLines size={22} />} onClick={() => setConsentMethod('VERBAL')} />
+                    <DecisionCard active={isMarkXConsent} title="Mark or X" helper="Signer marks an X to consent." icon={<XIcon size={22} />} onClick={() => setConsentMethod('MARK_X')} />
+                    <DecisionCard active={unableSignMethod === 'REPRESENTATIVE_SIGNATURE'} title="Representative signature" helper="Authorized representative signs on behalf of the patient." icon={<UserRoundCheck size={22} />} onClick={() => setConsentMethod('REPRESENTATIVE_SIGNATURE')} />
                   </div>
 
                   {signatureMethod === 'DRAW' && (
-                    <div className="rounded-2xl border border-slate-200 p-4">
-                      <label className="mb-2 block text-sm font-bold">Signer name</label>
-                      <input value={signerName} onChange={(e) => setSignerName(e.target.value)} className="mb-4 min-h-12 w-full rounded-xl border border-slate-300 px-3 text-base" />
-                      <SignaturePad id="simplified-draw-signature" label={decisionMaker === 'REPRESENTATIVE' ? 'Authorized Representative Signature' : 'Patient Signature'} onSave={handleSavePatientSignature} onClear={() => setPatientSignature('')} savedDataUrl={patientSignature} signerName={signerName} confirmLabel="Confirm signature" />
+                    <div className="enrollment-signature-panel">
+                      <div>
+                        <h4>Signer details</h4>
+                        <p>Enter the name of the person providing consent.</p>
+                        <label className="mt-4 mb-2 block text-sm font-bold">Signer name</label>
+                        <input value={signerName} onChange={(e) => setSignerName(e.target.value)} className="min-h-12 w-full rounded-xl border border-slate-300 px-3 text-base" />
+                      </div>
+                      <div>
+                        <div className="mb-3 flex items-center gap-2">
+                          <h4>{decisionMaker === 'REPRESENTATIVE' ? 'Representative signature' : 'Patient signature'}</h4>
+                          <span className="enrollment-required-badge">Required</span>
+                        </div>
+                        <SignaturePad id="simplified-draw-signature" label={decisionMaker === 'REPRESENTATIVE' ? 'Authorized Representative Signature' : 'Patient Signature'} onSave={handleSavePatientSignature} onClear={() => setPatientSignature('')} savedDataUrl={patientSignature} signerName={signerName} confirmLabel="Save signature" />
+                      </div>
                     </div>
                   )}
 
                   {signatureMethod === 'TYPE' && (
-                    <div className="space-y-4 rounded-2xl border border-slate-200 bg-slate-50 p-5">
+                    <div className="enrollment-consent-panel space-y-4">
                       <div><label className="mb-1 block text-sm font-bold">Full legal name</label><input value={typedSignatureName} onChange={(e) => setTypedSignatureName(e.target.value)} className="min-h-12 w-full rounded-xl border border-slate-300 px-3 text-base" /></div>
                       <label className="flex cursor-pointer items-start gap-3 rounded-xl bg-white p-4"><input type="checkbox" checked={typedSignatureAgreed} onChange={(e) => setTypedSignatureAgreed(e.target.checked)} className="mt-1 h-5 w-5 rounded text-blue-600" /><span className="text-base font-bold">I confirm that typing my full legal name represents my signature.</span></label>
                       <button type="button" onClick={() => { setSignerName(typedSignatureName.trim()); setTypedSignatureConfirmed(true); }} disabled={!typedSignatureName.trim() || !typedSignatureAgreed} className="min-h-11 rounded-xl bg-blue-600 px-4 text-sm font-extrabold text-white disabled:opacity-50">Confirm typed signature</button>
@@ -1751,7 +1834,7 @@ This service is not for emergencies. If you agree, we can continue with your aut
                   )}
 
                   {isVerbalConsent && (
-                    <div className="grid gap-4 rounded-2xl border border-slate-200 bg-slate-50 p-5 md:grid-cols-2">
+                    <div className="enrollment-consent-panel enrollment-form-grid">
                       <div><p className="text-sm font-bold text-slate-500">Consent obtained by</p><p className="text-lg font-black">{currentUser.name}</p></div>
                       <div><p className="text-sm font-bold text-slate-500">Staff role/title</p><p className="text-lg font-black">{staffRoleLabel}</p></div>
                       <div><p className="text-sm font-bold text-slate-500">Facility</p><p className="text-lg font-black">{patient.nursingHome}</p></div>
@@ -1762,7 +1845,7 @@ This service is not for emergencies. If you agree, we can continue with your aut
                   )}
 
                   {isMarkXConsent && (
-                    <div className="space-y-4 rounded-2xl border border-slate-200 bg-slate-50 p-5">
+                    <div className="enrollment-consent-panel space-y-4">
                       <SignaturePad id="simplified-mark-x" label="Mark/X signature area" onSave={handleSavePatientSignature} onClear={() => setPatientSignature('')} savedDataUrl={patientSignature} signerName={signerName} confirmLabel="Save Mark/X" />
                       <div><label className="mb-1 block text-sm font-bold">Reason full signature could not be provided</label><textarea value={unableToSignReason} onChange={(e) => setUnableToSignReason(e.target.value)} rows={3} className="w-full rounded-xl border border-slate-300 p-3 text-base" /></div>
                       <div className="grid gap-4 md:grid-cols-2"><div><label className="mb-1 block text-sm font-bold">Witness name</label><input value={markWitnessName} onChange={(e) => setMarkWitnessName(e.target.value)} className="min-h-12 w-full rounded-xl border border-slate-300 px-3 text-base" /></div><div><label className="mb-1 block text-sm font-bold">Witness role/title</label><input value={markWitnessRole} onChange={(e) => setMarkWitnessRole(e.target.value)} className="min-h-12 w-full rounded-xl border border-slate-300 px-3 text-base" /></div></div>
@@ -1772,14 +1855,21 @@ This service is not for emergencies. If you agree, we can continue with your aut
                   )}
                 </section>
 
-                <label className="flex cursor-pointer items-start gap-4 rounded-2xl border border-blue-200 bg-blue-50/40 p-5">
+                <label className={`enrollment-attestation ${staffAttestationConfirmed ? 'is-complete' : ''}`}>
                   <input type="checkbox" checked={staffAttestationConfirmed} onChange={(e) => setStaffAttestationConfirmed(e.target.checked)} className="mt-1 h-6 w-6 rounded text-blue-600" />
-                  <span className="text-base font-bold leading-relaxed">I confirm that I verified the signer’s identity and role, explained the selected services, answered questions, and accurately documented the patient’s or authorized representative’s decision.</span>
+                  <span className="enrollment-attestation-icon" aria-hidden="true"><ClipboardCheck size={22} /></span>
+                  <span>
+                    <strong>I confirm that I verified the signer’s identity and role, explained the selected services, answered questions, and accurately documented the patient’s or authorized representative’s decision.</strong>
+                    <small><span className="enrollment-required-badge">Required</span></small>
+                  </span>
                 </label>
 
-                <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                  <p className="text-sm font-bold text-slate-500">Consent PDF</p>
-                  <p className={`mt-1 text-lg font-black ${consentPdfGenerated ? 'text-emerald-700' : 'text-slate-800'}`}>{isGeneratingConsentPdf ? 'Generating automatically...' : consentPdfGenerated ? 'Generated and attached' : 'Will generate automatically after consent is confirmed'}</p>
+                <div className="enrollment-pdf-card">
+                  <span className="enrollment-section-icon" aria-hidden="true"><FileCheck size={20} /></span>
+                  <div>
+                    <p>Consent PDF</p>
+                    <strong className={consentPdfGenerated ? 'text-emerald-700' : 'text-slate-800'}>{isGeneratingConsentPdf ? 'Generating automatically...' : consentPdfGenerated ? 'Generated and attached' : 'Will generate automatically after consent is confirmed.'}</strong>
+                  </div>
                 </div>
               </>
             )}
@@ -1787,18 +1877,19 @@ This service is not for emergencies. If you agree, we can continue with your aut
         )}
 
         {step === 3 && (
-          <section className="space-y-7 p-6 sm:p-8">
-            <div className="max-w-3xl">
-              <h2 className="text-3xl font-black text-slate-950">Complete enrollment</h2>
-              <p className="mt-2 text-lg text-slate-600">{isRpmApplicable ? 'Complete RPM setup if available, then finish enrollment.' : 'Review the CCM enrollment summary and finish.'}</p>
-            </div>
+          <section className="enrollment-screen">
+            <SectionHeader
+              icon={<CheckCircle size={24} />}
+              title="Complete enrollment"
+              description={isRpmApplicable ? 'Finalize RPM setup if applicable, then finish enrollment.' : 'Review the CCM enrollment summary and finish.'}
+            />
 
             {!isRpmApplicable ? (
-              <section className="rounded-2xl border border-slate-200 p-5">
-                <h3 className="text-2xl font-black">Enrollment summary</h3>
+              <section className="enrollment-subcard">
+                <h3 className="enrollment-question-title"><ClipboardCheck size={20} aria-hidden="true" /> Enrollment summary</h3>
                 <div className="mt-5 grid gap-3 md:grid-cols-2">
                   {[['Identity verified', idConfirmed], ['Service explanation completed', serviceExplanationConfirmed], ['Consent recorded', consentDecision === 'ACCEPT'], ['Consent PDF generated', consentPdfGenerated], ['CCM enrollment ready', true]].map(([label, ready]) => (
-                    <div key={String(label)} className="flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 p-4">
+                    <div key={String(label)} className="enrollment-check-row rounded-xl border border-slate-200 bg-slate-50 p-4">
                       <CheckCircle size={20} className={ready ? 'text-emerald-600' : 'text-slate-300'} />
                       <span className="text-base font-extrabold">{label as string}</span>
                     </div>
@@ -1806,12 +1897,13 @@ This service is not for emergencies. If you agree, we can continue with your aut
                 </div>
               </section>
             ) : (
-              <section className="space-y-5">
-                <div className="rounded-2xl border border-slate-200 p-5">
-                  <h3 className="text-2xl font-black">RPM device setup</h3>
+              <section className="enrollment-complete-grid">
+                <div className="space-y-5">
+                <div className="enrollment-subcard">
+                  <h3 className="enrollment-question-title"><Monitor size={20} aria-hidden="true" /> RPM device setup</h3>
                   <div className="mt-4">
                     {medicalOrderApproved ? (
-                      <p className="text-base font-extrabold text-emerald-700">✓ RPM order approved</p>
+                      <p className="enrollment-success-banner"><CheckCircle size={16} aria-hidden="true" /> RPM order approved</p>
                     ) : (
                       <p className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-base font-bold text-amber-900">RPM device assignment requires an approved medical order.</p>
                     )}
@@ -1820,8 +1912,8 @@ This service is not for emergencies. If you agree, we can continue with your aut
 
                 {medicalOrderApproved && (
                   <>
-                    <div className="rounded-2xl border border-slate-200 p-5">
-                      <h4 className="text-xl font-black">Device information</h4>
+                    <div className="enrollment-subcard">
+                      <h4 className="enrollment-question-title"><ScanBarcode size={20} aria-hidden="true" /> Device information</h4>
                       <div className="mt-4 grid gap-4 md:grid-cols-3">
                         <div><label className="mb-1 block text-sm font-bold">Device</label><select value={deviceType} onChange={(e) => setDeviceType(e.target.value as typeof deviceType)} className="min-h-12 w-full rounded-xl border border-slate-300 bg-white px-3 text-base"><option value="BP Monitor">BP Monitor</option><option value="Scale">Scale</option><option value="Other">Other</option></select></div>
                         <div><label className="mb-1 block text-sm font-bold">Model</label><input value={model} onChange={(e) => setModel(e.target.value)} className="min-h-12 w-full rounded-xl border border-slate-300 px-3 text-base" placeholder="Device model" /></div>
@@ -1859,8 +1951,8 @@ This service is not for emergencies. If you agree, we can continue with your aut
                       )}
                     </div>
 
-                    <div className="rounded-2xl border border-slate-200 p-5">
-                      <h4 className="text-xl font-black">Delivery and education</h4>
+                    <div className="enrollment-subcard">
+                      <h4 className="enrollment-question-title"><GraduationCap size={20} aria-hidden="true" /> Delivery and education</h4>
                       <div className="mt-4 space-y-3">
                         {[['Device delivered to the patient or responsible staff', devDeliveredToPatient, setDevDeliveredToPatient], ['Device use and measurement technique explained', devInstructionsGiven, setDevInstructionsGiven], ['Patient or responsible staff demonstrated understanding', devUnderstandingDemonstrated, setDevUnderstandingDemonstrated]].map(([label, checked, setter]) => (
                           <label key={String(label)} className="flex cursor-pointer items-start gap-4 rounded-xl border border-slate-200 p-4">
@@ -1872,8 +1964,8 @@ This service is not for emergencies. If you agree, we can continue with your aut
                       <div className="mt-4"><label className="mb-1 block text-sm font-bold">Who received the education?</label><select value={educationRecipient} onChange={(e) => setEducationRecipient(e.target.value as typeof educationRecipient)} className="min-h-12 w-full rounded-xl border border-slate-300 bg-white px-3 text-base"><option value="PATIENT">Patient</option><option value="FACILITY_STAFF">Facility staff</option><option value="CAREGIVER">Caregiver</option><option value="AUTHORIZED_REPRESENTATIVE">Authorized representative</option></select></div>
                     </div>
 
-                    <div className="rounded-2xl border border-slate-200 p-5">
-                      <h4 className="text-xl font-black">First reading</h4>
+                    <div className="enrollment-subcard">
+                      <h4 className="enrollment-question-title"><HeartPulse size={20} aria-hidden="true" /> First reading</h4>
                       <p className="mt-1 text-sm font-semibold text-slate-600">The first reading is helpful, but enrollment can be completed while activation is pending.</p>
                       <div className="mt-4 grid gap-4 md:grid-cols-3">
                         <div><label className="mb-1 block text-sm font-bold">Systolic</label><input inputMode="numeric" value={systolic} onChange={(e) => setSystolic(e.target.value)} className="min-h-12 w-full rounded-xl border border-slate-300 px-3 text-base" /></div>
@@ -1883,30 +1975,61 @@ This service is not for emergencies. If you agree, we can continue with your aut
                     </div>
                   </>
                 )}
+                </div>
+                <aside className="enrollment-sidebar">
+                  <div className="enrollment-subcard">
+                    <h3 className="enrollment-question-title"><ClipboardCheck size={20} aria-hidden="true" /> Enrollment checklist</h3>
+                    <div className="mt-4 space-y-3">
+                      {[
+                        ['Patient identity verified', idConfirmed],
+                        ['Consent documented', consentPdfGenerated],
+                        ['Device assigned', deviceSetupReady],
+                        ['Education completed', devInstructionsGiven && devUnderstandingDemonstrated],
+                        ['First reading captured', firstReadingComplete],
+                        ['Enrollment finalized', canCompleteSimplifiedEnrollment]
+                      ].map(([label, ready]) => (
+                        <div key={String(label)} className="enrollment-check-row">
+                          <CheckCircle size={17} className={ready ? 'text-emerald-700' : 'text-slate-300'} aria-hidden="true" />
+                          <span>{label as string}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="enrollment-subcard">
+                    <h3 className="enrollment-question-title"><UserRound size={20} aria-hidden="true" /> Patient summary</h3>
+                    <div className="mt-4 space-y-3 text-sm">
+                      <p><strong>{patient.firstName} {patient.lastName}</strong></p>
+                      <p>Services: <strong>{selectedServices}</strong></p>
+                      <p>Decision maker: <strong>{decisionMaker === 'REPRESENTATIVE' ? 'Authorized representative' : 'Patient'}</strong></p>
+                      <p>Consent method: <strong>{signatureMethod === 'UNABLE' ? unableSignMethod.replaceAll('_', ' ') : signatureMethod}</strong></p>
+                      <p>Facility: <strong>{patient.nursingHome}</strong></p>
+                    </div>
+                  </div>
+                </aside>
               </section>
             )}
 
-            <section className="rounded-2xl border border-slate-200 bg-slate-50 p-5">
+            <section className="enrollment-subcard bg-slate-50">
               <h3 className="text-2xl font-black">Enrollment completed</h3>
               <p className="mt-1 text-base font-semibold text-slate-600">{patient.firstName} {patient.lastName} is ready to finish enrollment.</p>
-              <div className="mt-5 grid gap-3 md:grid-cols-2">
-                <div className="rounded-xl bg-white p-4"><p className="text-sm font-bold text-slate-500">Consent</p><p className="text-lg font-black text-emerald-700">Completed</p></div>
-                <div className="rounded-xl bg-white p-4"><p className="text-sm font-bold text-slate-500">CCM</p><p className="text-lg font-black">{patient.assignedProgram.includes('CCM') ? 'Enrolled' : 'Not selected'}</p></div>
-                {isRpmApplicable && <div className="rounded-xl bg-white p-4"><p className="text-sm font-bold text-slate-500">RPM device</p><p className="text-lg font-black">{deviceSetupReady ? 'Assigned' : 'Pending'}</p></div>}
-                {isRpmApplicable && <div className="rounded-xl bg-white p-4"><p className="text-sm font-bold text-slate-500">RPM activation</p><p className="text-lg font-black">{rpmActivationLabel}</p></div>}
+              <div className="enrollment-status-grid">
+                <div className="enrollment-status-tile success"><p>Consent</p><strong>Completed</strong></div>
+                <div className="enrollment-status-tile neutral"><p>CCM</p><strong>{patient.assignedProgram.includes('CCM') ? 'Enrolled' : 'Not selected'}</strong></div>
+                {isRpmApplicable && <div className={`enrollment-status-tile ${deviceSetupReady ? 'success' : 'warning'}`}><p>RPM device</p><strong>{deviceSetupReady ? 'Assigned' : 'Pending'}</strong></div>}
+                {isRpmApplicable && <div className="enrollment-status-tile info"><p>RPM activation</p><strong>{rpmActivationLabel}</strong></div>}
               </div>
             </section>
           </section>
         )}
 
-        <footer className="sticky bottom-0 z-20 flex flex-col gap-3 border-t border-slate-200 bg-white/95 p-4 backdrop-blur sm:flex-row sm:items-center sm:justify-between">
-          <button type="button" onClick={() => setShowExitDialog(true)} className="min-h-11 rounded-xl px-4 text-sm font-extrabold text-slate-600 hover:bg-slate-50">Exit enrollment</button>
-          <div className="flex flex-col gap-2 sm:flex-row">
-            <button type="button" onClick={handleSaveAndExitLocal} className="min-h-12 rounded-xl border border-blue-200 bg-blue-50 px-5 text-sm font-extrabold text-blue-700 hover:bg-blue-100"><Save size={16} className="mr-2 inline" />Save & continue later</button>
-            {step > 1 && <button type="button" onClick={() => setStep(step - 1)} className="min-h-12 rounded-xl border border-slate-300 px-5 text-sm font-extrabold text-slate-700 hover:bg-slate-50"><ArrowLeft size={16} className="mr-2 inline" />Back</button>}
-            {step === 1 && <button type="button" onClick={handleSimplifiedContinueFromStep1} disabled={!step1Complete} className="min-h-12 rounded-xl bg-blue-600 px-6 text-sm font-black text-white shadow-lg shadow-blue-600/20 hover:bg-blue-700 disabled:opacity-50">Continue<ArrowRight size={16} className="ml-2 inline" /></button>}
-            {step === 2 && <button type="button" onClick={handleSimplifiedConsentContinue} disabled={isGeneratingConsentPdf || (consentDecision === 'ACCEPT' && !consentRecordComplete)} className="min-h-12 rounded-xl bg-blue-600 px-6 text-sm font-black text-white shadow-lg shadow-blue-600/20 hover:bg-blue-700 disabled:opacity-50">{isGeneratingConsentPdf ? 'Generating PDF...' : consentDecision === 'DECLINE' ? 'Finish decline' : 'Confirm consent & continue'}</button>}
-            {step === 3 && <button type="button" onClick={handleSimplifiedCompleteEnrollment} disabled={!canCompleteSimplifiedEnrollment || isGeneratingDeliveryPdf} className="min-h-12 rounded-xl bg-emerald-600 px-6 text-sm font-black text-white shadow-lg shadow-emerald-600/20 hover:bg-emerald-700 disabled:opacity-50">{isGeneratingDeliveryPdf ? 'Saving device record...' : 'Complete enrollment'}</button>}
+        <footer className="enrollment-action-bar">
+          <button type="button" onClick={() => setShowExitDialog(true)} className="enrollment-exit-action"><LogOut size={16} className="mr-2" />Exit enrollment</button>
+          <div className="enrollment-action-group">
+            <button type="button" onClick={handleSaveAndExitLocal} className="enrollment-secondary-action"><Bookmark size={16} className="mr-2" />Save & continue later</button>
+            {step > 1 && <button type="button" onClick={() => setStep(step - 1)} className="enrollment-secondary-action"><ArrowLeft size={16} className="mr-2" />Back</button>}
+            {step === 1 && <button type="button" onClick={handleSimplifiedContinueFromStep1} disabled={!step1Complete} className="enrollment-primary-action">Continue<ArrowRight size={16} className="ml-2" /></button>}
+            {step === 2 && <button type="button" onClick={handleSimplifiedConsentContinue} disabled={isGeneratingConsentPdf || (consentDecision === 'ACCEPT' && !consentRecordComplete)} className="enrollment-primary-action">{isGeneratingConsentPdf ? 'Generating PDF...' : consentDecision === 'DECLINE' ? 'Finish decline' : 'Confirm consent & continue'}<ArrowRight size={16} className="ml-2" /></button>}
+            {step === 3 && <button type="button" onClick={handleSimplifiedCompleteEnrollment} disabled={!canCompleteSimplifiedEnrollment || isGeneratingDeliveryPdf} className="enrollment-complete-action">{isGeneratingDeliveryPdf ? 'Saving device record...' : 'Complete enrollment'}<CheckCircle size={16} className="ml-2" /></button>}
           </div>
         </footer>
       </main>
