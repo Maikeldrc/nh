@@ -963,6 +963,7 @@ export default function App() {
             currentUser={currentUser}
             patient={selectedPatient}
             existingVisit={activeVisit}
+            existingConsent={patientConsent}
             onSaveAndExit={handleSaveAndExitWizard}
             onCancel={() => {
               setCurrentView('DASHBOARD');

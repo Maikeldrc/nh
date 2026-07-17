@@ -22,6 +22,7 @@ interface VisitWizardProps {
   currentUser: User;
   patient: Patient;
   existingVisit?: Visit;
+  existingConsent?: Consent;
   onSaveAndExit: (
     visit: Visit,
     consent?: Consent,
@@ -219,6 +220,7 @@ export default function VisitWizard({
   currentUser,
   patient,
   existingVisit,
+  existingConsent,
   onSaveAndExit,
   onCancel,
   onGenerateConsentPDF,
@@ -235,6 +237,12 @@ export default function VisitWizard({
   const l = (es: string, en: string) => language === 'ES' ? es : en;
   const STEP2_GUIDE_SCRIPT_VERSION = 'amavita_step2_guide_v2026_06_30';
   const savedForm = (existingVisit?.formState || {}) as Record<string, unknown>;
+  const storedGrantedConsent = existingConsent?.status === 'GRANTED' ? existingConsent : undefined;
+  const storedConsentDocumented = Boolean(
+    storedGrantedConsent
+    && storedGrantedConsent.signerName
+    && (storedGrantedConsent.pdfGenerated || storedGrantedConsent.pdfId || storedGrantedConsent.patientSignature || storedGrantedConsent.consentMethod === 'VERBAL')
+  );
   const savedBool = (key: string, fallback = false) => typeof savedForm[key] === 'boolean' ? Boolean(savedForm[key]) : fallback;
   const savedString = (key: string, fallback = '') => typeof savedForm[key] === 'string' ? String(savedForm[key]) : fallback;
   const savedChoice = <T extends string>(key: string, fallback: T): T => typeof savedForm[key] === 'string' ? savedForm[key] as T : fallback;
@@ -321,10 +329,10 @@ export default function VisitWizard({
   const [wantsPatientAppInfo, setWantsPatientAppInfo] = useState<'YES' | 'NO' | ''>(savedChoice('wantsPatientAppInfo', ''));
 
   // STEP 3: PATIENT CONSENT
-  const [consentDecision, setConsentDecision] = useState<'ACCEPT' | 'DECLINE' | null>(savedChoice<'ACCEPT' | 'DECLINE' | ''>('consentDecision', '') || null);
+  const [consentDecision, setConsentDecision] = useState<'ACCEPT' | 'DECLINE' | null>(savedChoice<'ACCEPT' | 'DECLINE' | ''>('consentDecision', storedGrantedConsent ? 'ACCEPT' : '') || null);
   const consentDeclined = consentDecision === 'DECLINE';
-  const [consentSignerType, setConsentSignerType] = useState<'PATIENT' | 'REPRESENTATIVE' | 'UNABLE'>(savedChoice('consentSignerType', 'PATIENT'));
-  const [signerName, setSignerName] = useState(savedString('signerName', `${patient.firstName} ${patient.lastName}`));
+  const [consentSignerType, setConsentSignerType] = useState<'PATIENT' | 'REPRESENTATIVE' | 'UNABLE'>(savedChoice('consentSignerType', storedGrantedConsent?.signedBy === 'REPRESENTATIVE' ? 'REPRESENTATIVE' : 'PATIENT'));
+  const [signerName, setSignerName] = useState(savedString('signerName', storedGrantedConsent?.signerName || `${patient.firstName} ${patient.lastName}`));
   const [repRelationship, setRepRelationship] = useState<RepresentativeRelationship | ''>(savedChoice<RepresentativeRelationship | ''>('repRelationship', ''));
   const [repRelationshipOther, setRepRelationshipOther] = useState(savedString('repRelationshipOther'));
   const [authorityType, setAuthorityType] = useState<RepresentativeAuthority | ''>(savedChoice<RepresentativeAuthority | ''>('authorityType', ''));
@@ -341,7 +349,7 @@ export default function VisitWizard({
   const [declineReason, setDeclineReason] = useState(savedString('declineReason'));
   const [declineNotes, setDeclineNotes] = useState(savedString('declineNotes'));
   const [verbalConsentNurseNote, setVerbalConsentNurseNote] = useState(savedString('verbalConsentNurseNote'));
-  const [patientSignature, setPatientSignature] = useState(savedString('patientSignature'));
+  const [patientSignature, setPatientSignature] = useState(savedString('patientSignature', storedGrantedConsent?.patientSignature || ''));
   const [nurseSignature, setNurseSignature] = useState(savedString('nurseSignature'));
   const [attestationExplained, setAttestationExplained] = useState(savedBool('attestationExplained'));
   const [attestationQuestions, setAttestationQuestions] = useState(savedBool('attestationQuestions'));
@@ -354,7 +362,7 @@ export default function VisitWizard({
   const [markWitnessRole, setMarkWitnessRole] = useState(savedString('markWitnessRole'));
   const [markWitnessAttested, setMarkWitnessAttested] = useState(savedBool('markWitnessAttested'));
   const [consentPdfUrl, setConsentPdfUrl] = useState(savedString('consentPdfUrl'));
-  const [consentPdfGenerated, setConsentPdfGenerated] = useState(savedBool('consentPdfGenerated'));
+  const [consentPdfGenerated, setConsentPdfGenerated] = useState(savedBool('consentPdfGenerated', storedConsentDocumented));
   const [isGeneratingConsentPdf, setIsGeneratingConsentPdf] = useState(false);
   const [autoConsentPdfAttempted, setAutoConsentPdfAttempted] = useState(false);
   const [consentPdfProgress, setConsentPdfProgress] = useState(0);
@@ -419,6 +427,7 @@ export default function VisitWizard({
     Boolean(signerName.trim()) &&
     patientEvidenceComplete &&
     nurseAttestationComplete;
+  const consentDocumented = consentPdfGenerated || storedConsentDocumented;
 
   // STEP 4: DEVICE DELIVERY
   const [deviceType, setDeviceType] = useState<'BP Monitor' | 'Scale' | 'Pulse Oximeter' | 'Glucometer' | 'Other'>(savedChoice('deviceType', 'BP Monitor'));
@@ -622,7 +631,7 @@ This service is not for emergencies. If you agree, we can continue with your aut
     (!interpreterUsed || Boolean(interpreterName.trim()));
 
   const step2Complete = serviceExplanationConfirmed;
-  const step3Complete = consentDeclined || (consentRecordComplete && consentPdfGenerated);
+  const step3Complete = consentDeclined || (consentRecordComplete && consentDocumented);
   const firstReadingComplete = selectedMonitoringDeviceTypes.length === 0 || (bpReadingComplete && scaleReadingComplete);
   const deviceRequirementsReadyForPdf = isRpmApplicable && (
     Boolean(serialNumber.trim()) &&
@@ -667,7 +676,7 @@ This service is not for emergencies. If you agree, we can continue with your aut
     { label: l('Explicación del Servicio Completada', 'Service Explanation Completed'), ready: step2Complete, step: 2 },
     { label: l('Decisión de Consentimiento Registrada', 'Consent Decision Recorded'), ready: consentDecision !== null, step: 3 },
     { label: l('Firma o Consentimiento Verbal Documentado', 'Consent Signed or Verbal Consent Documented'), ready: patientEvidenceComplete, step: 3 },
-    { label: l('PDF de Consentimiento Generado', 'Consent PDF Generated'), ready: consentPdfGenerated, step: 3 },
+    { label: l('PDF de Consentimiento Generado', 'Consent PDF Generated'), ready: consentDocumented, step: 3 },
     { label: l('Atestación del Personal de Inscripción Completada', 'Enrollment Personnel Attestation Completed'), ready: nurseAttestationComplete, step: 3 },
     { label: l('Orden médica aprobada', 'Medical Order Approved'), ready: requiresMedicalOrder ? medicalOrderApproved : null, step: 4 },
     { label: l('Dispositivo RPM Asignado', 'RPM Device Assigned'), ready: isRpmApplicable ? devDeliveredToPatient : null, step: 4 },
@@ -727,13 +736,11 @@ This service is not for emergencies. If you agree, we can continue with your aut
 
   // Sync signer name if patient signing self
   useEffect(() => {
-    if (consentSignerType === 'PATIENT' || consentSignerType === 'UNABLE') {
+    if (consentSignerType === 'PATIENT' || (consentSignerType === 'UNABLE' && unableSignMethod !== 'REPRESENTATIVE_SIGNATURE')) {
       setSignerName(`${patient.firstName} ${patient.lastName}`);
       setRepRelationship('');
-    } else {
-      setSignerName('');
     }
-  }, [consentSignerType, patient]);
+  }, [consentSignerType, unableSignMethod, patient]);
 
   useEffect(() => {
     if (consentSignerType === 'UNABLE') {
@@ -763,11 +770,15 @@ This service is not for emergencies. If you agree, we can continue with your aut
 
   useEffect(() => {
     if (signatureMethod === 'UNABLE' && unableSignMethod === 'REPRESENTATIVE_SIGNATURE') {
-      setSignerName('');
-      setRepRelationship('');
-      setAuthorityType('');
+      const patientName = `${patient.firstName} ${patient.lastName}`;
+      setSignerName(previous => {
+        if (previous.trim() && previous !== patientName) return previous;
+        return readinessRepName || storedGrantedConsent?.signerName || '';
+      });
+      setRepRelationship(previous => previous || readinessRepRelationship || '');
+      setAuthorityType(previous => previous || readinessRepAuthority || '');
     }
-  }, [signatureMethod, unableSignMethod]);
+  }, [signatureMethod, unableSignMethod, patient, readinessRepName, readinessRepRelationship, readinessRepAuthority, storedGrantedConsent]);
 
   useEffect(() => {
     if (!consentRecordComplete) {
@@ -1673,9 +1684,9 @@ This service is not for emergencies. If you agree, we can continue with your aut
     signatureMethod === 'TYPE' ||
     (signatureMethod === 'UNABLE' && Boolean(unableSignMethod))
   );
-  const simplifiedStep2Ready = consentDecision === 'DECLINE' || (serviceExplanationConfirmed && consentRecordComplete && consentPdfGenerated);
+  const simplifiedStep2Ready = consentDecision === 'DECLINE' || (serviceExplanationConfirmed && consentRecordComplete && consentDocumented);
   const patientAppPreferenceComplete = wantsPatientAppInfo === 'YES' || wantsPatientAppInfo === 'NO';
-  const canCompleteSimplifiedEnrollment = consentDecision === 'ACCEPT' && consentPdfGenerated && patientAppPreferenceComplete;
+  const canCompleteSimplifiedEnrollment = consentDecision === 'ACCEPT' && consentDocumented && patientAppPreferenceComplete;
   const rpmActivationLabel = !isRpmApplicable
     ? 'Not applicable'
     : firstReadingComplete && deviceSetupReady && medicalOrderApproved
@@ -1794,7 +1805,7 @@ This service is not for emergencies. If you agree, we can continue with your aut
       setAlertMessage('Complete the consent method, signer information, and staff attestation.');
       return;
     }
-    let pdfReady = consentPdfGenerated;
+    let pdfReady = consentDocumented;
     if (!pdfReady && !isGeneratingConsentPdf) {
       pdfReady = await triggerConsentPDFGeneration(true);
     }
@@ -1846,7 +1857,7 @@ This service is not for emergencies. If you agree, we can continue with your aut
             const stepNumber = index + 1;
             const isCurrent = step === stepNumber;
             const isDone = step > stepNumber;
-            const canNavigateToStep = stepNumber === 1 || (stepNumber === 2 && step1Complete) || (stepNumber === 3 && consentPdfGenerated);
+            const canNavigateToStep = stepNumber === 1 || (stepNumber === 2 && step1Complete) || (stepNumber === 3 && consentDocumented);
             return (
               <button
                 key={name}
@@ -2262,7 +2273,7 @@ This service is not for emergencies. If you agree, we can continue with your aut
                   <span className="enrollment-section-icon" aria-hidden="true"><FileCheck size={20} /></span>
                   <div className="min-w-0 flex-1">
                     <p>Consent PDF</p>
-                    <strong className={consentPdfGenerated ? 'text-emerald-700' : 'text-slate-800'}>{isGeneratingConsentPdf ? 'Generating automatically...' : consentPdfGenerated ? 'Generated and attached' : 'Will generate automatically after consent is confirmed.'}</strong>
+                    <strong className={consentDocumented ? 'text-emerald-700' : 'text-slate-800'}>{isGeneratingConsentPdf ? 'Generating automatically...' : consentDocumented ? 'Generated and attached' : 'Will generate automatically after consent is confirmed.'}</strong>
                     {isGeneratingConsentPdf && (
                       <div className="enrollment-pdf-progress" role="status" aria-live="polite">
                         <div className="enrollment-pdf-progress-meta">
@@ -2278,7 +2289,7 @@ This service is not for emergencies. If you agree, we can continue with your aut
                       </div>
                     )}
                   </div>
-                  {consentPdfGenerated && (
+                  {consentDocumented && (
                     <div className="enrollment-pdf-actions">
                       <button
                         type="button"
@@ -2323,7 +2334,7 @@ This service is not for emergencies. If you agree, we can continue with your aut
               <section className="enrollment-subcard">
                 <h3 className="enrollment-question-title">Enrollment summary</h3>
                 <div className="mt-5 grid gap-3 md:grid-cols-2">
-                  {[['Identity verified', idConfirmed], ['Service explanation completed', serviceExplanationConfirmed], ['Consent recorded', consentDecision === 'ACCEPT'], ['Consent PDF generated', consentPdfGenerated], ['CCM enrollment ready', true]].map(([label, ready]) => (
+                  {[['Identity verified', idConfirmed], ['Service explanation completed', serviceExplanationConfirmed], ['Consent recorded', consentDecision === 'ACCEPT'], ['Consent PDF generated', consentDocumented], ['CCM enrollment ready', true]].map(([label, ready]) => (
                     <div key={String(label)} className="enrollment-check-row rounded-xl border border-slate-200 bg-slate-50 p-4">
                       <CheckCircle size={20} className={ready ? 'text-emerald-600' : 'text-slate-300'} />
                       <span className="text-base font-extrabold">{label as string}</span>
@@ -2439,7 +2450,7 @@ This service is not for emergencies. If you agree, we can continue with your aut
                     <div className="mt-4 space-y-3">
                       {[
                         ['Patient identity verified', idConfirmed],
-                        ['Consent documented', consentPdfGenerated],
+                        ['Consent documented', consentDocumented],
                         ['Device assigned', deviceSetupReady],
                         ['Education completed', devInstructionsGiven && devUnderstandingDemonstrated],
                         ['First reading captured', firstReadingComplete],
@@ -3161,7 +3172,7 @@ This service is not for emergencies. If you agree, we can continue with your aut
                             [representativeComplete && Boolean(signerName), l('Firmante identificado', 'Signer identified')],
                             [patientEvidenceComplete, l('Firma o consentimiento verbal documentado', 'Signature captured or verbal consent documented')],
                             [nurseAttestationComplete, l('Atestación del personal de inscripción completa', 'Enrollment personnel attestation completed')],
-                            [consentPdfGenerated, l('PDF de consentimiento generado', 'Consent PDF generated')]
+                            [consentDocumented, l('PDF de consentimiento generado', 'Consent PDF generated')]
                           ].map(([complete, label], index) => (
                             <div key={index} className="flex items-center gap-2">
                               <CheckCircle size={15} className={complete ? 'text-emerald-400' : 'text-slate-600'} />
@@ -3186,7 +3197,7 @@ This service is not for emergencies. If you agree, we can continue with your aut
                           <a href={consentPdfUrl} download={`Consent_${patient.lastName}_${patient.firstName}.pdf`} className="inline-flex min-h-12 items-center justify-center rounded-xl bg-emerald-500 px-5 text-sm font-extrabold text-white hover:bg-emerald-400">
                             <CheckCircle size={17} className="mr-2" /> {l('Descargar PDF Generado', 'Download Generated PDF')}
                           </a>
-                        ) : consentPdfGenerated ? (
+                        ) : consentDocumented ? (
                           <div className="inline-flex min-h-12 items-center justify-center rounded-xl bg-emerald-500 px-5 text-sm font-extrabold text-white">
                             <CheckCircle size={17} className="mr-2" /> {l('PDF guardado en Drive', 'PDF saved to Drive')}
                           </div>
@@ -3391,19 +3402,23 @@ This service is not for emergencies. If you agree, we can continue with your aut
                     <p className="text-[10px] text-slate-400">{l('Este documento es auditable y guardará de forma inalterable las firmas y coordenadas clínicas.', 'This auditable document will permanently preserve signatures and clinical coordinates.')}</p>
                   </div>
                   
-                  {consentPdfGenerated ? (
+                  {consentDocumented ? (
                     <div className="flex flex-col items-end space-y-1">
                       <span className="inline-flex items-center text-xs font-bold text-emerald-600 bg-emerald-50 px-2.5 py-1 border border-emerald-200 rounded">
                         <CheckCircle size={14} className="mr-1.5" /> {l('PDF Generado', 'PDF Generated')}
                       </span>
-                      <a 
-                        href={consentPdfUrl} 
-                        download={`Consentimiento_${patient.lastName}_${patient.firstName}.pdf`}
-                        className="text-[11px] font-bold text-indigo-600 hover:underline"
-                        id="download-generated-consent"
-                      >
-                        {l('Descargar PDF generado', 'Download generated PDF')}
-                      </a>
+                      {consentPdfUrl ? (
+                        <a
+                          href={consentPdfUrl}
+                          download={`Consentimiento_${patient.lastName}_${patient.firstName}.pdf`}
+                          className="text-[11px] font-bold text-indigo-600 hover:underline"
+                          id="download-generated-consent"
+                        >
+                          {l('Descargar PDF generado', 'Download generated PDF')}
+                        </a>
+                      ) : (
+                        <span className="text-[11px] font-bold text-emerald-700">{l('PDF guardado en Drive', 'PDF saved to Drive')}</span>
+                      )}
                     </div>
                   ) : (
                     <button
@@ -3968,13 +3983,13 @@ This service is not for emergencies. If you agree, we can continue with your aut
 
               <div className="p-4 flex items-center justify-between">
                 <div className="flex items-center space-x-3">
-                  <FileText className={consentPdfGenerated ? 'text-emerald-500' : 'text-slate-300'} size={20} />
+                  <FileText className={consentDocumented ? 'text-emerald-500' : 'text-slate-300'} size={20} />
                   <div>
                     <p className="text-xs font-bold text-slate-800">{l('Consentimiento Médico Firmado y PDF Generado', 'Medical Consent Signed and PDF Generated')}</p>
                     <p className="text-[10px] text-slate-500">{l('Paso 3: Firmas registradas y PDF contractual generado.', 'Step 3: Signatures logged and contractual PDF generated.')}</p>
                   </div>
                 </div>
-                {consentPdfGenerated ? (
+                {consentDocumented ? (
                   <span className="bg-emerald-100 text-emerald-800 text-[10px] font-bold px-2.5 py-0.5 rounded-full">{l('Listo', 'Ready')}</span>
                 ) : (
                   <span className="bg-red-100 text-red-800 text-[10px] font-bold px-2.5 py-0.5 rounded-full">{l('No firmado / Sin PDF', 'Not Signed / No PDF')}</span>
