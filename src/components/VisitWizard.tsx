@@ -12,7 +12,7 @@ import {
 import { DEFAULT_EXPLANATION_SCRIPT, DEFAULT_EXPLANATION_SCRIPT_ES, DEFAULT_CONSENT_TEXT, DEFAULT_CONSENT_TEXT_ES } from '../data';
 import { useLanguage } from '../utils/LanguageContext';
 import EditPatientModal from './EditPatientModal';
-import { getApprovedOrderDeviceTypes, getMedicalOrderStatus, getOrderRequestedDevices, getPatientMedicalOrders, isMedicalOrderApproved, patientRequiresDevice, type OrderableDeviceType } from '../utils/medicalOrders';
+import { getApprovedOrderDeviceTypes, getMedicalOrderRequirementIssues, getMedicalOrderStatus, getOrderRequestedDevices, getPatientMedicalOrders, isMedicalOrderApproved, patientRequiresDevice, type OrderableDeviceType } from '../utils/medicalOrders';
 import { POWERED_BY, PRODUCT_NAME } from '../utils/branding';
 
 const ANDROID_APP_URL = 'https://play.google.com/store/apps/details?id=health.itera.app';
@@ -497,6 +497,8 @@ export default function VisitWizard({
     ...(hasAdditionalDevice ? [additionalDeviceType] : [])
   ])).filter((device): device is OrderableDeviceType => device === 'BP Monitor' || device === 'Scale');
   const selectedMonitoringDeviceText = selectedMonitoringDeviceTypes.join(' + ');
+  const medicalOrderRequirementIssues = getMedicalOrderRequirementIssues(patient, selectedMonitoringDeviceText || patient.requiredDevice);
+  const canRequestMedicalOrder = medicalOrderRequirementIssues.length === 0;
   const requestedOrderDeviceTypes = Array.from(new Set(patientMedicalOrders.flatMap(order => getOrderRequestedDevices(order, patient))));
   const getDeviceOrderState = (device: OrderableDeviceType) => {
     if (approvedOrderDeviceTypes.includes(device)) return 'APPROVED';
@@ -3463,16 +3465,23 @@ This service is not for emergencies. If you agree, we can continue with your aut
                     </span>
                   </div>
                   <div className="text-[11px] font-semibold text-slate-600">
-                    <p>{l('Médico asignado', 'Assigned Physician')}: <strong>{patient.medicalOrder?.assignedPhysician || patient.provider}</strong></p>
+                    <p>{l('Médico asignado', 'Assigned Physician')}: <strong>{patient.medicalOrder?.assignedPhysician || patient.provider || l('No definido', 'Not defined')}</strong></p>
                     <p>{l('Versión de orden', 'Order Version')}: <strong>{patient.medicalOrder?.orderVersion || 'order_v2026_07_01'}</strong></p>
                     {patient.medicalOrder?.revisionNotes && <p className="text-rose-700">{l('Nota de revisión', 'Revision Note')}: {patient.medicalOrder.revisionNotes}</p>}
+                    {!canRequestMedicalOrder && (
+                      <div className="mt-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-amber-800">
+                        <p className="font-extrabold">{l('Complete estos datos antes de solicitar la orden:', 'Complete these fields before requesting the order:')}</p>
+                        <p>{medicalOrderRequirementIssues.join(' · ')}</p>
+                      </div>
+                    )}
                   </div>
                 </div>
                 {(medicalOrderStatus === 'ORDER_REQUIRED' || medicalOrderStatus === 'ORDER_REJECTED_NEEDS_REVISION') && (
                   <button
                     type="button"
                     onClick={() => onGenerateMedicalOrder(patient.id)}
-                    className="inline-flex min-h-11 items-center justify-center rounded-xl bg-orange-600 px-4 text-xs font-extrabold text-white shadow-lg shadow-orange-600/20 hover:bg-orange-700"
+                    disabled={!canRequestMedicalOrder}
+                    className="inline-flex min-h-11 items-center justify-center rounded-xl bg-orange-600 px-4 text-xs font-extrabold text-white shadow-lg shadow-orange-600/20 hover:bg-orange-700 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-500 disabled:shadow-none"
                   >
                     <FileText size={14} className="mr-1.5" />
                     {medicalOrderStatus === 'ORDER_REJECTED_NEEDS_REVISION'

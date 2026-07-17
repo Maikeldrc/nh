@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {
   validateConsent,
   validateDevice,
+  validateMedicalOrderRequirements,
   validatePatient
 } from '../src/validation.js';
 
@@ -48,6 +49,21 @@ test('RPM requires a device type', () => {
       requiredDevice: ''
     }, [], []),
     /RPM requires a device type/
+  );
+});
+
+test('medical order requires supervising physician and complete patient identifiers', () => {
+  assert.throws(
+    () => validateMedicalOrderRequirements({
+      ...basePatient,
+      firstName: 'Test',
+      lastName: 'Patient',
+      birthDate: '1950-01-01',
+      medicareId: '1EG4-TE5-WY22',
+      nursingHome: 'Input Facility',
+      provider: ''
+    }),
+    /Supervising physician is required/
   );
 });
 

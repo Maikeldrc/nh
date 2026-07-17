@@ -22,7 +22,7 @@ import {
   requestContext,
   requireRoles
 } from './security.js';
-import { validateConsent, validateDevice, validatePatient } from './validation.js';
+import { getMedicalOrderRequirementIssues, validateConsent, validateDevice, validateMedicalOrderRequirements, validatePatient } from './validation.js';
 import { createPdf, deletePdfFile, getPdfBuffer } from './pdf.js';
 import {
   createSpreadsheetBackup,
@@ -202,9 +202,15 @@ app.put('/v1/:resource/:id', async (req, res, next) => {
     }
     if (resource === 'patients') {
       validatePatient(record, await listRecords('patients'), await listRecords('devices'));
+      if (record.medicalOrder) {
+        validateMedicalOrderRequirements(record, record.medicalOrder.deviceType || record.requiredDevice);
+      }
       if (String(record.assignedProgram || '').toUpperCase().includes('RPM')
         && !record.medicalOrder) {
-        record.medicalOrder = pendingMedicalOrder(record, req.user);
+        const medicalOrderIssues = getMedicalOrderRequirementIssues(record, record.requiredDevice);
+        if (!medicalOrderIssues.length) {
+          record.medicalOrder = pendingMedicalOrder(record, req.user);
+        }
       }
     }
     if (resource === 'consents') validateConsent(record);

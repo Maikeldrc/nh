@@ -43,6 +43,23 @@ export function patientRequiresDevice(patient: Patient): boolean {
   return patient.assignedProgram.includes('RPM') && Boolean(patient.requiredDevice && patient.requiredDevice !== 'None');
 }
 
+export function getMedicalOrderRequirementIssues(patient: Patient, requestedDevice = patient.requiredDevice): string[] {
+  const issues: string[] = [];
+  const diagnoses = patient.diagnoses || [];
+  if (!patient.firstName?.trim()) issues.push('First name is required');
+  if (!patient.lastName?.trim()) issues.push('Last name is required');
+  if (!patient.birthDate?.trim()) issues.push('Date of birth is required');
+  if (!patient.medicareId?.trim()) issues.push('Medicare ID is required');
+  if (!patient.nursingHome?.trim()) issues.push('Nursing home / facility is required');
+  if (!patient.provider?.trim()) issues.push('Supervising physician is required');
+  if (!patient.assignedProgram?.includes('RPM')) issues.push('RPM program must be selected');
+  if (!requestedDevice?.trim() || requestedDevice === 'None') issues.push('Required device is required');
+  if (!diagnoses.some(diagnosis => diagnosis.icd10Code?.trim() && diagnosis.icd10Display?.trim())) {
+    issues.push('At least one diagnosis with ICD and ICD name is required');
+  }
+  return issues;
+}
+
 export function getMedicalOrderStatus(patient: Patient): MedicalOrderStatus | null {
   if (!patientRequiresDevice(patient)) return null;
   const order = patient.medicalOrder;

@@ -6,7 +6,7 @@ import {
 } from 'lucide-react';
 import EditPatientModal from './EditPatientModal';
 import { useLanguage } from '../utils/LanguageContext';
-import { getMedicalOrderStatus, patientRequiresDevice } from '../utils/medicalOrders';
+import { getMedicalOrderRequirementIssues, getMedicalOrderStatus, patientRequiresDevice } from '../utils/medicalOrders';
 import { isEnrollmentOperationsRole } from '../utils/roles';
 
 interface PatientProfileProps {
@@ -79,6 +79,8 @@ export default function PatientProfile({
   // Is the visit resumable?
   const isResumable = patient.status === 'INCOMPLETE';
   const medicalOrderStatus = getMedicalOrderStatus(patient);
+  const medicalOrderRequirementIssues = getMedicalOrderRequirementIssues(patient);
+  const canRequestMedicalOrder = medicalOrderRequirementIssues.length === 0;
   const visibleDeviceStatus = patient.status === 'ACTIVE'
     ? 'ACTIVE'
     : device?.status === 'PENDING_ORDER_APPROVAL' && medicalOrderStatus === 'ORDER_APPROVED'
@@ -256,19 +258,26 @@ export default function PatientProfile({
                   {renderMedicalOrderBadge()}
                 </div>
                 <div className="space-y-0.5 text-[10px] font-bold text-slate-600">
-                  <p>{l('Médico asignado', 'Assigned Physician')}: {patient.medicalOrder?.assignedPhysician || patient.provider}</p>
+                  <p>{l('Médico asignado', 'Assigned Physician')}: {patient.medicalOrder?.assignedPhysician || patient.provider || l('No definido', 'Not defined')}</p>
                   <p>{l('Versión', 'Version')}: {patient.medicalOrder?.orderVersion || 'order_v2026_07_01'}</p>
                   {patient.medicalOrder?.submittedAt && <p>{l('Enviada', 'Submitted')}: {new Date(patient.medicalOrder.submittedAt).toLocaleString()}</p>}
                   {patient.medicalOrder?.approvedAt && <p>{l('Aprobada', 'Approved')}: {new Date(patient.medicalOrder.approvedAt).toLocaleString()}</p>}
                   {patient.medicalOrder?.rejectedAt && <p>{l('Rechazada', 'Rejected')}: {new Date(patient.medicalOrder.rejectedAt).toLocaleString()}</p>}
                   {patient.medicalOrder?.revisionNotes && <p>{l('Nota', 'Note')}: {patient.medicalOrder.revisionNotes}</p>}
                 </div>
+                {!canRequestMedicalOrder && (
+                  <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-[10px] font-bold text-amber-800">
+                    <p>{l('Complete estos datos antes de solicitar la orden:', 'Complete these fields before requesting the order:')}</p>
+                    <p className="mt-1">{medicalOrderRequirementIssues.join(' · ')}</p>
+                  </div>
+                )}
                 <div className="flex flex-wrap gap-2 pt-1">
                   {(medicalOrderStatus === 'ORDER_REQUIRED' || medicalOrderStatus === 'ORDER_REJECTED_NEEDS_REVISION') && (
                     <button
                       type="button"
                       onClick={() => onGenerateMedicalOrder(patient.id)}
-                      className="rounded-xl border border-orange-200 bg-white px-3 py-1.5 text-[11px] font-extrabold text-orange-700 hover:bg-orange-100"
+                      disabled={!canRequestMedicalOrder}
+                      className="rounded-xl border border-orange-200 bg-white px-3 py-1.5 text-[11px] font-extrabold text-orange-700 hover:bg-orange-100 disabled:cursor-not-allowed disabled:border-slate-200 disabled:bg-slate-100 disabled:text-slate-400"
                     >
                       {medicalOrderStatus === 'ORDER_REJECTED_NEEDS_REVISION' ? l('Corregir / re-enviar', 'Revise / Resend') : l('Generar orden medica', 'Generate Medical Order')}
                     </button>

@@ -14,7 +14,7 @@ import {
 } from './utils/db';
 import { cleanupPatientData, downloadDocument, generateDocument } from './utils/apiClient';
 import { getAuthConfigurationError, logout, observeAuthenticatedUser } from './utils/auth';
-import { approveMedicalOrderDevices, createMedicalOrder, generateAutoOrderIfNeeded, getApprovedOrderDeviceTypes, getRequiredOrderDeviceTypes, isMedicalOrderApproved, patientRequiresDevice, rejectMedicalOrder, resubmitMedicalOrder, updatePendingMedicalOrderDevices } from './utils/medicalOrders';
+import { approveMedicalOrderDevices, createMedicalOrder, generateAutoOrderIfNeeded, getApprovedOrderDeviceTypes, getMedicalOrderRequirementIssues, getRequiredOrderDeviceTypes, isMedicalOrderApproved, patientRequiresDevice, rejectMedicalOrder, resubmitMedicalOrder, updatePendingMedicalOrderDevices } from './utils/medicalOrders';
 import { POWERED_BY, PRODUCT_NAME } from './utils/branding';
 import { isEnrollmentOperationsRole } from './utils/roles';
 import Header from './components/Header';
@@ -351,6 +351,11 @@ export default function App() {
     const approvedDevices = getApprovedOrderDeviceTypes(patient);
     const missingDevices = getRequiredOrderDeviceTypes(patient).filter(device => !approvedDevices.includes(device));
     const resolvedDeviceType = deviceType || (missingDevices.length > 0 ? missingDevices.join(' + ') : patient.requiredDevice);
+    const orderRequirementIssues = getMedicalOrderRequirementIssues(patient, resolvedDeviceType);
+    if (orderRequirementIssues.length > 0) {
+      showToast(`${l('Complete los datos requeridos antes de solicitar la orden:', 'Complete required information before requesting the order:')} ${orderRequirementIssues.join('; ')}`, 'info');
+      return;
+    }
     const canUpdatePendingOrder = approvedDevices.length === 0
       && patient.medicalOrder
       && patient.medicalOrder.status !== 'ORDER_APPROVED'

@@ -31,6 +31,33 @@ export function validatePatient(patient, allPatients, allDevices) {
   return patient;
 }
 
+export function getMedicalOrderRequirementIssues(patient, requestedDevice = patient.requiredDevice) {
+  const issues = [];
+  const diagnoses = Array.isArray(patient.diagnoses) ? patient.diagnoses : [];
+  if (!String(patient.firstName || '').trim()) issues.push('First name is required');
+  if (!String(patient.lastName || '').trim()) issues.push('Last name is required');
+  if (!String(patient.birthDate || '').trim()) issues.push('Date of birth is required');
+  if (!String(patient.medicareId || '').trim()) issues.push('Medicare ID is required');
+  if (!String(patient.nursingHome || '').trim()) issues.push('Nursing home / facility is required');
+  if (!String(patient.provider || '').trim()) issues.push('Supervising physician is required');
+  if (!String(patient.assignedProgram || '').toUpperCase().includes('RPM')) issues.push('RPM program must be selected');
+  if (!String(requestedDevice || '').trim() || requestedDevice === 'None') issues.push('Required device is required');
+  if (!diagnoses.some(diagnosis =>
+    String(diagnosis.icd10Code || diagnosis.icd10_code || '').trim()
+    && String(diagnosis.icd10Display || diagnosis.icd10_display || '').trim()
+  )) {
+    issues.push('At least one diagnosis with ICD and ICD name is required');
+  }
+  return issues;
+}
+
+export function validateMedicalOrderRequirements(patient, requestedDevice = patient.requiredDevice) {
+  const issues = getMedicalOrderRequirementIssues(patient, requestedDevice);
+  if (issues.length) {
+    throw validationError(`Medical order cannot be requested until required patient data is complete: ${issues.join('; ')}`);
+  }
+}
+
 export function validateConsent(consent) {
   if (!String(consent.signerName || '').trim() || !consent.status) {
     throw validationError('Consent requires signer name and decision.');
