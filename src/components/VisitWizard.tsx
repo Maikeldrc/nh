@@ -1354,6 +1354,10 @@ This service is not for emergencies. If you agree, we can continue with your aut
 
   const staffRoleLabel = currentUser.role === 'NURSE' ? 'Nurse' : 'Enrollment staff';
   const selectedServices = patient.assignedProgram || 'Not selected';
+  const providerDisplayName = patient.provider?.trim() || '[Provider Name]';
+  const providerDisplayWithTitle = /^dr\.?\s/i.test(providerDisplayName)
+    ? providerDisplayName
+    : `Dr. ${providerDisplayName}`;
   const deviceSetupReady = isRpmApplicable && medicalOrderApproved && Boolean(serialNumber.trim()) && devDeliveredToPatient && devInstructionsGiven && devUnderstandingDemonstrated;
   const consentMethodSelected = consentDecision === 'DECLINE' || (
     signatureMethod === 'DRAW' ||
@@ -1700,7 +1704,7 @@ This service is not for emergencies. If you agree, we can continue with your aut
                 <p className="enrollment-eyebrow">Enrollment guide</p>
                 <ul className="enrollment-guide-list">
                   {[
-                    `Dr. ${patient.provider || '[Provider Name]'} would like our care team to help monitor and coordinate your care between visits.`,
+                    `${providerDisplayWithTitle} would like our care team to help monitor and coordinate your care between visits.`,
                     'A Care Manager may contact you to review your health, medications, symptoms, and care needs.',
                     isRpmApplicable ? 'If remote monitoring is included, you will receive a connected device that securely sends your readings to the care team.' : '',
                     'Participation is voluntary. You may stop the service at any time.',
