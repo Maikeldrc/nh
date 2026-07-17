@@ -1012,13 +1012,6 @@
     gap: 1.25rem;
   }
 
-  .enrollment-logo {
-    width: 10.5rem;
-    max-width: 34vw;
-    height: auto;
-    object-fit: contain;
-  }
-
   .enrollment-brand-kicker {
     margin: 0;
     font-size: 0.68rem;

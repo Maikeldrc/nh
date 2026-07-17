@@ -13,7 +13,6 @@ import { useLanguage } from '../utils/LanguageContext';
 import EditPatientModal from './EditPatientModal';
 import { getMedicalOrderStatus, isMedicalOrderApproved, patientRequiresDevice } from '../utils/medicalOrders';
 import { POWERED_BY, PRODUCT_NAME } from '../utils/branding';
-import amavitaLogo from '../assets/amavita-logo.png';
 
 interface VisitWizardProps {
   currentUser: User;
@@ -1478,7 +1477,6 @@ This service is not for emergencies. If you agree, we can continue with your aut
       <div className="enrollment-topbar" id="wizard-progress">
         <div className="enrollment-header">
           <div className="enrollment-brand">
-            <img src={amavitaLogo} alt={`${PRODUCT_NAME} logo`} className="enrollment-logo" />
             <div>
               <p className="enrollment-brand-kicker">{PRODUCT_NAME}</p>
               <h1>On-site enrollment</h1>
