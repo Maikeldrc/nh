@@ -175,6 +175,12 @@ export default function VisitWizard({
   const [representativeContactMode, setRepresentativeContactMode] = useState<'IN_PERSON' | 'PHONE' | 'VIDEO'>(savedChoice('representativeContactMode', 'IN_PERSON'));
   const [preferredExplanationLanguage, setPreferredExplanationLanguage] = useState<'English' | 'Spanish' | 'Other'>(savedChoice('preferredExplanationLanguage', language === 'ES' ? 'Spanish' : 'English'));
   const [decisionMaker, setDecisionMaker] = useState<'PATIENT' | 'REPRESENTATIVE'>(savedChoice('decisionMaker', 'PATIENT'));
+  const [participationDecisionPath, setParticipationDecisionPath] = useState<'PATIENT' | 'REPRESENTATIVE' | ''>(() => {
+    const savedPath = savedChoice<'PATIENT' | 'REPRESENTATIVE' | ''>('participationDecisionPath', '');
+    if (savedPath) return savedPath;
+    if (savedChoice<'PATIENT' | 'REPRESENTATIVE'>('decisionMaker', 'PATIENT') === 'REPRESENTATIVE') return 'REPRESENTATIVE';
+    return savedBool('patientCanDecide') ? 'PATIENT' : '';
+  });
 
   // STEP 2: SERVICE EXPLANATION
   const [explainedService, setExplainedService] = useState(savedBool('explainedService'));
@@ -398,9 +404,9 @@ This service is not for emergencies. If you agree, we can continue with your aut
   const readinessRepresentativeComplete = representativeAvailability !== 'NONE' &&
     Boolean(readinessRepName.trim() && readinessRepRelationship.trim() && readinessRepAuthority && readinessRepPhone.trim());
   const step1Complete = idConfirmed && (
-    decisionMaker === 'PATIENT'
+    participationDecisionPath === 'PATIENT'
       ? patientCanDecide
-      : readinessRepresentativeComplete
+      : participationDecisionPath === 'REPRESENTATIVE' && readinessRepresentativeComplete
   );
 
   // CHECKLIST COMPLETION
@@ -905,6 +911,7 @@ This service is not for emergencies. If you agree, we can continue with your aut
       representativeContactMode,
       preferredExplanationLanguage,
       decisionMaker,
+      participationDecisionPath,
       explainedService,
       explainedVoluntary,
       explainedStopAnytime,
@@ -1081,6 +1088,7 @@ This service is not for emergencies. If you agree, we can continue with your aut
         auditId: `con_audit_${Math.random().toString(36).substring(2, 9).toUpperCase()}`
       };
     } else if (consentDeclined) {
+      const declinedByRepresentative = participationDecisionPath === 'REPRESENTATIVE';
       // Declined object
       consentObj = {
         id: `con_${patient.id}`,
@@ -1092,8 +1100,12 @@ This service is not for emergencies. If you agree, we can continue with your aut
         consentLegalText: FULL_CONSENT_LEGAL_TEXT,
         consentPracticeName: patient.practice,
         consentEffectiveDate: CONSENT_TEXT_EFFECTIVE_DATE,
-        signedBy: 'PATIENT',
-        signerName: `${patient.firstName} ${patient.lastName}`,
+        signedBy: declinedByRepresentative ? 'REPRESENTATIVE' : 'PATIENT',
+        signerName: declinedByRepresentative ? readinessRepName : `${patient.firstName} ${patient.lastName}`,
+        relationship: declinedByRepresentative ? readinessRepRelationship : undefined,
+        authorityType: declinedByRepresentative ? readinessRepAuthority : undefined,
+        representativePhone: declinedByRepresentative ? readinessRepPhone : undefined,
+        representativeEmail: declinedByRepresentative ? representativeEmail || undefined : undefined,
         declineReason: declineReason || undefined,
         nurseNotes: declineNotes || undefined,
         declineDateTime: new Date().toISOString(),
@@ -1404,11 +1416,11 @@ This service is not for emergencies. If you agree, we can continue with your aut
       setAlertMessage('Verify identity before continuing.');
       return;
     }
-    if (decisionMaker === 'PATIENT' && !patientCanDecide) {
-      setAlertMessage('The patient pathway requires decision-making ability. Select authorized representative or save for later.');
+    if (!participationDecisionPath) {
+      setAlertMessage('Select whether the patient can make the participation decision.');
       return;
     }
-    if (decisionMaker === 'REPRESENTATIVE' && !readinessRepresentativeComplete) {
+    if (participationDecisionPath === 'REPRESENTATIVE' && !readinessRepresentativeComplete) {
       setAlertMessage('Complete authorized representative identity and authority before continuing.');
       return;
     }
@@ -1550,7 +1562,7 @@ This service is not for emergencies. If you agree, we can continue with your aut
             <SectionHeader
               icon={<UserRound size={24} />}
               title="Confirm patient"
-              description="Verify the patient and determine who will make the participation decision."
+              description="Verify the patient and confirm whether the patient can make the participation decision."
             />
 
             <div className="enrollment-summary-card">
@@ -1603,61 +1615,45 @@ This service is not for emergencies. If you agree, we can continue with your aut
               </span>
             </label>
 
-            <div className="space-y-4">
-              <h3 className="enrollment-question-title"><UsersRound size={20} aria-hidden="true" /> Who will make the participation decision?</h3>
+            <div className="enrollment-subcard space-y-4">
+              <h3 className="enrollment-question-title"><ShieldCheck size={20} aria-hidden="true" /> Can the patient understand the explanation and make a participation decision?</h3>
               <div className="enrollment-selection-grid two">
                 <DecisionCard
-                  active={decisionMaker === 'PATIENT'}
-                  title="Patient"
-                  helper="Use when the patient can understand the explanation and make a participation decision."
-                  icon={<UserRound size={22} />}
+                  active={participationDecisionPath === 'PATIENT'}
+                  title="Yes, the patient can decide"
+                  helper="Decision maker and consent provider will be set to Patient."
+                  icon={<CheckCircle size={22} />}
                   onClick={() => {
+                    setParticipationDecisionPath('PATIENT');
+                    setPatientCanDecide(true);
                     setDecisionMaker('PATIENT');
                     setConsentSignerType('PATIENT');
                     setRepresentativeAvailability('NONE');
+                    setRepPresent(false);
                     setPatientAvailable(true);
                   }}
                 />
                 <DecisionCard
-                  active={decisionMaker === 'REPRESENTATIVE'}
-                  title="Authorized representative"
-                  helper="Use when a legally authorized person will decide or provide consent."
+                  active={participationDecisionPath === 'REPRESENTATIVE'}
+                  title="No, authorized representative required"
+                  helper="Decision maker and consent provider will be set to Authorized representative."
                   icon={<UserRoundCheck size={22} />}
                   onClick={() => {
+                    setParticipationDecisionPath('REPRESENTATIVE');
+                    setPatientCanDecide(false);
                     setDecisionMaker('REPRESENTATIVE');
                     setConsentSignerType('REPRESENTATIVE');
                     setRepresentativeAvailability(representativeAvailability === 'NONE' ? 'LEGAL' : representativeAvailability);
-                    setPatientCanDecide(false);
+                    setRepPresent(true);
                   }}
                 />
               </div>
+              {participationDecisionPath === 'REPRESENTATIVE' && (
+                <p className="enrollment-info-banner"><Info size={16} aria-hidden="true" /> Complete the authorized representative fields below to continue.</p>
+              )}
             </div>
 
-            {decisionMaker === 'PATIENT' && (
-              <div className="enrollment-subcard space-y-4">
-                <h3 className="enrollment-question-title"><ShieldCheck size={20} aria-hidden="true" /> Can the patient understand the explanation and make a participation decision?</h3>
-                <div className="enrollment-selection-grid two">
-                  <DecisionCard active={patientCanDecide} title="Yes" helper="The patient is able to understand and can make a participation decision." icon={<CheckCircle size={22} />} onClick={() => setPatientCanDecide(true)} />
-                  <DecisionCard
-                    active={!patientCanDecide}
-                    title="No - authorized representative required"
-                    helper="The patient is not able to understand; an authorized representative is required."
-                    icon={<UsersRound size={22} />}
-                    onClick={() => {
-                      setPatientCanDecide(false);
-                      setDecisionMaker('REPRESENTATIVE');
-                      setConsentSignerType('REPRESENTATIVE');
-                      setRepresentativeAvailability(representativeAvailability === 'NONE' ? 'LEGAL' : representativeAvailability);
-                    }}
-                  />
-                </div>
-                {!patientCanDecide && (
-                  <p className="enrollment-info-banner"><Info size={16} aria-hidden="true" /> An authorized representative is required to continue.</p>
-                )}
-              </div>
-            )}
-
-            {decisionMaker === 'REPRESENTATIVE' && (
+            {participationDecisionPath === 'REPRESENTATIVE' && (
               <div className="enrollment-form-grid">
                 <div>
                   <label className="mb-1 block text-sm font-bold">Full legal name</label>
@@ -1727,20 +1723,6 @@ This service is not for emergencies. If you agree, we can continue with your aut
               </div>
             </section>
 
-            <section className="enrollment-row-card">
-              <div className="enrollment-row-heading">
-                <span className="enrollment-section-icon success" aria-hidden="true"><Smartphone size={20} /></span>
-                <div>
-                  <h3>Optional patient app</h3>
-                  <p>Would the patient or caregiver like information about the mobile app?</p>
-                </div>
-              </div>
-              <div className="enrollment-segmented">
-                <DecisionCard active={wantsPatientAppInfo === 'YES'} title="Yes" onClick={() => setWantsPatientAppInfo('YES')} />
-                <DecisionCard active={wantsPatientAppInfo === 'NO'} title="No" onClick={() => setWantsPatientAppInfo('NO')} />
-              </div>
-            </section>
-
             <label className={`enrollment-attestation ${serviceExplanationConfirmed ? 'is-complete' : ''}`}>
               <input type="checkbox" checked={serviceExplanationConfirmed} onChange={(e) => setServiceExplanationConfirmed(e.target.checked)} className="mt-1 h-6 w-6 rounded text-blue-600" />
               <span className="enrollment-attestation-icon" aria-hidden="true"><ShieldCheck size={22} /></span>
@@ -1758,9 +1740,10 @@ This service is not for emergencies. If you agree, we can continue with your aut
                 <DecisionCard active={consentDecision === 'DECLINE'} title="Decline services" helper="Patient does not want to receive the services." icon={<XIcon size={22} />} onClick={() => setConsentDecision('DECLINE')} />
               </div>
               {consentDecision === 'DECLINE' && (
-                <div>
+                <div className="enrollment-consent-panel">
                   <label className="mb-1 block text-sm font-bold">Reason, optional</label>
                   <textarea value={declineReason} onChange={(e) => setDeclineReason(e.target.value)} rows={3} className="w-full rounded-xl border border-slate-300 p-3 text-base" />
+                  <p className="mt-3 text-sm font-semibold text-slate-600">No signature is required when services are declined. The decline will be recorded and the enrollment flow will close.</p>
                 </div>
               )}
             </section>
@@ -1887,6 +1870,20 @@ This service is not for emergencies. If you agree, we can continue with your aut
               title="Complete enrollment"
               description={isRpmApplicable ? 'Finalize RPM setup if applicable, then finish enrollment.' : 'Review the CCM enrollment summary and finish.'}
             />
+
+            <section className="enrollment-row-card">
+              <div className="enrollment-row-heading">
+                <span className="enrollment-section-icon success" aria-hidden="true"><Smartphone size={20} /></span>
+                <div>
+                  <h3>Optional patient app</h3>
+                  <p>Would the patient or caregiver like information about the mobile app?</p>
+                </div>
+              </div>
+              <div className="enrollment-segmented">
+                <DecisionCard active={wantsPatientAppInfo === 'YES'} title="Yes" onClick={() => setWantsPatientAppInfo('YES')} />
+                <DecisionCard active={wantsPatientAppInfo === 'NO'} title="No" onClick={() => setWantsPatientAppInfo('NO')} />
+              </div>
+            </section>
 
             {!isRpmApplicable ? (
               <section className="enrollment-subcard">
@@ -2032,7 +2029,7 @@ This service is not for emergencies. If you agree, we can continue with your aut
             <button type="button" onClick={handleSaveAndExitLocal} className="enrollment-secondary-action"><Bookmark size={16} className="mr-2" />Save & continue later</button>
             {step > 1 && <button type="button" onClick={() => setStep(step - 1)} className="enrollment-secondary-action"><ArrowLeft size={16} className="mr-2" />Back</button>}
             {step === 1 && <button type="button" onClick={handleSimplifiedContinueFromStep1} disabled={!step1Complete} className="enrollment-primary-action">Continue<ArrowRight size={16} className="ml-2" /></button>}
-            {step === 2 && <button type="button" onClick={handleSimplifiedConsentContinue} disabled={isGeneratingConsentPdf || (consentDecision === 'ACCEPT' && !consentRecordComplete)} className="enrollment-primary-action">{isGeneratingConsentPdf ? 'Generating PDF...' : consentDecision === 'DECLINE' ? 'Finish decline' : 'Confirm consent & continue'}<ArrowRight size={16} className="ml-2" /></button>}
+            {step === 2 && <button type="button" onClick={handleSimplifiedConsentContinue} disabled={isGeneratingConsentPdf || (consentDecision === 'ACCEPT' && !consentRecordComplete)} className="enrollment-primary-action">{isGeneratingConsentPdf ? 'Generating PDF...' : consentDecision === 'DECLINE' ? 'Record decline & finish' : 'Continue to document consent'}<ArrowRight size={16} className="ml-2" /></button>}
             {step === 3 && <button type="button" onClick={handleSimplifiedCompleteEnrollment} disabled={!canCompleteSimplifiedEnrollment || isGeneratingDeliveryPdf} className="enrollment-complete-action">{isGeneratingDeliveryPdf ? 'Saving device record...' : 'Complete enrollment'}<CheckCircle size={16} className="ml-2" /></button>}
           </div>
         </footer>
