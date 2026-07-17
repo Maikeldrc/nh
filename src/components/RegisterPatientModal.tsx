@@ -418,7 +418,12 @@ export default function RegisterPatientModal({
     'Pantoprazole', 'Hydrochlorothiazide', 'Carvedilol', 'Metoprolol', 'Simvastatin'
   ];
 
-  const [requiredDevice, setRequiredDevice] = useState('BP Monitor');
+  const DEVICE_OPTIONS = [
+    { value: 'BP Monitor', label: 'BPM' },
+    { value: 'Scale', label: 'SCALE' }
+  ];
+  const [selectedRequiredDevices, setSelectedRequiredDevices] = useState<string[]>([]);
+  const requiredDevice = selectedRequiredDevices.join(' + ');
   const [isLtc, setIsLtc] = useState(false); // Mandatory condition for Long Term Care (LTC)
   
   // Nurses list
@@ -451,6 +456,13 @@ export default function RegisterPatientModal({
 
       return Array.from(new Set([...nextPrograms, programCode]));
     });
+  };
+
+  const toggleRequiredDevice = (device: string, checked: boolean) => {
+    setSelectedRequiredDevices(previous => checked
+      ? Array.from(new Set([...previous, device]))
+      : previous.filter(selectedDevice => selectedDevice !== device)
+    );
   };
 
   const ICD10_CODE_PATTERN = /^[A-Z][0-9][0-9A-Z](?:\.[0-9A-Z]{1,4})?$/;
@@ -531,6 +543,9 @@ export default function RegisterPatientModal({
     if (selectedPrograms.length === 0) {
       newErrors.assignedProgram = language === 'ES' ? 'Seleccione al menos un programa.' : 'Select at least one program.';
     }
+    if (assignedProgram.includes('RPM') && selectedRequiredDevices.length === 0) {
+      newErrors.requiredDevice = language === 'ES' ? 'Seleccione al menos un dispositivo requerido.' : 'Select at least one required device.';
+    }
     if (completedManualDiagnoses.length === 0) {
       newErrors.conditions = language === 'ES'
         ? 'Agregue al menos un ICD y el nombre del diagnóstico.'
@@ -578,6 +593,7 @@ export default function RegisterPatientModal({
     setMedSearch('');
     setMedStrength('');
     setIsLtc(false);
+    setSelectedRequiredDevices([]);
     setErrors({});
   };
 
@@ -950,22 +966,39 @@ export default function RegisterPatientModal({
               {language === 'ES' ? '3. Antecedentes Clínicos' : '3. Clinical Profile'}
             </h3>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
+            <div>
                 <label className="block text-xs font-bold text-slate-700 mb-1">
                   {language === 'ES' ? 'Dispositivo Requerido' : 'Required Device'}
                 </label>
-                <select
-                  value={requiredDevice}
-                  onChange={(e) => setRequiredDevice(e.target.value)}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-xl text-xs bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 text-slate-800 font-semibold"
-                >
-                  <option value="BP Monitor">BPM</option>
-                  <option value="Scale">SCALE</option>
-                </select>
-              </div>
-
-              <div />
+                <div className={`grid grid-cols-1 sm:grid-cols-2 gap-2 rounded-xl border bg-slate-50 p-2 ${
+                  errors.requiredDevice ? 'border-red-500 ring-1 ring-red-500/20' : 'border-slate-300'
+                }`}>
+                  {DEVICE_OPTIONS.map(device => {
+                    const checked = selectedRequiredDevices.includes(device.value);
+                    return (
+                      <label
+                        key={device.value}
+                        className={`flex cursor-pointer items-center rounded-lg border px-3 py-2.5 text-xs font-extrabold transition ${
+                          checked ? 'border-blue-300 bg-blue-50 text-blue-800' : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
+                        }`}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={checked}
+                          onChange={(event) => toggleRequiredDevice(device.value, event.target.checked)}
+                          className="mr-2 h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                        />
+                        {device.label}
+                      </label>
+                    );
+                  })}
+                </div>
+                {requiredDevice && (
+                  <p className="text-[10px] text-blue-600 font-semibold mt-1">
+                    {language === 'ES' ? 'Seleccionado' : 'Selected'}: {requiredDevice}
+                  </p>
+                )}
+                {errors.requiredDevice && <span className="text-[10px] text-red-500 font-semibold mt-0.5 block">{errors.requiredDevice}</span>}
             </div>
 
             {/* Structured Conditions / Diagnoses Section */}

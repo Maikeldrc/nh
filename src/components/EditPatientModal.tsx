@@ -84,7 +84,15 @@ export default function EditPatientModal({
   const [isMedDropdownOpen, setIsMedDropdownOpen] = useState(false);
   const [medStrength, setMedStrength] = useState('');
   const [medFrequency, setMedFrequency] = useState('Daily');
-  const [requiredDevice, setRequiredDevice] = useState('');
+  const DEVICE_OPTIONS = [
+    { value: 'BP Monitor', label: 'BPM' },
+    { value: 'Scale', label: 'SCALE' }
+  ];
+  const parseRequiredDevices = (value?: string) => DEVICE_OPTIONS
+    .map(device => device.value)
+    .filter(device => (value || '').split('+').map(part => part.trim()).includes(device));
+  const [selectedRequiredDevices, setSelectedRequiredDevices] = useState<string[]>([]);
+  const requiredDevice = selectedRequiredDevices.join(' + ');
   const [isLtc, setIsLtc] = useState(true); // Pre-fill with true since it's mandatory, but must be checked
   const COMMON_MEDICATIONS = [
     'Lisinopril', 'Metformin', 'Atorvastatin', 'Amlodipine', 'Furosemide',
@@ -150,7 +158,7 @@ export default function EditPatientModal({
       setNursingHome(patient.nursingHome || nursingHomes[0] || '');
       setRoom(patient.room || '');
       setSelectedPrograms((patient.assignedProgram || '').split('+').map(program => program.trim()).filter(Boolean));
-      setRequiredDevice(patient.requiredDevice || '');
+      setSelectedRequiredDevices(parseRequiredDevices(patient.requiredDevice));
       
       const savedDiagnosisLabels = (patient.diagnoses || []).map(diagnosis => `${diagnosis.icd10Display} · ${diagnosis.icd10Code}`);
       const savedReviewFlag = (patient.conditions || []).includes('Clinical Review Required') ? ['Clinical Review Required'] : [];
@@ -226,6 +234,13 @@ export default function EditPatientModal({
     });
   };
 
+  const toggleRequiredDevice = (device: string, checked: boolean) => {
+    setSelectedRequiredDevices(previous => checked
+      ? Array.from(new Set([...previous, device]))
+      : previous.filter(selectedDevice => selectedDevice !== device)
+    );
+  };
+
   // Errors state
   const [errors, setErrors] = useState<Record<string, string>>({});
 
@@ -259,8 +274,8 @@ export default function EditPatientModal({
     if (selectedPrograms.length === 0) {
       newErrors.assignedProgram = language === 'ES' ? 'Seleccione al menos un programa.' : 'Select at least one program.';
     }
-    if (assignedProgram.includes('RPM') && !requiredDevice) {
-      newErrors.requiredDevice = l('Seleccione el dispositivo requerido.', 'Select the required device.');
+    if (assignedProgram.includes('RPM') && selectedRequiredDevices.length === 0) {
+      newErrors.requiredDevice = l('Seleccione al menos un dispositivo requerido.', 'Select at least one required device.');
     }
     if (completedManualDiagnoses.length === 0) {
       newErrors.conditions = l('Agregue al menos un ICD y el nombre del diagnóstico.', 'Add at least one ICD and diagnosis name.');
@@ -540,28 +555,43 @@ export default function EditPatientModal({
               {language === 'ES' ? '3. Antecedentes Clínicos' : '3. Clinical Profile'}
             </h3>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
+            <div>
                 <label className="block text-xs font-bold text-slate-700 mb-1">
                   {language === 'ES' ? 'Dispositivo Requerido' : 'Required Device'}
                 </label>
-                <select
-                  value={requiredDevice}
-                  onChange={(e) => setRequiredDevice(e.target.value)}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-xl text-xs bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 text-slate-800 font-semibold"
-                >
-                  <option value="" disabled>{l('Seleccione dispositivo', 'Select device')}</option>
-                  <option value="BP Monitor">BPM</option>
-                  <option value="Scale">SCALE</option>
-                </select>
+                <div className={`grid grid-cols-1 sm:grid-cols-2 gap-2 rounded-xl border bg-slate-50 p-2 ${
+                  errors.requiredDevice ? 'border-red-500 ring-1 ring-red-500/20' : 'border-slate-300'
+                }`}>
+                  {DEVICE_OPTIONS.map(device => {
+                    const checked = selectedRequiredDevices.includes(device.value);
+                    return (
+                      <label
+                        key={device.value}
+                        className={`flex cursor-pointer items-center rounded-lg border px-3 py-2.5 text-xs font-extrabold transition ${
+                          checked ? 'border-blue-300 bg-blue-50 text-blue-800' : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
+                        }`}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={checked}
+                          onChange={(event) => toggleRequiredDevice(device.value, event.target.checked)}
+                          className="mr-2 h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                        />
+                        {device.label}
+                      </label>
+                    );
+                  })}
+                </div>
+                {requiredDevice && (
+                  <p className="text-[10px] text-blue-600 font-semibold mt-1">
+                    {language === 'ES' ? 'Seleccionado' : 'Selected'}: {requiredDevice}
+                  </p>
+                )}
                 {errors.requiredDevice && (
                   <span className="mt-1 block text-[10px] font-semibold text-red-500">
                     {errors.requiredDevice}
                   </span>
                 )}
-              </div>
-
-              <div />
             </div>
 
             <div className="space-y-3 p-4 bg-blue-50/30 border border-blue-100 rounded-xl">

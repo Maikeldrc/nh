@@ -434,6 +434,10 @@ export default function VisitWizard({
   const [bpNotes, setBpNotes] = useState(savedString('bpNotes'));
   const [bpSavedLocal, setBpSavedLocal] = useState(savedBool('bpSavedLocal'));
 
+  const parseRequiredMonitoringDevices = (value?: string) => {
+    const parts = (value || '').split('+').map(part => part.trim());
+    return (['BP Monitor', 'Scale'] as const).filter(device => parts.includes(device));
+  };
   const isRpmApplicable = patient.assignedProgram.includes('RPM');
   const requiresMedicalOrder = patientRequiresDevice(patient);
   const medicalOrderStatus = getMedicalOrderStatus(patient);
@@ -624,9 +628,13 @@ This service is not for emergencies. If you agree, we can continue with your aut
   // Setup defaults if RPM applies
   useEffect(() => {
     if (patient.requiredDevice && patient.requiredDevice !== 'None') {
-      const dev = patient.requiredDevice as any;
-      if (['BP Monitor', 'Scale', 'Pulse Oximeter', 'Glucometer'].includes(dev)) {
-        setDeviceType(dev);
+      const requiredDevices = parseRequiredMonitoringDevices(patient.requiredDevice);
+      if (requiredDevices.length > 0) {
+        setDeviceType(requiredDevices[0]);
+        if (requiredDevices.length > 1) {
+          setHasAdditionalDevice(true);
+          setAdditionalDeviceType(requiredDevices[1]);
+        }
       }
     }
   }, [patient]);
