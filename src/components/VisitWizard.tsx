@@ -2092,7 +2092,7 @@ This service is not for emergencies. If you agree, we can continue with your aut
                     <div className="enrollment-consent-panel space-y-4">
                       <div><label className="mb-1 block text-sm font-bold">Full legal name</label><input value={typedSignatureName} onChange={(e) => setTypedSignatureName(e.target.value)} className="min-h-12 w-full rounded-xl border border-slate-300 px-3 text-base" /></div>
                       <label className="flex cursor-pointer items-start gap-3 rounded-xl bg-white p-4"><input type="checkbox" checked={typedSignatureAgreed} onChange={(e) => setTypedSignatureAgreed(e.target.checked)} className="mt-1 h-5 w-5 rounded text-blue-600" /><span className="text-base font-bold">I confirm that typing my full legal name represents my signature.</span></label>
-                      <button type="button" onClick={() => { setSignerName(typedSignatureName.trim()); setTypedSignatureConfirmed(true); }} disabled={!typedSignatureName.trim() || !typedSignatureAgreed || !staffAttestationConfirmed} className="min-h-11 rounded-xl bg-blue-600 px-4 text-sm font-extrabold text-white disabled:opacity-50">Confirm typed signature</button>
+                      <button type="button" onClick={() => { setSignerName(typedSignatureName.trim()); setTypedSignatureConfirmed(true); }} disabled={!typedSignatureName.trim() || !typedSignatureAgreed} className="min-h-11 rounded-xl bg-blue-600 px-4 text-sm font-extrabold text-white disabled:opacity-50">Confirm typed signature</button>
                     </div>
                   )}
 
@@ -2103,7 +2103,7 @@ This service is not for emergencies. If you agree, we can continue with your aut
                       <div><p className="text-sm font-bold text-slate-500">Facility</p><p className="text-lg font-black">{patient.nursingHome}</p></div>
                       <div><p className="text-sm font-bold text-slate-500">Date and time</p><p className="text-lg font-black">{new Date().toLocaleString()}</p></div>
                       <div className="md:col-span-2"><label className="mb-1 block text-sm font-bold">Consent documentation note, optional</label><textarea value={verbalConsentNurseNote} onChange={(e) => setVerbalConsentNurseNote(e.target.value)} rows={3} className="w-full rounded-xl border border-slate-300 p-3 text-base" /></div>
-                      <button type="button" onClick={() => setUnableConsentConfirmed(true)} disabled={!staffAttestationConfirmed} className="min-h-11 rounded-xl bg-blue-600 px-4 text-sm font-extrabold text-white disabled:opacity-50">Confirm verbal consent</button>
+                      <button type="button" onClick={() => setUnableConsentConfirmed(true)} className="min-h-11 rounded-xl bg-blue-600 px-4 text-sm font-extrabold text-white disabled:opacity-50">Confirm verbal consent</button>
                     </div>
                   )}
 
@@ -2122,7 +2122,7 @@ This service is not for emergencies. If you agree, we can continue with your aut
                           <div><label className="mb-1 block text-sm font-bold">Witness role/title</label><input value={markWitnessRole} onChange={(e) => setMarkWitnessRole(e.target.value)} className="min-h-12 w-full rounded-xl border border-slate-300 px-3 text-base" /></div>
                         </div>
                       )}
-                      <button type="button" onClick={() => setUnableConsentConfirmed(true)} disabled={!patientSignature || !unableToSignReason.trim() || !markWitnessComplete || !staffAttestationConfirmed} className="min-h-11 rounded-xl bg-blue-600 px-4 text-sm font-extrabold text-white disabled:opacity-50">Confirm Mark/X</button>
+                      <button type="button" onClick={() => setUnableConsentConfirmed(true)} disabled={!patientSignature || !unableToSignReason.trim() || !markWitnessComplete} className="min-h-11 rounded-xl bg-blue-600 px-4 text-sm font-extrabold text-white disabled:opacity-50">Confirm Mark/X</button>
                     </div>
                   )}
 
@@ -2900,7 +2900,7 @@ This service is not for emergencies. If you agree, we can continue with your aut
                             setSignerName(typedSignatureName.trim());
                             setTypedSignatureConfirmed(true);
                           }}
-                          disabled={!typedSignatureName.trim() || !typedSignatureAgreed || !staffAttestationConfirmed || typedSignatureConfirmed}
+                          disabled={!typedSignatureName.trim() || !typedSignatureAgreed || typedSignatureConfirmed}
                           className="inline-flex min-h-11 items-center justify-center rounded-xl bg-blue-600 px-5 text-sm font-extrabold text-white shadow-lg shadow-blue-600/20 hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
                         >
                           <CheckCircle size={16} className="mr-2" /> {l('Confirmar Firma Tipeada', 'Confirm Typed Signature')}
@@ -2985,10 +2985,10 @@ This service is not for emergencies. If you agree, we can continue with your aut
                         <button
                           type="button"
                           onClick={() => {
-                            if (!unableSignMethod || !unableToSignReason.trim() || (isMarkXConsent && (!patientSignature || !markWitnessComplete)) || !staffAttestationConfirmed) return;
+                            if (!unableSignMethod || !unableToSignReason.trim() || (isMarkXConsent && (!patientSignature || !markWitnessComplete))) return;
                             setUnableConsentConfirmed(true);
                           }}
-                          disabled={!unableSignMethod || !unableToSignReason.trim() || (isMarkXConsent && (!patientSignature || !markWitnessComplete)) || !staffAttestationConfirmed || unableConsentConfirmed}
+                          disabled={!unableSignMethod || !unableToSignReason.trim() || (isMarkXConsent && (!patientSignature || !markWitnessComplete)) || unableConsentConfirmed}
                           className="inline-flex min-h-11 items-center justify-center rounded-xl bg-amber-600 px-5 text-sm font-extrabold text-white shadow-lg shadow-amber-600/20 hover:bg-amber-700 disabled:cursor-not-allowed disabled:opacity-50"
                         >
                           <CheckCircle size={16} className="mr-2" />
