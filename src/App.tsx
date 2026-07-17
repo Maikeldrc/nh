@@ -233,6 +233,13 @@ export default function App() {
     setCurrentView('PROFILE');
   };
 
+  const handleViewEnrollment = (patientId: string) => {
+    const latestVisit = getLatestVisitForPatient(patientId);
+    setActivePatientId(patientId);
+    setActiveVisit(latestVisit);
+    setCurrentView('VISIT');
+  };
+
   const handleStartVisit = (patientId: string) => {
     if (!currentUser) return;
     
@@ -902,6 +909,7 @@ export default function App() {
               patients={patients}
               nursingHomes={nursingHomes}
               onStartVisit={handleStartVisit}
+              onViewEnrollment={handleViewEnrollment}
               onViewProfile={handleViewProfile}
               onContinueVisit={handleContinueVisit}
               onRegisterPatientClick={() => setIsRegisterModalOpen(true)}

@@ -26,6 +26,7 @@ import TablePagination, { usePaginatedRows } from './TablePagination';
 interface DashboardNurseProps {
   currentUser: User;
   onStartVisit: (patientId: string) => void;
+  onViewEnrollment: (patientId: string) => void;
   onViewProfile: (patientId: string) => void;
   onContinueVisit: (patientId: string) => void;
   patients: Patient[];
@@ -291,6 +292,7 @@ export default function DashboardNurse({
   patients,
   nursingHomes,
   onStartVisit,
+  onViewEnrollment,
   onViewProfile,
   onContinueVisit,
   onRegisterPatientClick,
@@ -418,7 +420,7 @@ export default function DashboardNurse({
     const patient = row.patient;
     if (patient.status === 'ACTIVE' || row.enrollmentStatus === 'Enrollment completed' || row.enrollmentStatus === 'Pending activation') {
       return (
-        <button onClick={() => onViewProfile(patient.id)} className="inline-flex min-h-11 w-full items-center justify-center rounded-xl bg-slate-900 px-3 text-xs font-extrabold text-white transition hover:bg-slate-800">
+        <button onClick={() => onViewEnrollment(patient.id)} className="inline-flex min-h-11 w-full items-center justify-center rounded-xl bg-blue-600 px-3 text-xs font-extrabold text-white shadow-lg shadow-blue-600/15 transition hover:bg-blue-700">
           <Eye size={14} className="mr-1.5" /> View enrollment
         </button>
       );
