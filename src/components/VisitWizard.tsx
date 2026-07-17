@@ -4,7 +4,7 @@ import SignaturePad from './SignaturePad';
 import { 
   Check, ArrowRight, ArrowLeft, Save, AlertTriangle, ShieldAlert,
   Smartphone, UserCheck, FileText, CheckCircle, Activity, Play, Info, Edit3, AlertCircle, RefreshCw,
-  UserRound, ShieldCheck, UsersRound, FileSignature, BookOpen, Type, AudioLines,
+  UserRound, ShieldCheck, UsersRound, FileSignature, Type, AudioLines, Pencil,
   X as XIcon, UserRoundCheck, Bookmark, Clock3, Monitor, ScanBarcode, GraduationCap,
   HeartPulse, ClipboardCheck, FileCheck, LogOut
 } from 'lucide-react';
@@ -1558,7 +1558,7 @@ This service is not for emergencies. If you agree, we can continue with your aut
         {step === 1 && (
           <section className="enrollment-screen">
             <SectionHeader
-              icon={<UserRound size={24} />}
+              icon={<ShieldCheck size={24} />}
               title="Confirm patient"
               description="Verify the patient and confirm whether the patient can make the participation decision."
             />
@@ -1566,7 +1566,6 @@ This service is not for emergencies. If you agree, we can continue with your aut
             <div className="enrollment-summary-card">
               <div className="enrollment-card-heading">
                 <div className="enrollment-row-heading">
-                  <span className="enrollment-section-icon" aria-hidden="true"><UserRound size={20} /></span>
                   <div>
                     <h3>Patient summary</h3>
                     <p>Please verify the patient information below.</p>
@@ -1577,7 +1576,7 @@ This service is not for emergencies. If you agree, we can continue with your aut
                   onClick={() => setIsEditModalOpen(true)}
                   className="enrollment-ghost-action"
                 >
-                  <Edit3 size={16} className="mr-2" /> Edit patient
+                  <Pencil size={16} className="mr-2" /> Edit patient
                 </button>
               </div>
               <div className="enrollment-summary-grid">
@@ -1604,9 +1603,6 @@ This service is not for emergencies. If you agree, we can continue with your aut
                 onChange={(event) => setIdConfirmed(event.target.checked)}
                 className="mt-1 h-6 w-6 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
               />
-              <span className="enrollment-attestation-icon" aria-hidden="true">
-                <ShieldCheck size={22} />
-              </span>
               <span>
                 <strong>I verified the patient's identity using at least two identifiers.</strong>
                 <small>Identity verification is required before consent can be captured.</small>
@@ -1614,13 +1610,13 @@ This service is not for emergencies. If you agree, we can continue with your aut
             </label>
 
             <div className="enrollment-subcard space-y-4">
-              <h3 className="enrollment-question-title"><ShieldCheck size={20} aria-hidden="true" /> Can the patient understand the explanation and make a participation decision?</h3>
+              <h3 className="enrollment-question-title">Can the patient understand the explanation and make a participation decision?</h3>
               <div className="enrollment-selection-grid two">
                 <DecisionCard
                   active={participationDecisionPath === 'PATIENT'}
                   title="Yes, the patient can decide"
                   helper="Decision maker and consent provider will be set to Patient."
-                  icon={<CheckCircle size={22} />}
+                  icon={<UserRound size={22} />}
                   onClick={() => {
                     setParticipationDecisionPath('PATIENT');
                     setPatientCanDecide(true);
@@ -1693,7 +1689,6 @@ This service is not for emergencies. If you agree, we can continue with your aut
             />
 
             <section className="enrollment-guide-card">
-              <span className="enrollment-section-icon" aria-hidden="true"><BookOpen size={22} /></span>
               <div className="min-w-0">
                 <p className="enrollment-eyebrow">Enrollment guide</p>
                 <ul className="enrollment-guide-list">
@@ -1731,11 +1726,11 @@ This service is not for emergencies. If you agree, we can continue with your aut
             </label>
 
             <section className="enrollment-subcard space-y-4">
-              <h3 className="enrollment-question-title"><UsersRound size={20} aria-hidden="true" /> What is the participation decision?</h3>
+              <h3 className="enrollment-question-title">What is the participation decision?</h3>
               <p className="enrollment-muted-copy">Record the patient's decision for the selected services.</p>
               <div className="enrollment-selection-grid two">
-                <DecisionCard active={consentDecision === 'ACCEPT'} title="Accept services" helper="Patient agrees to receive the selected services." icon={<CheckCircle size={22} />} onClick={() => setConsentDecision('ACCEPT')} />
-                <DecisionCard active={consentDecision === 'DECLINE'} title="Decline services" helper="Patient does not want to receive the services." icon={<XIcon size={22} />} onClick={() => setConsentDecision('DECLINE')} />
+                <DecisionCard active={consentDecision === 'ACCEPT'} title="Accept services" helper="Patient agrees to receive the selected services." onClick={() => setConsentDecision('ACCEPT')} />
+                <DecisionCard active={consentDecision === 'DECLINE'} title="Decline services" helper="Patient does not want to receive the services." onClick={() => setConsentDecision('DECLINE')} />
               </div>
               {consentDecision === 'DECLINE' && (
                 <div className="enrollment-consent-panel">
@@ -1751,13 +1746,12 @@ This service is not for emergencies. If you agree, we can continue with your aut
                 <section className="enrollment-summary-card">
                   <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                     <div className="enrollment-row-heading">
-                      <span className="enrollment-section-icon success" aria-hidden="true"><CheckCircle size={20} /></span>
                       <div>
                         <h3>Participation summary</h3>
                         <p>The patient has accepted services.</p>
                       </div>
                     </div>
-                    <button type="button" onClick={() => setStep(1)} className="enrollment-ghost-action"><Edit3 size={16} className="mr-2" /> Edit responses</button>
+                    <button type="button" onClick={() => setStep(1)} className="enrollment-ghost-action"><Pencil size={16} className="mr-2" /> Edit responses</button>
                   </div>
                   <div className="enrollment-summary-grid mt-4">
                     <div className="enrollment-summary-item">
@@ -1782,10 +1776,10 @@ This service is not for emergencies. If you agree, we can continue with your aut
                 )}
 
                 <section className="enrollment-subcard space-y-4">
-                  <h3 className="enrollment-question-title"><FileSignature size={20} aria-hidden="true" /> How will consent be documented?</h3>
+                  <h3 className="enrollment-question-title">How will consent be documented?</h3>
                   <p className="enrollment-muted-copy">Select the method used to capture consent.</p>
                   <div className="enrollment-selection-grid consent-methods">
-                    <DecisionCard active={signatureMethod === 'DRAW'} title="Draw signature" helper="Capture a handwritten signature." icon={<FileSignature size={22} />} onClick={() => setConsentMethod('DRAW')} />
+                    <DecisionCard active={signatureMethod === 'DRAW'} title="Draw signature" helper="Capture a handwritten signature." onClick={() => setConsentMethod('DRAW')} />
                     <DecisionCard active={signatureMethod === 'TYPE'} title="Type full legal name" helper="Enter the signer's full legal name." icon={<Type size={22} />} onClick={() => setConsentMethod('TYPE')} />
                     <DecisionCard active={isVerbalConsent} title="Verbal consent" helper="Document that verbal consent was provided." icon={<AudioLines size={22} />} onClick={() => setConsentMethod('VERBAL')} />
                     <DecisionCard active={isMarkXConsent} title="Mark or X" helper="Signer marks an X to consent." icon={<XIcon size={22} />} onClick={() => setConsentMethod('MARK_X')} />
@@ -1864,14 +1858,13 @@ This service is not for emergencies. If you agree, we can continue with your aut
         {step === 3 && (
           <section className="enrollment-screen">
             <SectionHeader
-              icon={<CheckCircle size={24} />}
+              icon={<ClipboardCheck size={24} />}
               title="Complete enrollment"
               description={isRpmApplicable ? 'Finalize RPM setup if applicable, then finish enrollment.' : 'Review the CCM enrollment summary and finish.'}
             />
 
             <section className="enrollment-row-card">
               <div className="enrollment-row-heading">
-                <span className="enrollment-section-icon success" aria-hidden="true"><Smartphone size={20} /></span>
                 <div>
                   <h3>Optional patient app</h3>
                   <p>Would the patient or caregiver like information about the mobile app?</p>
@@ -1885,7 +1878,7 @@ This service is not for emergencies. If you agree, we can continue with your aut
 
             {!isRpmApplicable ? (
               <section className="enrollment-subcard">
-                <h3 className="enrollment-question-title"><ClipboardCheck size={20} aria-hidden="true" /> Enrollment summary</h3>
+                <h3 className="enrollment-question-title">Enrollment summary</h3>
                 <div className="mt-5 grid gap-3 md:grid-cols-2">
                   {[['Identity verified', idConfirmed], ['Service explanation completed', serviceExplanationConfirmed], ['Consent recorded', consentDecision === 'ACCEPT'], ['Consent PDF generated', consentPdfGenerated], ['CCM enrollment ready', true]].map(([label, ready]) => (
                     <div key={String(label)} className="enrollment-check-row rounded-xl border border-slate-200 bg-slate-50 p-4">
@@ -1977,7 +1970,7 @@ This service is not for emergencies. If you agree, we can continue with your aut
                 </div>
                 <aside className="enrollment-sidebar">
                   <div className="enrollment-subcard">
-                    <h3 className="enrollment-question-title"><ClipboardCheck size={20} aria-hidden="true" /> Enrollment checklist</h3>
+                    <h3 className="enrollment-question-title">Enrollment checklist</h3>
                     <div className="mt-4 space-y-3">
                       {[
                         ['Patient identity verified', idConfirmed],
@@ -1995,7 +1988,7 @@ This service is not for emergencies. If you agree, we can continue with your aut
                     </div>
                   </div>
                   <div className="enrollment-subcard">
-                    <h3 className="enrollment-question-title"><UserRound size={20} aria-hidden="true" /> Patient summary</h3>
+                    <h3 className="enrollment-question-title">Patient summary</h3>
                     <div className="mt-4 space-y-3 text-sm">
                       <p><strong>{patient.firstName} {patient.lastName}</strong></p>
                       <p>Services: <strong>{selectedServices}</strong></p>
