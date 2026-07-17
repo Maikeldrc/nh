@@ -1532,6 +1532,8 @@ This service is not for emergencies. If you agree, we can continue with your aut
     ? providerDisplayName
     : `Dr. ${providerDisplayName}`;
   const deviceSetupReady = isRpmApplicable && medicalOrderApproved && Boolean(serialNumber.trim()) && devDeliveredToPatient && devInstructionsGiven && devUnderstandingDemonstrated;
+  const deviceOperationallyReady = isRpmApplicable && Boolean(serialNumber.trim()) && devDeliveredToPatient && devInstructionsGiven && devUnderstandingDemonstrated && firstReadingComplete;
+  const onlyMedicalOrderPendingForCompletion = isRpmApplicable && requiresMedicalOrder && !medicalOrderApproved && deviceOperationallyReady;
   const consentMethodSelected = consentDecision === 'DECLINE' || (
     signatureMethod === 'DRAW' ||
     signatureMethod === 'TYPE' ||
@@ -1665,9 +1667,12 @@ This service is not for emergencies. If you agree, we can continue with your aut
     }
     const shouldActivate = !isRpmApplicable || (isRpmApplicable && deviceSetupReady && firstReadingComplete);
     const { visitObj, consentObj, deviceObj, readingObj } = createStateBundles(false);
-    visitObj.status = 'COMPLETED';
-    visitObj.endTime = new Date().toISOString();
+    visitObj.status = onlyMedicalOrderPendingForCompletion ? 'IN_PROGRESS' : 'COMPLETED';
+    visitObj.endTime = onlyMedicalOrderPendingForCompletion ? undefined : new Date().toISOString();
     visitObj.currentStep = 3;
+    if (onlyMedicalOrderPendingForCompletion) {
+      visitObj.missingRequirements = Array.from(new Set([...visitObj.missingRequirements, 'Medical order approval']));
+    }
     setAlertMessage(null);
     onSaveAndExit(visitObj, consentObj, deviceObj, readingObj, shouldActivate);
   };

@@ -686,6 +686,9 @@ export default function App() {
         showToast(l(`${PRODUCT_NAME}: inscripción completada.`, `${PRODUCT_NAME}: enrollment completed.`), 'success');
       } else {
         patientObj.status = 'INCOMPLETE';
+        patientObj.activationBlocker = patientRequiresDevice(patientObj) && !isMedicalOrderApproved(patientObj)
+          ? 'AWAITING_MEDICAL_ORDER_APPROVAL'
+          : undefined;
         addAuditLog(
           currentUser.id,
           currentUser.name,
