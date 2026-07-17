@@ -360,7 +360,7 @@ export default function VisitWizard({
     (!isMarkXConsent || patientSignature) &&
     (!isRepresentativeSignatureConsent || patientSignature) &&
     markWitnessComplete &&
-    unableConsentConfirmed
+    (isRepresentativeSignatureConsent || unableConsentConfirmed)
   );
   const patientEvidenceComplete =
     signatureMethod === 'DRAW' ? Boolean(patientSignature) :
@@ -2026,7 +2026,6 @@ This service is not for emergencies. If you agree, we can continue with your aut
                           <span className="enrollment-required-badge">Required</span>
                         </div>
                         <SignaturePad id="simplified-representative-signature" label="Representative signature" onSave={handleSavePatientSignature} onClear={() => setPatientSignature('')} savedDataUrl={patientSignature} confirmLabel="Save signature" showLabel={false} showSignerName={false} />
-                        <button type="button" onClick={() => setUnableConsentConfirmed(true)} disabled={!patientSignature || !staffAttestationConfirmed} className="mt-4 min-h-11 rounded-xl bg-blue-600 px-4 text-sm font-extrabold text-white disabled:opacity-50">Confirm representative signature</button>
                       </div>
                     </div>
                   )}
