@@ -2,14 +2,14 @@ import { useState } from 'react';
 import { Patient, User } from '../types';
 import { X, CheckCircle, AlertTriangle, ClipboardList, User as UserIcon, Activity, Pill, Stethoscope, FileText, ChevronDown, ChevronUp } from 'lucide-react';
 import { useLanguage } from '../utils/LanguageContext';
-import { getMedicalOrderStatus } from '../utils/medicalOrders';
+import { getApprovedOrderDeviceTypes, getMedicalOrderStatus, getOrderRequestedDevices } from '../utils/medicalOrders';
 
 interface MedicalOrderReviewModalProps {
   isOpen: boolean;
   patient: Patient;
   currentUser: User;
   onClose: () => void;
-  onApprove: (patientId: string, notes?: string) => void;
+  onApprove: (patientId: string, notes?: string, approvedDeviceTypes?: string[]) => void;
   onReject: (patientId: string, notes: string) => void;
 }
 
@@ -34,19 +34,24 @@ export default function MedicalOrderReviewModal({
     ? `Remote patient monitoring is medically necessary for managing the patient's conditions. Monitor vitals daily using the provided ${orderedDeviceType}.`
     : `Remote patient monitoring is medically necessary. Monitor vitals daily.`;
   const [approvalNotes, setApprovalNotes] = useState(defaultNotesText);
-
-  if (!isOpen) return null;
-
   const order = patient.medicalOrder;
   const orderStatus = getMedicalOrderStatus(patient);
   const canReview = orderStatus === 'ORDER_PENDING_PHYSICIAN_APPROVAL';
   const isAlreadyApproved = orderStatus === 'ORDER_APPROVED';
+  const requestedDeviceTypes = getOrderRequestedDevices(order, patient);
+  const approvedDeviceTypes = getApprovedOrderDeviceTypes(patient);
+  const pendingDeviceTypes = requestedDeviceTypes.filter(device => !approvedDeviceTypes.includes(device));
+  const [selectedDeviceApprovals, setSelectedDeviceApprovals] = useState<string[]>(pendingDeviceTypes);
+
+  if (!isOpen) return null;
+
   const longTermCareLabel = 'Long Term Care (LTC)';
   const isLongTermCare = patient.conditions.some(condition => condition.trim().toLowerCase() === longTermCareLabel.toLowerCase());
   const clinicalConditions = patient.conditions.filter(condition => condition.trim().toLowerCase() !== longTermCareLabel.toLowerCase());
 
   const handleApprove = () => {
-    onApprove(patient.id, approvalNotes.trim());
+    if (selectedDeviceApprovals.length === 0) return;
+    onApprove(patient.id, approvalNotes.trim(), selectedDeviceApprovals);
     onClose();
   };
 
@@ -193,6 +198,65 @@ export default function MedicalOrderReviewModal({
                 ? l('Paciente confirmado como Long Term Care (LTC)', 'Patient confirmed as Long Term Care (LTC)')
                 : l('No confirmado como Long Term Care (LTC)', 'Not confirmed as Long Term Care (LTC)')}
             </span>
+          </div>
+
+          {/* Requested Devices */}
+          <div className="bg-indigo-50 border border-indigo-100 rounded-xl p-4">
+            <div className="flex items-center space-x-2 mb-3">
+              <ClipboardList size={14} className="text-indigo-500" />
+              <h3 className="text-xs font-extrabold text-indigo-700 uppercase tracking-wider">
+                {l('Devices solicitados', 'Requested Devices')}
+              </h3>
+            </div>
+            <div className="grid gap-2 sm:grid-cols-2">
+              {requestedDeviceTypes.length > 0 ? requestedDeviceTypes.map(device => {
+                const isApproved = approvedDeviceTypes.includes(device);
+                const isSelected = selectedDeviceApprovals.includes(device);
+                return (
+                  <label
+                    key={device}
+                    className={`flex items-center justify-between gap-3 rounded-xl border px-3 py-2.5 text-xs font-bold ${
+                      isApproved
+                        ? 'border-emerald-200 bg-emerald-50 text-emerald-800'
+                        : isSelected
+                          ? 'border-indigo-300 bg-white text-indigo-800 ring-1 ring-indigo-200'
+                          : 'border-slate-200 bg-white text-slate-700'
+                    }`}
+                  >
+                    <span>{device === 'BP Monitor' ? 'BPM' : 'Scale'}</span>
+                    {isApproved ? (
+                      <span className="inline-flex items-center rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-extrabold text-emerald-800">
+                        <CheckCircle size={11} className="mr-1" />
+                        {l('Aprobado', 'Approved')}
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-2">
+                        <input
+                          type="checkbox"
+                          checked={isSelected}
+                          disabled={!canReview}
+                          onChange={(event) => {
+                            setSelectedDeviceApprovals(previous => event.target.checked
+                              ? Array.from(new Set([...previous, device]))
+                              : previous.filter(item => item !== device)
+                            );
+                          }}
+                          className="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 disabled:opacity-50"
+                        />
+                        {l('Aprobar', 'Approve')}
+                      </span>
+                    )}
+                  </label>
+                );
+              }) : (
+                <span className="text-xs text-slate-400 italic">{l('Sin devices solicitados', 'No requested devices')}</span>
+              )}
+            </div>
+            {canReview && (
+              <p className="mt-2 text-[11px] font-semibold text-indigo-700">
+                {l('Seleccione uno o ambos devices para aprobarlos. Los no seleccionados permanecerán pendientes y requerirán aprobación posterior.', 'Select one or both devices to approve. Unselected devices remain pending and require later approval.')}
+              </p>
+            )}
           </div>
 
           {/* Conditions */}
@@ -388,7 +452,8 @@ export default function MedicalOrderReviewModal({
               </button>
               <button
                 onClick={handleApprove}
-                className="flex items-center space-x-1.5 px-5 py-2 text-xs font-extrabold text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl shadow-lg shadow-emerald-600/20 transition cursor-pointer"
+                disabled={selectedDeviceApprovals.length === 0}
+                className="flex items-center space-x-1.5 px-5 py-2 text-xs font-extrabold text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl shadow-lg shadow-emerald-600/20 transition cursor-pointer disabled:cursor-not-allowed disabled:bg-slate-300 disabled:shadow-none"
               >
                 <CheckCircle size={14} />
                 <span>{l('Aprobar Orden', 'Approve Order')}</span>

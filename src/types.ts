@@ -52,6 +52,14 @@ export interface MedicalOrder {
   id: string;
   status: MedicalOrderStatus;
   deviceType?: string;
+  deviceApprovals?: Array<{
+    deviceType: 'BP Monitor' | 'Scale';
+    status: 'PENDING' | 'APPROVED' | 'REJECTED';
+    approvedAt?: string;
+    approvedBy?: string;
+    approvedByUserId?: string;
+    notes?: string;
+  }>;
   createdAt: string;
   createdBy: string;
   createdByUserId: string;
@@ -94,6 +102,7 @@ export interface Patient {
   medicationsPendingReview?: boolean;
   requiredDevice: string;
   medicalOrder?: MedicalOrder;
+  medicalOrders?: MedicalOrder[];
   status: PatientStatus;
   assignedNurseId: string;
   assignedNurseName: string;

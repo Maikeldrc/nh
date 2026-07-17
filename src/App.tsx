@@ -14,7 +14,7 @@ import {
 } from './utils/db';
 import { cleanupPatientData, downloadDocument, generateDocument } from './utils/apiClient';
 import { getAuthConfigurationError, logout, observeAuthenticatedUser } from './utils/auth';
-import { approveMedicalOrder, createMedicalOrder, generateAutoOrderIfNeeded, isMedicalOrderApproved, patientRequiresDevice, rejectMedicalOrder, resubmitMedicalOrder } from './utils/medicalOrders';
+import { approveMedicalOrderDevices, createMedicalOrder, generateAutoOrderIfNeeded, getApprovedOrderDeviceTypes, getRequiredOrderDeviceTypes, isMedicalOrderApproved, patientRequiresDevice, rejectMedicalOrder, resubmitMedicalOrder } from './utils/medicalOrders';
 import { POWERED_BY, PRODUCT_NAME } from './utils/branding';
 import { isEnrollmentOperationsRole } from './utils/roles';
 import Header from './components/Header';
@@ -341,12 +341,19 @@ export default function App() {
     const patient = getPatients().find(p => p.id === patientId);
     if (!patient) return;
 
+    const approvedDevices = getApprovedOrderDeviceTypes(patient);
+    const missingDevices = getRequiredOrderDeviceTypes(patient).filter(device => !approvedDevices.includes(device));
+    const resolvedDeviceType = deviceType || (missingDevices.length > 0 ? missingDevices.join(' + ') : patient.requiredDevice);
     const order = !deviceType && patient.medicalOrder?.status === 'ORDER_REJECTED_NEEDS_REVISION'
       ? resubmitMedicalOrder(patient, currentUser)
-      : createMedicalOrder(patient, currentUser, deviceType);
+      : createMedicalOrder(patient, currentUser, resolvedDeviceType);
     const latestOrderAction = order.auditTrail[order.auditTrail.length - 1]?.action;
 
     patient.medicalOrder = order;
+    patient.medicalOrders = [
+      ...(patient.medicalOrders || []).filter(existingOrder => existingOrder.id !== order.id),
+      order
+    ];
     savePatient(patient);
 
     addAuditLog(
@@ -364,13 +371,17 @@ export default function App() {
     showToast(l('Orden médica enviada al médico para revisión.', 'Medical order sent to physician for review.'), 'info');
   };
 
-  const handleApproveMedicalOrder = (patientId: string, notes?: string) => {
+  const handleApproveMedicalOrder = (patientId: string, notes?: string, approvedDeviceTypes?: string[]) => {
     if (!currentUser) return;
     const patient = getPatients().find(p => p.id === patientId);
     if (!patient) return;
 
-    const order = approveMedicalOrder(patient, currentUser, notes);
+    const order = approveMedicalOrderDevices(patient, currentUser, approvedDeviceTypes || [], notes);
     patient.medicalOrder = order;
+    patient.medicalOrders = [
+      ...(patient.medicalOrders || []).filter(existingOrder => existingOrder.id !== order.id),
+      order
+    ];
     savePatient(patient);
 
     const existingDevice = getDeviceByPatientId(patient.id);
@@ -425,6 +436,10 @@ export default function App() {
     const resolvedNotes = notes || l('Requiere revision antes de activar el dispositivo.', 'Needs revision before device activation.');
     const order = rejectMedicalOrder(patient, currentUser, resolvedNotes);
     patient.medicalOrder = order;
+    patient.medicalOrders = [
+      ...(patient.medicalOrders || []).filter(existingOrder => existingOrder.id !== order.id),
+      order
+    ];
     savePatient(patient);
 
     addAuditLog(
