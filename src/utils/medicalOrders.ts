@@ -95,6 +95,45 @@ export function createMedicalOrder(patient: Patient, user: User, deviceType = pa
   };
 }
 
+export function updatePendingMedicalOrderDevices(patient: Patient, user: User, deviceType = patient.requiredDevice): MedicalOrder | undefined {
+  const existingOrder = patient.medicalOrder;
+  if (!existingOrder || existingOrder.status === 'ORDER_APPROVED') return undefined;
+
+  const now = new Date().toISOString();
+  const requestedDevices = Array.from(new Set([
+    ...getOrderRequestedDevices(existingOrder, patient),
+    ...parseOrderDeviceTypes(deviceType)
+  ]));
+
+  if (requestedDevices.length === 0) return undefined;
+
+  return {
+    ...existingOrder,
+    status: 'ORDER_PENDING_PHYSICIAN_APPROVAL',
+    deviceType: requestedDevices.join(' + '),
+    deviceApprovals: requestedDevices.map(device => {
+      const existingApproval = existingOrder.deviceApprovals?.find(approval => approval.deviceType === device);
+      return existingApproval || {
+        deviceType: device,
+        status: 'PENDING' as const
+      };
+    }),
+    submittedAt: now,
+    rejectedAt: undefined,
+    revisionNotes: undefined,
+    auditTrail: [
+      ...existingOrder.auditTrail,
+      {
+        action: 'RESENT',
+        dateTime: now,
+        userId: user.id,
+        userName: user.name,
+        notes: `Pending order updated to request: ${requestedDevices.join(', ')}.`
+      }
+    ]
+  };
+}
+
 export function resubmitMedicalOrder(patient: Patient, user: User): MedicalOrder {
   const now = new Date().toISOString();
   const existingOrder = patient.medicalOrder || createMedicalOrder(patient, user);

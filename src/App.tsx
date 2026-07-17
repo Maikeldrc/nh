@@ -14,7 +14,7 @@ import {
 } from './utils/db';
 import { cleanupPatientData, downloadDocument, generateDocument } from './utils/apiClient';
 import { getAuthConfigurationError, logout, observeAuthenticatedUser } from './utils/auth';
-import { approveMedicalOrderDevices, createMedicalOrder, generateAutoOrderIfNeeded, getApprovedOrderDeviceTypes, getRequiredOrderDeviceTypes, isMedicalOrderApproved, patientRequiresDevice, rejectMedicalOrder, resubmitMedicalOrder } from './utils/medicalOrders';
+import { approveMedicalOrderDevices, createMedicalOrder, generateAutoOrderIfNeeded, getApprovedOrderDeviceTypes, getRequiredOrderDeviceTypes, isMedicalOrderApproved, patientRequiresDevice, rejectMedicalOrder, resubmitMedicalOrder, updatePendingMedicalOrderDevices } from './utils/medicalOrders';
 import { POWERED_BY, PRODUCT_NAME } from './utils/branding';
 import { isEnrollmentOperationsRole } from './utils/roles';
 import Header from './components/Header';
@@ -351,9 +351,15 @@ export default function App() {
     const approvedDevices = getApprovedOrderDeviceTypes(patient);
     const missingDevices = getRequiredOrderDeviceTypes(patient).filter(device => !approvedDevices.includes(device));
     const resolvedDeviceType = deviceType || (missingDevices.length > 0 ? missingDevices.join(' + ') : patient.requiredDevice);
+    const canUpdatePendingOrder = approvedDevices.length === 0
+      && patient.medicalOrder
+      && patient.medicalOrder.status !== 'ORDER_APPROVED'
+      && patient.medicalOrder.status !== 'ORDER_REJECTED_NEEDS_REVISION';
     const order = !deviceType && patient.medicalOrder?.status === 'ORDER_REJECTED_NEEDS_REVISION'
       ? resubmitMedicalOrder(patient, currentUser)
-      : createMedicalOrder(patient, currentUser, resolvedDeviceType);
+      : canUpdatePendingOrder
+        ? updatePendingMedicalOrderDevices(patient, currentUser, resolvedDeviceType) || createMedicalOrder(patient, currentUser, resolvedDeviceType)
+        : createMedicalOrder(patient, currentUser, resolvedDeviceType);
     const latestOrderAction = order.auditTrail[order.auditTrail.length - 1]?.action;
 
     patient.medicalOrder = order;

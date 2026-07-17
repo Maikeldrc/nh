@@ -12,7 +12,7 @@ import {
 import { DEFAULT_EXPLANATION_SCRIPT, DEFAULT_EXPLANATION_SCRIPT_ES, DEFAULT_CONSENT_TEXT, DEFAULT_CONSENT_TEXT_ES } from '../data';
 import { useLanguage } from '../utils/LanguageContext';
 import EditPatientModal from './EditPatientModal';
-import { getMedicalOrderStatus, isMedicalOrderApproved, patientRequiresDevice } from '../utils/medicalOrders';
+import { getApprovedOrderDeviceTypes, getMedicalOrderStatus, getOrderRequestedDevices, getPatientMedicalOrders, isMedicalOrderApproved, patientRequiresDevice, type OrderableDeviceType } from '../utils/medicalOrders';
 import { POWERED_BY, PRODUCT_NAME } from '../utils/branding';
 
 const ANDROID_APP_URL = 'https://play.google.com/store/apps/details?id=health.itera.app';
@@ -479,11 +479,30 @@ export default function VisitWizard({
   const requiresMedicalOrder = patientRequiresDevice(patient);
   const medicalOrderStatus = getMedicalOrderStatus(patient);
   const medicalOrderApproved = isMedicalOrderApproved(patient);
+  const approvedOrderDeviceTypes = getApprovedOrderDeviceTypes(patient);
+  const patientMedicalOrders = getPatientMedicalOrders(patient);
   const deviceActionsBlocked = false; // Allow device delivery and checklist completion even if medical order is not approved yet
   const selectedMonitoringDeviceTypes = Array.from(new Set([
     deviceType,
     ...(hasAdditionalDevice ? [additionalDeviceType] : [])
-  ])).filter(device => device === 'BP Monitor' || device === 'Scale');
+  ])).filter((device): device is OrderableDeviceType => device === 'BP Monitor' || device === 'Scale');
+  const selectedMonitoringDeviceText = selectedMonitoringDeviceTypes.join(' + ');
+  const requestedOrderDeviceTypes = Array.from(new Set(patientMedicalOrders.flatMap(order => getOrderRequestedDevices(order, patient))));
+  const getDeviceOrderState = (device: OrderableDeviceType) => {
+    if (approvedOrderDeviceTypes.includes(device)) return 'APPROVED';
+    if (requestedOrderDeviceTypes.includes(device)) return 'PENDING';
+    return 'REQUIRED';
+  };
+  const renderDeviceOrderBadge = (device: OrderableDeviceType) => {
+    const state = getDeviceOrderState(device);
+    if (state === 'APPROVED') {
+      return <span className="rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-xs font-extrabold text-emerald-700">Order approved</span>;
+    }
+    if (state === 'PENDING') {
+      return <span className="rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-xs font-extrabold text-amber-700">Approval pending</span>;
+    }
+    return <span className="rounded-full border border-orange-200 bg-orange-50 px-2.5 py-1 text-xs font-extrabold text-orange-700">Order required</span>;
+  };
   const requiresBpReading = selectedMonitoringDeviceTypes.includes('BP Monitor');
   const requiresScaleReading = selectedMonitoringDeviceTypes.includes('Scale');
   const bpReadingComplete = !requiresBpReading || Boolean(systolic && diastolic && pulse);
@@ -496,6 +515,24 @@ export default function VisitWizard({
       setActivationStatus(current => current === 'PENDING_ORDER_APPROVAL' ? 'NOT_STARTED' : current);
     }
   }, [requiresMedicalOrder, medicalOrderApproved]);
+  const lastRequestedDeviceOrderRef = useRef(patient.requiredDevice || '');
+  useEffect(() => {
+    if (step !== 3 || !isRpmApplicable || selectedMonitoringDeviceTypes.length === 0 || !selectedMonitoringDeviceText) return;
+    if (lastRequestedDeviceOrderRef.current === selectedMonitoringDeviceText && patient.requiredDevice === selectedMonitoringDeviceText) return;
+
+    lastRequestedDeviceOrderRef.current = selectedMonitoringDeviceText;
+    if (patient.requiredDevice !== selectedMonitoringDeviceText) {
+      onUpdatePatient?.({
+        ...patient,
+        requiredDevice: selectedMonitoringDeviceText
+      });
+    }
+
+    const missingRequestedDevices = selectedMonitoringDeviceTypes.filter(device => !approvedOrderDeviceTypes.includes(device));
+    if (missingRequestedDevices.length > 0) {
+      onGenerateMedicalOrder(patient.id, missingRequestedDevices.join(' + '));
+    }
+  }, [step, isRpmApplicable, selectedMonitoringDeviceText, patient, onUpdatePatient, onGenerateMedicalOrder]);
   const selectedServiceName = patient.assignedProgram === 'RPM'
     ? l('Monitoreo Remoto de Pacientes', 'Remote Patient Monitoring')
     : patient.assignedProgram === 'CCM'
@@ -2299,7 +2336,13 @@ This service is not for emergencies. If you agree, we can continue with your aut
                   <div className="enrollment-subcard">
                       <h4 className="enrollment-question-title"><ScanBarcode size={20} aria-hidden="true" /> Device information</h4>
                       <div className="mt-4 grid gap-4 md:grid-cols-2">
-                        <div><label className="mb-1 block text-sm font-bold">Device</label><select value={deviceType} onChange={(e) => setDeviceType(e.target.value as typeof deviceType)} className="min-h-12 w-full rounded-xl border border-slate-300 bg-white px-3 text-base"><option value="BP Monitor">BP Monitor</option><option value="Scale">Scale</option><option value="Other">Other</option></select></div>
+                        <div>
+                          <div className="mb-1 flex items-center justify-between gap-2">
+                            <label className="block text-sm font-bold">Device</label>
+                            {(deviceType === 'BP Monitor' || deviceType === 'Scale') && renderDeviceOrderBadge(deviceType)}
+                          </div>
+                          <select value={deviceType} onChange={(e) => setDeviceType(e.target.value as typeof deviceType)} className="min-h-12 w-full rounded-xl border border-slate-300 bg-white px-3 text-base"><option value="BP Monitor">BP Monitor</option><option value="Scale">Scale</option><option value="Other">Other</option></select>
+                        </div>
                         <div><label className="mb-1 block text-sm font-bold">Device ID</label><input value={serialNumber} onChange={(e) => setSerialNumber(e.target.value)} className="min-h-12 w-full rounded-xl border border-slate-300 px-3 text-base" placeholder="Device ID" /></div>
                       </div>
                       <div className="mt-4 flex flex-wrap gap-3">
@@ -2316,7 +2359,10 @@ This service is not for emergencies. If you agree, we can continue with your aut
                           <p className="text-sm font-extrabold text-blue-950">Second device</p>
                           <div className="mt-4 grid gap-4 md:grid-cols-2">
                             <div>
-                              <label className="mb-1 block text-sm font-bold">Device type</label>
+                              <div className="mb-1 flex items-center justify-between gap-2">
+                                <label className="block text-sm font-bold">Device type</label>
+                                {(additionalDeviceType === 'BP Monitor' || additionalDeviceType === 'Scale') && renderDeviceOrderBadge(additionalDeviceType)}
+                              </div>
                               <select value={additionalDeviceType} onChange={(e) => setAdditionalDeviceType(e.target.value as typeof additionalDeviceType)} className="min-h-12 w-full rounded-xl border border-slate-300 bg-white px-3 text-base">
                                 <option value="BP Monitor">BP Monitor</option>
                                 <option value="Scale">Scale</option>
