@@ -9,16 +9,16 @@ import appLogo from '../assets/amavita-logo.png';
 interface HeaderProps {
   currentUser: User;
   onLogout: () => void;
+  onNotify: (message: string, type?: 'success' | 'info') => void;
 }
 
-export default function Header({ currentUser, onLogout }: HeaderProps) {
+export default function Header({ currentUser, onLogout, onNotify }: HeaderProps) {
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [passwordModalOpen, setPasswordModalOpen] = useState(false);
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [passwordError, setPasswordError] = useState('');
-  const [passwordSuccess, setPasswordSuccess] = useState('');
   const [isChangingPassword, setIsChangingPassword] = useState(false);
   const { language, setLanguage, t } = useLanguage();
   const l = (es: string, en: string) => language === 'ES' ? es : en;
@@ -30,13 +30,11 @@ export default function Header({ currentUser, onLogout }: HeaderProps) {
     setNewPassword('');
     setConfirmPassword('');
     setPasswordError('');
-    setPasswordSuccess('');
     setPasswordModalOpen(true);
   };
 
   const submitPasswordChange = async () => {
     setPasswordError('');
-    setPasswordSuccess('');
     if (!currentPassword) {
       setPasswordError(l('Ingresa tu contraseña actual.', 'Enter your current password.'));
       return;
@@ -59,7 +57,8 @@ export default function Header({ currentUser, onLogout }: HeaderProps) {
       setCurrentPassword('');
       setNewPassword('');
       setConfirmPassword('');
-      setPasswordSuccess(l('Contraseña actualizada correctamente.', 'Password updated successfully.'));
+      setPasswordModalOpen(false);
+      onNotify(l('Contraseña actualizada correctamente.', 'Password updated successfully.'));
     } catch (error) {
       const message = error instanceof Error ? error.message : '';
       setPasswordError(messageForPasswordError(message, l));
@@ -199,7 +198,6 @@ export default function Header({ currentUser, onLogout }: HeaderProps) {
             </label>
             <p className="text-[11px] font-semibold text-slate-500">{l('Usa al menos 8 caracteres y evita espacios.', 'Use at least 8 characters and avoid spaces.')}</p>
             {passwordError && <div className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs font-bold text-rose-700">{passwordError}</div>}
-            {passwordSuccess && <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-bold text-emerald-700">{passwordSuccess}</div>}
           </div>
           <div className="flex justify-end gap-3 border-t border-slate-200 p-5">
             <button type="button" onClick={() => setPasswordModalOpen(false)} className="rounded-xl border border-slate-300 px-4 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50">

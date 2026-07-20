@@ -864,6 +864,7 @@ export default function App() {
       <Header 
         currentUser={currentUser} 
         onLogout={handleLogout} 
+        onNotify={showToast}
       />
 
       {/* Main body viewport */}
