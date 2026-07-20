@@ -169,6 +169,16 @@ export function updateUser(
   });
 }
 
+export function updateUserPassword(
+  userId: string,
+  password: string
+): Promise<{ ok: boolean }> {
+  return apiRequest<{ ok: boolean }>(`/v1/users/${encodeURIComponent(userId)}/password`, {
+    method: 'POST',
+    body: JSON.stringify({ password })
+  });
+}
+
 export function deleteResource(resource: string, id: string): Promise<{ ok: boolean }> {
   return apiRequest<{ ok: boolean }>(`/v1/${resource}/${encodeURIComponent(id)}`, {
     method: 'DELETE'

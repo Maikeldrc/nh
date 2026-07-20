@@ -1,8 +1,8 @@
 import { useMemo, useState } from 'react';
-import { CheckCircle, Copy, Edit3, Plus, ShieldAlert, UserX, X } from 'lucide-react';
+import { CheckCircle, Copy, Edit3, KeyRound, Plus, ShieldAlert, UserX, X } from 'lucide-react';
 import { User, UserRole } from '../types';
 import { useLanguage } from '../utils/LanguageContext';
-import { createUser, updateUser, type UserMutationPayload } from '../utils/apiClient';
+import { createUser, updateUser, updateUserPassword, type UserMutationPayload } from '../utils/apiClient';
 import TablePagination, { usePaginatedRows } from './TablePagination';
 import { ROLE_OPTIONS, roleDisplayName } from '../utils/roles';
 
@@ -60,6 +60,11 @@ export default function UserManagement({
   const [setupLink, setSetupLink] = useState('');
   const [pendingDeactivation, setPendingDeactivation] = useState<FormState | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [passwordUser, setPasswordUser] = useState<User | null>(null);
+  const [adminPassword, setAdminPassword] = useState('');
+  const [adminPasswordConfirm, setAdminPasswordConfirm] = useState('');
+  const [passwordError, setPasswordError] = useState('');
+  const [isPasswordSaving, setIsPasswordSaving] = useState(false);
 
   const sortedUsers = useMemo(() => {
     return [...users].sort((a, b) => a.name.localeCompare(b.name));
@@ -163,6 +168,42 @@ export default function UserManagement({
     void saveForm(next);
   };
 
+  const openPasswordChange = (user: User) => {
+    setPasswordUser(user);
+    setAdminPassword('');
+    setAdminPasswordConfirm('');
+    setPasswordError('');
+  };
+
+  const savePasswordChange = async () => {
+    if (!passwordUser) return;
+    setPasswordError('');
+    if (adminPassword.length < 8) {
+      setPasswordError(l('La contraseña debe tener al menos 8 caracteres.', 'Password must be at least 8 characters.'));
+      return;
+    }
+    if (/\s/.test(adminPassword)) {
+      setPasswordError(l('La contraseña no debe contener espacios.', 'Password cannot contain spaces.'));
+      return;
+    }
+    if (adminPassword !== adminPasswordConfirm) {
+      setPasswordError(l('Las contraseñas no coinciden.', 'Passwords do not match.'));
+      return;
+    }
+    setIsPasswordSaving(true);
+    try {
+      await updateUserPassword(passwordUser.id, adminPassword);
+      onNotify(l('Contraseña actualizada correctamente.', 'Password updated successfully.'));
+      setPasswordUser(null);
+      setAdminPassword('');
+      setAdminPasswordConfirm('');
+    } catch (err) {
+      setPasswordError(messageForError(err, l));
+    } finally {
+      setIsPasswordSaving(false);
+    }
+  };
+
   return (
     <div className="space-y-5" id="user-management">
       <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
@@ -230,6 +271,14 @@ export default function UserManagement({
                       >
                         <Edit3 size={13} className="mr-1" />
                         {l('Editar', 'Edit')}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => openPasswordChange(user)}
+                        className="inline-flex items-center rounded-xl border border-slate-200 bg-white px-3 py-1.5 font-bold text-slate-700 hover:bg-slate-50"
+                      >
+                        <KeyRound size={13} className="mr-1 text-blue-600" />
+                        {l('Contraseña', 'Password')}
                       </button>
                       <button
                         type="button"
@@ -392,6 +441,44 @@ export default function UserManagement({
           </div>
         </div>
       )}
+
+      {passwordUser && (
+        <div className="fixed inset-0 z-[60] grid place-items-center bg-slate-900/50 p-4">
+          <div className="w-full max-w-md rounded-2xl bg-white shadow-2xl">
+            <div className="flex items-start justify-between border-b border-slate-200 p-5">
+              <div>
+                <h3 className="text-lg font-extrabold text-slate-900">{l('Cambiar contraseña', 'Change Password')}</h3>
+                <p className="mt-1 text-xs font-semibold text-slate-500">{passwordUser.name} · {passwordUser.email}</p>
+              </div>
+              <button type="button" onClick={() => setPasswordUser(null)} className="rounded-xl p-2 text-slate-400 hover:bg-slate-100">
+                <X size={18} />
+              </button>
+            </div>
+            <div className="space-y-4 p-5">
+              <label className="block text-xs font-bold text-slate-600">
+                {l('Nueva contraseña', 'New password')}
+                <input type="password" value={adminPassword} onChange={event => setAdminPassword(event.target.value)} className="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2 text-sm text-slate-900" />
+              </label>
+              <label className="block text-xs font-bold text-slate-600">
+                {l('Confirmar contraseña', 'Confirm password')}
+                <input type="password" value={adminPasswordConfirm} onChange={event => setAdminPasswordConfirm(event.target.value)} className="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2 text-sm text-slate-900" />
+              </label>
+              <p className="text-[11px] font-semibold text-slate-500">
+                {l('La contraseña se actualiza en Firebase Auth. No se guarda en Google Sheets.', 'The password is updated in Firebase Auth. It is not stored in Google Sheets.')}
+              </p>
+              {passwordError && <div className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs font-bold text-rose-700">{passwordError}</div>}
+            </div>
+            <div className="flex justify-end gap-3 border-t border-slate-200 p-5">
+              <button type="button" onClick={() => setPasswordUser(null)} className="rounded-xl border border-slate-300 px-4 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50">
+                {l('Cancelar', 'Cancel')}
+              </button>
+              <button type="button" disabled={isPasswordSaving} onClick={() => void savePasswordChange()} className="rounded-xl bg-blue-600 px-4 py-2 text-xs font-extrabold text-white hover:bg-blue-700 disabled:opacity-60">
+                {isPasswordSaving ? l('Actualizando...', 'Updating...') : l('Actualizar contraseña', 'Update Password')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -438,6 +525,10 @@ function messageForError(error: unknown, l: (es: string, en: string) => string):
   if (message.includes('missing_name')) return l('El nombre es obligatorio.', 'Name is required.');
   if (message.includes('missing_role')) return l('El rol es obligatorio.', 'Role is required.');
   if (message.includes('invalid_role')) return l('Rol inválido.', 'Invalid role.');
+  if (message.includes('password_too_short')) return l('La contraseña debe tener al menos 8 caracteres.', 'Password must be at least 8 characters.');
+  if (message.includes('password_too_long')) return l('La contraseña es demasiado larga.', 'Password is too long.');
+  if (message.includes('password_cannot_contain_spaces')) return l('La contraseña no debe contener espacios.', 'Password cannot contain spaces.');
+  if (message.includes('missing_identity_uid')) return l('Este usuario no está vinculado a Firebase Auth.', 'This user is not linked to Firebase Auth.');
   if (message.includes('cannot_disable_last_admin')) return l('No puedes desactivar o quitar el último administrador activo.', 'You cannot disable or remove the last active administrator.');
   if (message.includes('permission')) return l('No tienes permisos para esta acción.', 'You do not have permission to perform this action.');
   if (message.includes('session')) return l('La sesión expiró. Inicia sesión nuevamente.', 'Your session expired. Sign in again.');

@@ -1,11 +1,14 @@
 import { initializeApp } from 'firebase/app';
 import {
   browserSessionPersistence,
+  EmailAuthProvider,
   getAuth,
   onAuthStateChanged,
+  reauthenticateWithCredential,
   setPersistence,
   signInWithEmailAndPassword,
   signOut,
+  updatePassword,
   type Auth,
   type User as FirebaseUser
 } from 'firebase/auth';
@@ -53,6 +56,14 @@ export async function loginWithEmail(email: string, password: string): Promise<v
 
 export async function logout(): Promise<void> {
   await signOut(requireAuth());
+}
+
+export async function changeOwnPassword(currentPassword: string, newPassword: string): Promise<void> {
+  const user = requireAuth().currentUser;
+  if (!user?.email) throw new Error('Authentication required.');
+  const credential = EmailAuthProvider.credential(user.email, currentPassword);
+  await reauthenticateWithCredential(user, credential);
+  await updatePassword(user, newPassword);
 }
 
 export async function getIdentityToken(forceRefresh = false): Promise<string> {

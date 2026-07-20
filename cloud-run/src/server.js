@@ -466,6 +466,23 @@ app.patch('/v1/users/:id', requireRoles('ADMIN'), async (req, res, next) => {
   }
 });
 
+app.post('/v1/users/:id/password', requireRoles('ADMIN'), async (req, res, next) => {
+  try {
+    const password = validatePasswordInput(req.body?.password);
+    const existingRows = await listRecords('users');
+    const existing = existingRows.find(row => normalizeUser(row).id === req.params.id);
+    if (!existing) return res.status(404).json({ error: 'not_found' });
+    const existingUser = normalizeUser(existing);
+    if (!existingUser.identityUid) throw httpError(422, 'missing_identity_uid');
+
+    await getAuth().updateUser(existingUser.identityUid, { password });
+    await activity(req, 'changed_user_password', 'USER', existingUser.id);
+    return res.json({ ok: true });
+  } catch (error) {
+    return next(error);
+  }
+});
+
 app.post('/v1/pdfs', async (req, res, next) => {
   try {
     const patient = await getRecord('patients', req.body.patientId);
@@ -608,6 +625,14 @@ function normalizeUserInput(input, requireRequiredFields) {
     facilityIds: input.facilityIds === undefined ? undefined : arrayValue(input.facilityIds),
     nursingHomeAccess: input.nursingHomeAccess === undefined ? undefined : arrayValue(input.nursingHomeAccess)
   };
+}
+
+function validatePasswordInput(value) {
+  const password = String(value || '');
+  if (password.length < 8) throw httpError(422, 'password_too_short');
+  if (password.length > 128) throw httpError(422, 'password_too_long');
+  if (/\s/.test(password)) throw httpError(422, 'password_cannot_contain_spaces');
+  return password;
 }
 
 function arrayValue(value) {
